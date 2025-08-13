@@ -18,17 +18,8 @@ public class Program
         string connectionString = Configuration.GetConnectionString("DefaultConnection")
         ?? Environment.GetEnvironmentVariable("DefaultConnection");
 
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
-        }
-
         builder.Services.AddDbContext<AppDBContext>(options =>
                 options.UseNpgsql(connectionString));
-
-
-
-
 
         // Add services to the container.
         builder.Services.AddControllers();
@@ -66,7 +57,7 @@ public class Program
 
         // Tilføj basic health checks
         builder.Services.AddHealthChecks()
-            .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), ["live"]);
+            .AddCheck("self", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), new[] { "live" });
 
         var app = builder.Build();
 
