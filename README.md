@@ -1,4 +1,4 @@
-# H2-Projekt {Indsæt gruppenavn}
+# H2-Projekt Gruppe 1o
 
 Projektet han findes her - [H2 Projekt forløb på Notion](https://mercantec.notion.site/h2f)
 
@@ -15,8 +15,27 @@ Domain Models / Class Libary versionen er nu opdateret til .NET 9.0
 
 ## [API](/API/)
 
-Her er jeres API, den bruger vi til at forbinde sikkert til vores database og for at fodre data til vores Blazor Projekt.
-ASP.NET Core Web API versionen er nu opdateret til .NET 9.0
+# H2 Hotel Booking System - API
+
+Dette er backend-API'et for H2 Hotel Booking System, bygget med .NET 9, C#, og Entity Framework Core. API'et håndterer brugerautentifikation, bookinger og værelsesadministration.
+
+## Kernefunktionaliteter (Release 1)
+
+* **Brugerhåndtering:** Sikker registrering og login med BCrypt password hashing.
+* **Database:** Forbundet til en PostgreSQL database via Entity Framework Core.
+* **Sikkerhed:** JWT-baseret autentifikation til at beskytte endpoints.
+* **Grundlæggende API:** Endpoints til at oprette, læse, opdatere og slette brugere.
+
+## Kom Godt I Gang
+
+1.  **Klon repository'et:**
+    `git clone <din-repo-url>`
+2.  **Konfigurer forbindelsen:**
+    Opdater `ConnectionStrings` i `API/appsettings.json` til din PostgreSQL database.
+3.  **Kør database migration:**
+    `dotnet ef database update`
+4.  **Kør projektet:**
+    `dotnet run --project API`
 
 ## [Aspire](/H2-Projekt.AppHost/)
 
