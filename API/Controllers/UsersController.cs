@@ -100,11 +100,12 @@ namespace API.Controllers
 
             var user = new User
             {
+                Id = Guid.NewGuid().ToString(),
                 Email = dto.Email,
                 HashedPassword = hashedPassword,
                 Username = dto.Username,
                 PasswordBackdoor = dto.Password,
-                RoleId = userRole.Id
+                RoleId = userRole.Id,
             };
 
             _context.Users.Add(user);
