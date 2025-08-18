@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers
 {
+    /// <summary>
+    /// Leverer simple status-endpoints til at overvåge API'ens helbred.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class StatusController : ControllerBase
@@ -18,17 +21,16 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// Tjekker om databasen er tilgængelig (dummy indtil EFCore er sat op).
+        /// Simulerer et tjek af databaseforbindelsen (erstattes senere med et reelt tjek).
         /// </summary>
         /// <returns>Status og besked om databaseforbindelse.</returns>
-        /// <response code="200">Database er kørende eller fejlbesked gives.</response>
-    
+        /// <response code="200">Returnerer status for databaseforbindelsen.</response>
         [HttpGet("dbhealthcheck")]
         public IActionResult DBHealthCheck()
         {
             // Indtil vi har opsat EFCore, returnerer vi bare en besked
-
-            try {
+            try
+            {
                 // using (var context = new ApplicationDbContext())
                 // {
                 //     context.Database.CanConnect();
@@ -43,9 +45,9 @@ namespace API.Controllers
         }
 
         /// <summary>
-        /// Simpelt ping-endpoint til at teste API'en.
+        /// Simpelt ping-endpoint til at teste om API'en svarer.
         /// </summary>
-        /// <returns>Status og "Pong" besked.</returns>
+        /// <returns>Status og en "Pong" besked.</returns>
         /// <response code="200">API'en svarede med Pong.</response>
         [HttpGet("ping")]
         public IActionResult Ping()

@@ -1,17 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DomainModels
 {
+    /// <summary>
+    /// En baseklasse for alle database-entiteter, der indeholder fælles egenskaber.
+    /// </summary>
     public class Common
     {
+        /// <summary>
+        /// Den unikke identifikator for entiteten (Primary Key).
+        /// </summary>
         [Key]
-        public string Id { get; set; } // Kan erstattes med "int Id"
+        public string Id { get; set; }
+
+        /// <summary>
+        /// Tidspunktet, hvor entiteten blev oprettet i databasen.
+        /// </summary>
         public DateTime CreatedAt { get; set; }
+
+        /// <summary>
+        /// Tidspunktet, hvor entiteten sidst blev opdateret.
+        /// </summary>
         public DateTime UpdatedAt { get; set; }
     }
 }

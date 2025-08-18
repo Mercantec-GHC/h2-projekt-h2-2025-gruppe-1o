@@ -5,16 +5,14 @@ using DomainModels.Mapping;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading.Tasks;
 
 namespace API.Controllers
 {
-    // Start på controller-klassen
+    /// <summary>
+    /// Håndterer brugerregistrering, login og brugeradministration.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
@@ -22,13 +20,24 @@ namespace API.Controllers
         private readonly AppDBContext _context;
         private readonly JwtService _jwtService;
 
+        /// <summary>
+        /// Initialiserer en ny instans af UsersController.
+        /// </summary>
+        /// <param name="context">Database context for bruger-systemet.</param>
+        /// <param name="jwtService">Service til at generere JWT tokens.</param>
         public UsersController(AppDBContext context, JwtService jwtService)
         {
             _context = context;
             _jwtService = jwtService;
         }
 
-        // GET: api/Users (Admin only)
+        /// <summary>
+        /// Henter en liste over alle brugere i systemet. (Kun for administratorer)
+        /// </summary>
+        /// <returns>En liste af brugere med deres roller.</returns>
+        /// <response code="200">Returnerer listen af brugere.</response>
+        /// <response code="401">Hvis anmodningen ikke kommer fra en logget-ind bruger.</response>
+        /// <response code="403">Hvis den indloggede bruger ikke har rollen 'Admin'.</response>
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserGetDto>>> GetUsers()
@@ -45,7 +54,13 @@ namespace API.Controllers
                 .ToListAsync();
         }
 
-        // GET: api/Users/UUID
+        /// <summary>
+        /// Henter en specifik bruger ud fra ID.
+        /// </summary>
+        /// <param name="id">Brugerens unikke ID.</param>
+        /// <returns>Brugerens detaljer.</returns>
+        /// <response code="200">Returnerer brugerens detaljer.</response>
+        /// <response code="404">Hvis en bruger med det angivne ID ikke blev fundet.</response>
         [HttpGet("{id}")]
         public async Task<ActionResult<UserGetDto>> GetUser(string id)
         {
@@ -59,7 +74,15 @@ namespace API.Controllers
             return UserMapping.ToUserGetDto(user);
         }
 
-        // PUT: api/Users/{id}
+        /// <summary>
+        /// Opdaterer en brugers information. En bruger kan opdatere sig selv, en admin kan opdatere alle.
+        /// </summary>
+        /// <param name="id">ID'et på den bruger, der skal opdateres.</param>
+        /// <param name="userDto">De nye brugeroplysninger (brugernavn og email).</param>
+        /// <returns>Ingen indhold ved succes.</returns>
+        /// <response code="204">Brugeren blev opdateret succesfuldt.</response>
+        /// <response code="403">Hvis en bruger forsøger at opdatere en anden bruger uden at være admin.</response>
+        /// <response code="404">Hvis brugeren med det angivne ID ikke findes.</response>
         [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(string id, [FromBody] UserUpdateDto userDto)
@@ -85,7 +108,14 @@ namespace API.Controllers
             return NoContent();
         }
 
-        // POST: api/Users/register
+        /// <summary>
+        /// Registrerer en ny bruger i systemet.
+        /// </summary>
+        /// <param name="dto">Data for den nye bruger, inklusiv email, brugernavn og adgangskode.</param>
+        /// <returns>En bekræftelse på, at brugeren er oprettet.</returns>
+        /// <response code="200">Returnerer en succesbesked og det nye bruger-ID.</response>
+        /// <response code="400">Hvis en bruger med den angivne email allerede eksisterer.</response>
+        [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
@@ -113,7 +143,14 @@ namespace API.Controllers
             return Ok(new { message = "Bruger oprettet!", userId = user.Id });
         }
 
-        // POST: api/Users/login
+        /// <summary>
+        /// Logger en eksisterende bruger ind og returnerer et JWT-token.
+        /// </summary>
+        /// <param name="dto">Login-oplysninger (email og adgangskode).</param>
+        /// <returns>Et JWT-token og grundlæggende brugerinformation.</returns>
+        /// <response code="200">Returnerer token og brugerinfo ved succesfuldt login.</response>
+        /// <response code="401">Hvis email eller adgangskode er forkert.</response>
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
@@ -139,7 +176,13 @@ namespace API.Controllers
             });
         }
 
-        // GET: api/Users/me
+        /// <summary>
+        /// Henter detaljer om den aktuelt indloggede bruger baseret på deres JWT-token.
+        /// </summary>
+        /// <returns>Detaljeret information om den indloggede bruger.</returns>
+        /// <response code="200">Returnerer brugerens detaljer.</response>
+        /// <response code="401">Hvis der ikke er et gyldigt token i anmodningen.</response>
+        /// <response code="404">Hvis brugeren fra tokenet ikke længere eksisterer i databasen.</response>
         [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> GetCurrentUser()
@@ -170,7 +213,14 @@ namespace API.Controllers
             });
         }
 
-        // DELETE: api/Users/{id}
+        /// <summary>
+        /// Sletter en bruger fra systemet. (Kun for administratorer)
+        /// </summary>
+        /// <param name="id">ID'et på den bruger, der skal slettes.</param>
+        /// <returns>Ingen indhold ved succes.</returns>
+        /// <response code="204">Brugeren blev slettet succesfuldt.</response>
+        /// <response code="403">Hvis den indloggede bruger ikke er admin.</response>
+        /// <response code="404">Hvis brugeren med det angivne ID ikke findes.</response>
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
@@ -185,7 +235,15 @@ namespace API.Controllers
             return NoContent();
         }
 
-        // === Metoder til Rolle-håndtering (Admin Only) ===
+        /// <summary>
+        /// Tildeler en ny rolle til en bruger. (Kun for administratorer)
+        /// </summary>
+        /// <param name="id">ID'et på brugeren, der skal have en ny rolle.</param>
+        /// <param name="dto">Objekt, der indeholder ID'et på den nye rolle.</param>
+        /// <returns>En bekræftelsesbesked.</returns>
+        /// <response code="200">Returnerer en succesbesked.</response>
+        /// <response code="400">Hvis det angivne rolle-ID er ugyldigt.</response>
+        /// <response code="404">Hvis brugeren ikke findes.</response>
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}/role")]
         public async Task<IActionResult> AssignUserRole(string id, [FromBody] AssignRoleDto dto)
@@ -203,6 +261,11 @@ namespace API.Controllers
             return Ok(new { message = $"Rollen '{role.Name}' blev tildelt til bruger {user.Email}." });
         }
 
+        /// <summary>
+        /// Henter en liste over alle tilgængelige brugerroller. (Kun for administratorer)
+        /// </summary>
+        /// <returns>En liste af roller med ID, navn og beskrivelse.</returns>
+        /// <response code="200">Returnerer listen af roller.</response>
         [Authorize(Roles = "Admin")]
         [HttpGet("roles")]
         public async Task<ActionResult<object>> GetAvailableRoles()
@@ -216,10 +279,9 @@ namespace API.Controllers
         {
             return _context.Users.Any(e => e.Id == id);
         }
-    } // Slut på controller-klassen
+    }
 
     // === DTOs anvendt i denne controller ===
-    // Disse definitioner SKAL være her, inde i namespacet.
     public class AssignRoleDto
     {
         [Required]
@@ -235,4 +297,4 @@ namespace API.Controllers
         [Required(ErrorMessage = "Email er påkrævet")]
         public string Email { get; set; } = string.Empty;
     }
-} // Slut på namespacet
+}

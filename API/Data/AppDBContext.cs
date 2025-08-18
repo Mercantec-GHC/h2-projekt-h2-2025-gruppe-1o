@@ -4,19 +4,44 @@ using System;
 
 namespace API.Data
 {
+    /// <summary>
+    /// Repræsenterer databasens session og fungerer som bindeled mellem C# objekter og databasen.
+    /// </summary>
     public class AppDBContext : DbContext
     {
+        /// <summary>
+        /// Initialiserer en ny instans af AppDBContext.
+        /// </summary>
+        /// <param name="options">Konfigurationsindstillinger for denne context.</param>
         public AppDBContext(DbContextOptions<AppDBContext> options)
             : base(options)
         {
         }
 
-        // DbSets for alle dine entiteter
+        /// <summary>
+        /// DbSet for User-entiteter. Repræsenterer Users-tabellen i databasen.
+        /// </summary>
         public DbSet<User> Users { get; set; } = null!;
+
+        /// <summary>
+        /// DbSet for Role-entiteter. Repræsenterer Roles-tabellen i databasen.
+        /// </summary>
         public DbSet<Role> Roles { get; set; } = null!;
+
+        /// <summary>
+        /// DbSet for Room-entiteter. Repræsenterer Rooms-tabellen i databasen.
+        /// </summary>
         public DbSet<Room> Rooms { get; set; } = null!;
+
+        /// <summary>
+        /// DbSet for Booking-entiteter. Repræsenterer Bookings-tabellen i databasen.
+        /// </summary>
         public DbSet<Booking> Bookings { get; set; } = null!;
 
+        /// <summary>
+        /// Konfigurerer datamodellen, relationer og constraints ved hjælp af ModelBuilder.
+        /// </summary>
+        /// <param name="modelBuilder">API'et til at bygge modellen for contexten.</param>
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Konfiguration for Role
@@ -30,9 +55,9 @@ namespace API.Data
             {
                 entity.HasIndex(u => u.Email).IsUnique();
                 entity.HasOne(u => u.Role)
-                      .WithMany(r => r.Users)
-                      .HasForeignKey(u => u.RoleId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                        .WithMany(r => r.Users)
+                        .HasForeignKey(u => u.RoleId)
+                        .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Konfiguration for Room
@@ -46,14 +71,14 @@ namespace API.Data
             modelBuilder.Entity<Booking>(entity =>
             {
                 entity.HasOne(b => b.User)
-                      .WithMany()
-                      .HasForeignKey(b => b.UserId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                        .WithMany() // En bruger kan have mange bookinger, men vi har ikke en ICollection<Booking> på User
+                        .HasForeignKey(b => b.UserId)
+                        .OnDelete(DeleteBehavior.Restrict);
 
                 entity.HasOne(b => b.Room)
-                      .WithMany(r => r.Bookings)
-                      .HasForeignKey(b => b.RoomId)
-                      .OnDelete(DeleteBehavior.Restrict);
+                        .WithMany(r => r.Bookings)
+                        .HasForeignKey(b => b.RoomId)
+                        .OnDelete(DeleteBehavior.Restrict);
 
                 entity.Property(b => b.TotalPrice).HasColumnType("decimal(18,2)");
             });
@@ -62,6 +87,7 @@ namespace API.Data
             SeedRoles(modelBuilder);
             SeedRooms(modelBuilder);
         }
+
 
         private void SeedRoles(ModelBuilder modelBuilder)
         {

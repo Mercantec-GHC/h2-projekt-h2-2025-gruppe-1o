@@ -7,7 +7,7 @@ using DomainModels;
 namespace API.Services
 {
     /// <summary>
-    /// Service til håndtering af JWT tokens - generering, validering og decoding
+    /// Service til håndtering af JWT tokens, herunder generering og validering.
     /// </summary>
     public class JwtService
     {
@@ -17,6 +17,10 @@ namespace API.Services
         private readonly string _audience;
         private readonly int _expiryMinutes;
 
+        /// <summary>
+        /// Initialiserer JwtService ved at indlæse indstillinger fra app-konfigurationen.
+        /// </summary>
+        /// <param name="configuration">Applikationens konfigurations-provider.</param>
         public JwtService(IConfiguration configuration)
         {
             _configuration = configuration;
@@ -38,10 +42,10 @@ namespace API.Services
         }
 
         /// <summary>
-        /// Genererer en JWT token for en bruger
+        /// Genererer et nyt JWT-token for en given bruger.
         /// </summary>
-        /// <param name="user">Brugeren der skal have en token</param>
-        /// <returns>JWT token som string</returns>
+        /// <param name="user">Brugerobjektet, som tokenet skal genereres for.</param>
+        /// <returns>En JWT-token som en streng.</returns>
         public string GenerateToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -67,7 +71,7 @@ namespace API.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddHours(2).AddMinutes(_expiryMinutes),
+                Expires = DateTime.UtcNow.AddMinutes(_expiryMinutes),
                 Issuer = _issuer,
                 Audience = _audience,
                 SigningCredentials = new SigningCredentials(
