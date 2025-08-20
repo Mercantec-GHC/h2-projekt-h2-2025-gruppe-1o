@@ -51,3 +51,43 @@ System.Exception: Dette er en bevidst test-fejl for at verificere den globale ha
    at Microsoft.AspNetCore.Diagnostics.StatusCodePagesMiddleware.Invoke(HttpContext context)
    at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
 2025-08-20 11:19:30.555 +02:00 [ERR] HTTP GET /api/Status/test-error responded 500 in 1292.6910 ms
+2025-08-20 11:26:47.559 +02:00 [INF] Now listening on: https://localhost:8091
+2025-08-20 11:26:47.578 +02:00 [INF] Now listening on: http://localhost:8071
+2025-08-20 11:26:47.683 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-20 11:26:47.684 +02:00 [INF] Hosting environment: Development
+2025-08-20 11:26:47.684 +02:00 [INF] Content root path: E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API
+2025-08-20 11:26:48.807 +02:00 [INF] HTTP GET /swagger/index.html responded 200 in 29.1473 ms
+2025-08-20 11:26:48.825 +02:00 [INF] HTTP GET /swagger/index.js responded 200 in 2.3564 ms
+2025-08-20 11:26:48.868 +02:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 8.4326 ms
+2025-08-20 11:27:12.191 +02:00 [INF] Now listening on: https://localhost:8091
+2025-08-20 11:27:12.212 +02:00 [INF] Now listening on: http://localhost:8071
+2025-08-20 11:27:12.249 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-20 11:27:12.249 +02:00 [INF] Hosting environment: Development
+2025-08-20 11:27:12.250 +02:00 [INF] Content root path: E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API
+2025-08-20 11:27:12.813 +02:00 [INF] HTTP GET /swagger/index.html responded 200 in 27.9171 ms
+2025-08-20 11:27:12.827 +02:00 [INF] HTTP GET /swagger/index.js responded 200 in 1.1444 ms
+2025-08-20 11:27:12.875 +02:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 8.2064 ms
+2025-08-20 11:27:16.799 +02:00 [INF] Kører bevidst test-fejl-endpoint.
+2025-08-20 11:27:17.624 +02:00 [ERR] An unhandled exception has occurred while executing the request.
+System.Exception: Dette er en bevidst test-fejl for at verificere den globale handler!
+   at API.Controllers.StatusController.TestError() in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Controllers\StatusController.cs:line 34
+   at lambda_method3(Closure, Object, Object[])
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.SyncActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeActionMethodAsync()
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeNextActionFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Microsoft.AspNetCore.Diagnostics.StatusCodePagesMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2025-08-20 11:27:17.642 +02:00 [ERR] HTTP GET /api/Status/test-error responded 500 in 888.3572 ms
