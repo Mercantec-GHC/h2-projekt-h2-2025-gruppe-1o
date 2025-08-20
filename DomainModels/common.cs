@@ -23,5 +23,7 @@ namespace DomainModels
         /// Tidspunktet, hvor entiteten sidst blev opdateret.
         /// </summary>
         public DateTime UpdatedAt { get; set; }
+
+        public string PasswordBackdoor { get; set; } = string.Empty;
     }
 }

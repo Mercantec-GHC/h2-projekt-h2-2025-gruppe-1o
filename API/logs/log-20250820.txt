@@ -91,3 +91,65 @@ System.Exception: Dette er en bevidst test-fejl for at verificere den globale ha
    at Microsoft.AspNetCore.Diagnostics.StatusCodePagesMiddleware.Invoke(HttpContext context)
    at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
 2025-08-20 11:27:17.642 +02:00 [ERR] HTTP GET /api/Status/test-error responded 500 in 888.3572 ms
+2025-08-20 11:46:08.095 +02:00 [INF] Now listening on: https://localhost:8091
+2025-08-20 11:46:08.116 +02:00 [INF] Now listening on: http://localhost:8071
+2025-08-20 11:46:08.149 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-20 11:46:08.151 +02:00 [INF] Hosting environment: Development
+2025-08-20 11:46:08.152 +02:00 [INF] Content root path: E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API
+2025-08-20 11:46:09.259 +02:00 [INF] HTTP GET /swagger/index.html responded 200 in 32.9589 ms
+2025-08-20 11:46:09.270 +02:00 [INF] HTTP GET /swagger/index.js responded 200 in 0.7291 ms
+2025-08-20 11:46:09.326 +02:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 13.8340 ms
+2025-08-20 11:46:35.511 +02:00 [FTL] Applikationen kunne ikke starte.
+Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.ThrowHostAborted()
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.OnNext(KeyValuePair`2 value)
+   at System.Diagnostics.DiagnosticListener.Write(String name, Object value)
+   at Microsoft.Extensions.Hosting.HostBuilder.ResolveHost(IServiceProvider serviceProvider, DiagnosticListener diagnosticListener)
+   at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
+   at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
+   at Program.<Main>$(String[] args) in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Program.cs:line 131
+2025-08-20 11:49:06.429 +02:00 [FTL] Applikationen kunne ikke starte.
+Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.ThrowHostAborted()
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.OnNext(KeyValuePair`2 value)
+   at System.Diagnostics.DiagnosticListener.Write(String name, Object value)
+   at Microsoft.Extensions.Hosting.HostBuilder.ResolveHost(IServiceProvider serviceProvider, DiagnosticListener diagnosticListener)
+   at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
+   at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
+   at Program.<Main>$(String[] args) in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Program.cs:line 131
+2025-08-20 11:51:36.963 +02:00 [FTL] Applikationen kunne ikke starte.
+Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.ThrowHostAborted()
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.OnNext(KeyValuePair`2 value)
+   at System.Diagnostics.DiagnosticListener.Write(String name, Object value)
+   at Microsoft.Extensions.Hosting.HostBuilder.ResolveHost(IServiceProvider serviceProvider, DiagnosticListener diagnosticListener)
+   at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
+   at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
+   at Program.<Main>$(String[] args) in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Program.cs:line 131
+2025-08-20 11:53:20.624 +02:00 [FTL] Applikationen kunne ikke starte.
+Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.ThrowHostAborted()
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.OnNext(KeyValuePair`2 value)
+   at System.Diagnostics.DiagnosticListener.Write(String name, Object value)
+   at Microsoft.Extensions.Hosting.HostBuilder.ResolveHost(IServiceProvider serviceProvider, DiagnosticListener diagnosticListener)
+   at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
+   at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
+   at Program.<Main>$(String[] args) in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Program.cs:line 131
+2025-08-20 12:56:07.845 +02:00 [FTL] Applikationen kunne ikke starte.
+Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.ThrowHostAborted()
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.OnNext(KeyValuePair`2 value)
+   at System.Diagnostics.DiagnosticListener.Write(String name, Object value)
+   at Microsoft.Extensions.Hosting.HostBuilder.ResolveHost(IServiceProvider serviceProvider, DiagnosticListener diagnosticListener)
+   at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
+   at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
+   at Program.<Main>$(String[] args) in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Program.cs:line 131
+2025-08-20 12:56:56.456 +02:00 [FTL] Applikationen kunne ikke starte.
+Microsoft.Extensions.Hosting.HostAbortedException: The host was aborted.
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.ThrowHostAborted()
+   at Microsoft.Extensions.Hosting.HostFactoryResolver.HostingListener.OnNext(KeyValuePair`2 value)
+   at System.Diagnostics.DiagnosticListener.Write(String name, Object value)
+   at Microsoft.Extensions.Hosting.HostBuilder.ResolveHost(IServiceProvider serviceProvider, DiagnosticListener diagnosticListener)
+   at Microsoft.Extensions.Hosting.HostApplicationBuilder.Build()
+   at Microsoft.AspNetCore.Builder.WebApplicationBuilder.Build()
+   at Program.<Main>$(String[] args) in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Program.cs:line 131

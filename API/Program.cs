@@ -9,7 +9,7 @@ using Serilog;
 using System.Reflection;
 using System.Text;
 
-// Opsæt en bootstrap-logger for at fange fejl under selve applikationens opstart
+// NYT: Opsæt en bootstrap-logger for at fange fejl under selve applikationens opstart
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
@@ -18,17 +18,19 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Erstat standard-loggeren med Serilog og konfigurer den til at læse fra appsettings.json
+    // NYT: Erstat standard-loggeren med Serilog og konfigurer den til at læse fra appsettings.json
     builder.Host.UseSerilog((context, configuration) =>
         configuration.ReadFrom.Configuration(context.Configuration));
 
-    // Registrer de services, der er nødvendige for at bygge standardiserede ProblemDetails-fejlresponser
+    // NYT: Registrer de services, der er nødvendige for at bygge standardiserede ProblemDetails-fejlresponser
     builder.Services.AddProblemDetails();
 
     IConfiguration Configuration = builder.Configuration;
 
+    // Hent og valider Connection String
     string connectionString = Configuration.GetConnectionString("DefaultConnection")
     ?? Environment.GetEnvironmentVariable("DefaultConnection");
+
 
     builder.Services.AddDbContext<AppDBContext>(options =>
             options.UseNpgsql(connectionString));
@@ -36,6 +38,7 @@ try
     builder.Services.AddMemoryCache();
     builder.Services.AddSingleton<LoginAttemptService>();
     builder.Services.AddScoped<JwtService>();
+    builder.Services.AddScoped<DataSeederService>();
 
     // Konfigurer JWT Authentication
     var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? Environment.GetEnvironmentVariable("Jwt:SecretKey") ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
@@ -129,14 +132,13 @@ try
 
     var app = builder.Build();
 
-    // ---- Konfiguration af Middleware Pipeline ----
+    // ---- Konfiguration af Middleware Pipeline (Rækkefølgen er vigtig) ----
 
-    // Brug Serilog til at logge alle indkommende HTTP-anmodninger
+    // NYT: Brug Serilog til at logge alle indkommende HTTP-anmodninger
     app.UseSerilogRequestLogging();
 
-    // Middleware til at fange exceptions og returnere en ProblemDetails-respons
+    // NYT: Middleware til at fange exceptions og håndtere fejl-statuskoder
     app.UseExceptionHandler();
-    // Middleware til at håndtere andre fejl-statuskoder (f.eks. 404 Not Found)
     app.UseStatusCodePages();
 
     // Gør kun API-dokumentation tilgængelig i Development-mode for øget sikkerhed
@@ -157,32 +159,32 @@ try
         });
     }
 
+    // Aktiver Https Redirection (Best Practice for sikkerhed)
+    app.UseHttpsRedirection();
+
+    // Placer CORS før Auth/Authorization
     app.UseCors("AllowSpecificOrigins");
 
-    // Map Health Checks til endpoints
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // Map endpoints til sidst
+    app.MapControllers();
     app.MapHealthChecks("/health");
     app.MapHealthChecks("/alive", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
         Predicate = r => r.Tags.Contains("live")
     });
 
-    // Aktiver Https Redirection
-    app.UseHttpsRedirection();
-
-    app.UseAuthentication();
-    app.UseAuthorization();
-
-    app.MapControllers();
-
     app.Run();
 }
 catch (Exception ex)
 {
-    // Sørg for at logge fatale fejl, der opstår under selve opstarten
+    // NYT: Sørg for at logge fatale fejl, der opstår under selve opstarten
     Log.Fatal(ex, "Applikationen kunne ikke starte.");
 }
 finally
 {
-    // Sørg for at alle logs bliver skrevet til filen, før applikationen lukker helt ned
+    // NYT: Sørg for at alle logs bliver skrevet til filen, før applikationen lukker helt ned
     Log.CloseAndFlush();
 }

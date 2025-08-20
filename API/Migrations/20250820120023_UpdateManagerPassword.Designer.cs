@@ -3,6 +3,7 @@ using System;
 using API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250820120023_UpdateManagerPassword")]
+    partial class UpdateManagerPassword
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -35,10 +38,6 @@ namespace API.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PasswordBackdoor")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<int?>("RoomId")
                         .HasColumnType("integer");
@@ -104,10 +103,6 @@ namespace API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<string>("PasswordBackdoor")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -125,7 +120,6 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Standard bruger",
                             Name = "User",
-                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -134,7 +128,6 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Rengøringspersonale",
                             Name = "Housekeeping",
-                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -143,7 +136,6 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Receptionspersonale",
                             Name = "Receptionist",
-                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -152,7 +144,6 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Hotel Manager",
                             Name = "Manager",
-                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
@@ -346,7 +337,7 @@ namespace API.Migrations
                             Email = "manager@hotel.dk",
                             HashedPassword = "$2a$11$e.h9qi30632t342.k2R9P.3hF3sA7rq1qV48z4cAM3q2y2j5n5q6m",
                             LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            PasswordBackdoor = "Password123!",
+                            PasswordBackdoor = "",
                             RoleId = "4",
                             UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Username = "HotelManager"
