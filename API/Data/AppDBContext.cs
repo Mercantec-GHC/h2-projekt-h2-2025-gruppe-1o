@@ -15,6 +15,28 @@ namespace API.Data
         public DbSet<Service> Services { get; set; } = null!;
         public DbSet<BookingService> BookingServices { get; set; } = null!;
 
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            var entries = ChangeTracker
+                .Entries()
+                .Where(e => e.Entity is Common && (
+                        e.State == EntityState.Added
+                        || e.State == EntityState.Modified));
+
+            foreach (var entityEntry in entries)
+            {
+                ((Common)entityEntry.Entity).UpdatedAt = DateTime.UtcNow;
+
+                if (entityEntry.State == EntityState.Added)
+                {
+                    ((Common)entityEntry.Entity).CreatedAt = DateTime.UtcNow;
+                }
+            }
+
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

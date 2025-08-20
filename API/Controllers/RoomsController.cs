@@ -24,56 +24,48 @@ namespace API.Controllers
             [FromQuery] DateTime checkOutDate,
             [FromQuery] int numberOfGuests)
         {
-            try
-            {
-                _logger.LogInformation("Søger efter ledige værelser fra {CheckIn} til {CheckOut} for {GuestCount} gæster.", checkInDate, checkOutDate, numberOfGuests);
+            _logger.LogInformation("Søger efter ledige værelser fra {CheckIn} til {CheckOut} for {GuestCount} gæster.", checkInDate, checkOutDate, numberOfGuests);
 
-                if (checkOutDate <= checkInDate)
+            if (checkOutDate <= checkInDate)
+            {
+                _logger.LogWarning("Søgning efter ledighed afvist: Check-ud dato er før eller samme dag som check-in.");
+                return BadRequest("Check-ud dato skal være efter check-in dato.");
+            }
+
+            var bookedCounts = await _context.Bookings
+                .Where(b => b.CheckInDate < checkOutDate && b.CheckOutDate > checkInDate && b.Status != "Cancelled")
+                .GroupBy(b => b.RoomTypeId)
+                .Select(g => new { RoomTypeId = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.RoomTypeId, x => x.Count);
+
+            var roomTypeInfos = await _context.RoomTypes
+                .Where(rt => rt.Capacity >= numberOfGuests)
+                .Select(rt => new
                 {
-                    _logger.LogWarning("Søgning efter ledighed afvist: Check-ud dato er før eller samme dag som check-in.");
-                    return BadRequest("Check-ud dato skal være efter check-in dato.");
-                }
+                    rt.Id,
+                    rt.Name,
+                    rt.Description,
+                    rt.BasePrice,
+                    rt.Capacity,
+                    TotalCount = rt.Rooms.Count()
+                })
+                .ToListAsync();
 
-                var bookedCounts = await _context.Bookings
-                    .Where(b => b.CheckInDate < checkOutDate && b.CheckOutDate > checkInDate && b.Status != "Cancelled")
-                    .GroupBy(b => b.RoomTypeId)
-                    .Select(g => new { RoomTypeId = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.RoomTypeId, x => x.Count);
+            var result = roomTypeInfos
+                .Select(rt => new RoomTypeGetDto
+                {
+                    Id = rt.Id,
+                    Name = rt.Name,
+                    Description = rt.Description,
+                    BasePrice = rt.BasePrice,
+                    Capacity = rt.Capacity,
+                    AvailableCount = rt.TotalCount - bookedCounts.GetValueOrDefault(rt.Id, 0)
+                })
+                .Where(dto => dto.AvailableCount > 0)
+                .ToList();
 
-                var roomTypeInfos = await _context.RoomTypes
-                    .Where(rt => rt.Capacity >= numberOfGuests)
-                    .Select(rt => new
-                    {
-                        rt.Id,
-                        rt.Name,
-                        rt.Description,
-                        rt.BasePrice,
-                        rt.Capacity,
-                        TotalCount = rt.Rooms.Count()
-                    })
-                    .ToListAsync();
-
-                var result = roomTypeInfos
-                    .Select(rt => new RoomTypeGetDto
-                    {
-                        Id = rt.Id,
-                        Name = rt.Name,
-                        Description = rt.Description,
-                        BasePrice = rt.BasePrice,
-                        Capacity = rt.Capacity,
-                        AvailableCount = rt.TotalCount - bookedCounts.GetValueOrDefault(rt.Id, 0)
-                    })
-                    .Where(dto => dto.AvailableCount > 0)
-                    .ToList();
-
-                _logger.LogInformation("Søgning efter ledighed returnerede {ResultCount} værelsestyper.", result.Count);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Uventet fejl under søgning efter ledige værelser.");
-                return StatusCode(500, "Der opstod en intern serverfejl under søgningen.");
-            }
+            _logger.LogInformation("Søgning efter ledighed returnerede {ResultCount} værelsestyper.", result.Count);
+            return Ok(result);
         }
     }
 }

@@ -16,34 +16,23 @@ namespace API.Controllers
         [HttpGet("healthcheck")]
         public IActionResult HealthCheck()
         {
-            try
-            {
-                _logger.LogInformation("HealthCheck endpoint blev kaldt kl. {Timestamp}", DateTime.UtcNow);
-                return Ok(new { status = "OK", message = "API'en er kørende!" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Fejl i HealthCheck endpoint.");
-                return StatusCode(500, "Health check fejlede.");
-            }
+            _logger.LogInformation("HealthCheck endpoint blev kaldt kl. {Timestamp}", DateTime.UtcNow);
+            return Ok(new { status = "OK", message = "API'en er kørende!" });
         }
 
         [HttpGet("ping")]
         public IActionResult Ping()
         {
-            try
-            {
-                _logger.LogInformation("Ping endpoint blev kaldt.");
-                return Ok(new { status = "OK", message = "Pong 🏓" });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Fejl i Ping endpoint.");
-                return StatusCode(500, "Ping fejlede.");
-            }
+            _logger.LogInformation("Ping endpoint blev kaldt.");
+            return Ok(new { status = "OK", message = "Pong 🏓" });
         }
 
-        // DBHealthCheck er fjernet, da den kastede en unødvendig exception og
-        // rigtige health checks bør konfigureres i Program.cs
+        [HttpGet("test-error")]
+        public IActionResult TestError()
+        {
+            _logger.LogInformation("Kører bevidst test-fejl-endpoint.");
+            throw new Exception("Dette er en bevidst test-fejl for at verificere den globale handler!");
+        }
+
     }
 }

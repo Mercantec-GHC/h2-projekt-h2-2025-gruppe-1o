@@ -1,0 +1,53 @@
+2025-08-20 11:16:28.545 +02:00 [INF] Now listening on: https://localhost:8091
+2025-08-20 11:16:28.565 +02:00 [INF] Now listening on: http://localhost:8071
+2025-08-20 11:16:28.661 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-20 11:16:28.662 +02:00 [INF] Hosting environment: Production
+2025-08-20 11:16:28.662 +02:00 [INF] Content root path: E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API
+2025-08-20 11:16:29.701 +02:00 [INF] HTTP GET /swagger/index.html responded 404 in 51.8955 ms
+2025-08-20 11:16:29.719 +02:00 [INF] HTTP GET /favicon.ico responded 404 in 0.9168 ms
+2025-08-20 11:16:45.300 +02:00 [INF] Now listening on: https://localhost:8091
+2025-08-20 11:16:45.318 +02:00 [INF] Now listening on: http://localhost:8071
+2025-08-20 11:16:45.416 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-20 11:16:45.416 +02:00 [INF] Hosting environment: Production
+2025-08-20 11:16:45.417 +02:00 [INF] Content root path: E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API
+2025-08-20 11:16:46.300 +02:00 [INF] HTTP GET /swagger/index.html responded 404 in 48.7509 ms
+2025-08-20 11:16:46.319 +02:00 [INF] HTTP GET /favicon.ico responded 404 in 0.8617 ms
+2025-08-20 11:19:12.818 +02:00 [INF] Now listening on: https://localhost:8091
+2025-08-20 11:19:12.843 +02:00 [INF] Now listening on: http://localhost:8071
+2025-08-20 11:19:12.871 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-20 11:19:12.872 +02:00 [INF] Hosting environment: Production
+2025-08-20 11:19:12.872 +02:00 [INF] Content root path: E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API
+2025-08-20 11:19:13.592 +02:00 [INF] HTTP GET /swagger/index.html responded 404 in 49.7543 ms
+2025-08-20 11:19:13.610 +02:00 [INF] HTTP GET /favicon.ico responded 404 in 0.8264 ms
+2025-08-20 11:19:23.418 +02:00 [INF] Now listening on: https://localhost:8091
+2025-08-20 11:19:23.437 +02:00 [INF] Now listening on: http://localhost:8071
+2025-08-20 11:19:23.465 +02:00 [INF] Application started. Press Ctrl+C to shut down.
+2025-08-20 11:19:23.465 +02:00 [INF] Hosting environment: Development
+2025-08-20 11:19:23.466 +02:00 [INF] Content root path: E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API
+2025-08-20 11:19:24.889 +02:00 [INF] HTTP GET /swagger/index.html responded 200 in 25.9324 ms
+2025-08-20 11:19:24.902 +02:00 [INF] HTTP GET /swagger/index.js responded 200 in 0.9533 ms
+2025-08-20 11:19:24.947 +02:00 [INF] HTTP GET /swagger/v1/swagger.json responded 200 in 8.0474 ms
+2025-08-20 11:19:29.299 +02:00 [INF] Kører bevidst test-fejl-endpoint.
+2025-08-20 11:19:30.537 +02:00 [ERR] An unhandled exception has occurred while executing the request.
+System.Exception: Dette er en bevidst test-fejl for at verificere den globale handler!
+   at API.Controllers.StatusController.TestError() in E:\SKOLE\GitHub Repository\h2-projekt-h2-2025-gruppe-1o\API\Controllers\StatusController.cs:line 34
+   at lambda_method3(Closure, Object, Object[])
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.SyncActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeActionMethodAsync()
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeNextActionFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.InvokeInnerFilterAsync()
+--- End of stack trace from previous location ---
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Awaited|17_0(ResourceInvoker invoker, Task task, IDisposable scope)
+   at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+   at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+   at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+   at Microsoft.AspNetCore.Diagnostics.StatusCodePagesMiddleware.Invoke(HttpContext context)
+   at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+2025-08-20 11:19:30.555 +02:00 [ERR] HTTP GET /api/Status/test-error responded 500 in 1292.6910 ms

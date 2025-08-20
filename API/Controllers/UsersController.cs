@@ -31,340 +31,255 @@ namespace API.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserGetDto>>> GetUsers()
         {
-            try
-            {
-                var adminName = User.FindFirstValue(ClaimTypes.Name) ?? "Ukendt Admin";
-                _logger.LogInformation("Administrator '{AdminName}' anmoder om at hente alle brugere.", adminName);
+            var adminName = User.FindFirstValue(ClaimTypes.Name) ?? "Ukendt Admin";
+            _logger.LogInformation("Administrator '{AdminName}' anmoder om at hente alle brugere.", adminName);
 
-                var users = await _context.Users
-                    .Include(u => u.Role)
-                    .Select(user => UserMapping.ToUserGetDto(user))
-                    .ToListAsync();
+            var users = await _context.Users
+                .Include(u => u.Role)
+                .Select(user => UserMapping.ToUserGetDto(user))
+                .ToListAsync();
 
-                _logger.LogInformation("Hentet {UserCount} brugere succesfuldt.", users.Count);
-                return Ok(users);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Uventet fejl ved hentning af alle brugere.");
-                return StatusCode(500, "Der opstod en intern serverfejl ved hentning af brugere.");
-            }
+            _logger.LogInformation("Hentet {UserCount} brugere succesfuldt.", users.Count);
+            return Ok(users);
         }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<UserGetDto>> GetUser(string id)
         {
-            try
-            {
-                _logger.LogInformation("Forsøger at hente bruger med ID: {UserId}", id);
-                var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
+            _logger.LogInformation("Forsøger at hente bruger med ID: {UserId}", id);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == id);
 
-                if (user == null)
-                {
-                    _logger.LogWarning("Bruger med ID {UserId} blev ikke fundet.", id);
-                    return NotFound();
-                }
-
-                _logger.LogInformation("Bruger med ID {UserId} blev fundet succesfuldt.", id);
-                return UserMapping.ToUserGetDto(user);
-            }
-            catch (Exception ex)
+            if (user == null)
             {
-                _logger.LogError(ex, "Uventet fejl ved hentning af bruger med ID: {UserId}", id);
-                return StatusCode(500, "Der opstod en intern serverfejl.");
+                _logger.LogWarning("Bruger med ID {UserId} blev ikke fundet.", id);
+                return NotFound();
             }
+
+            _logger.LogInformation("Bruger med ID {UserId} blev fundet succesfuldt.", id);
+            return UserMapping.ToUserGetDto(user);
         }
 
         [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(string id, [FromBody] UserUpdateDto userDto)
         {
-            try
+            _logger.LogInformation("Bruger {RequestingUserId} forsøger at opdatere bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.NameIdentifier), id);
+
+            var userToUpdate = await _context.Users.FindAsync(id);
+
+            if (userToUpdate == null)
             {
-                _logger.LogInformation("Bruger {RequestingUserId} forsøger at opdatere bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.NameIdentifier), id);
-
-                var userToUpdate = await _context.Users.FindAsync(id);
-
-                if (userToUpdate == null)
-                {
-                    _logger.LogWarning("Opdatering fejlede: Bruger med ID {TargetUserId} blev ikke fundet.", id);
-                    return NotFound("Brugeren blev ikke fundet.");
-                }
-
-                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (userToUpdate.Id != currentUserId && !User.IsInRole("Admin"))
-                {
-                    _logger.LogWarning("Uautoriseret forsøg: Bruger {RequestingUserId} forsøgte at opdatere bruger {TargetUserId} uden tilladelse.", currentUserId, id);
-                    return Forbid("Du har ikke tilladelse til at opdatere denne bruger.");
-                }
-
-                userToUpdate.Username = userDto.Username;
-                userToUpdate.Email = userDto.Email;
-                userToUpdate.UpdatedAt = DateTime.UtcNow;
-
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Bruger {TargetUserId} blev opdateret succesfuldt.", id);
-                return NoContent();
+                _logger.LogWarning("Opdatering fejlede: Bruger med ID {TargetUserId} blev ikke fundet.", id);
+                return NotFound("Brugeren blev ikke fundet.");
             }
-            catch (DbUpdateConcurrencyException ex)
+
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userToUpdate.Id != currentUserId && !User.IsInRole("Admin"))
             {
-                _logger.LogWarning(ex, "Concurrency-konflikt ved opdatering af bruger {TargetUserId}", id);
-                return Conflict("Dataen er blevet ændret af en anden bruger. Prøv venligst igen.");
+                _logger.LogWarning("Uautoriseret forsøg: Bruger {RequestingUserId} forsøgte at opdatere bruger {TargetUserId} uden tilladelse.", currentUserId, id);
+                return Forbid("Du har ikke tilladelse til at opdatere denne bruger.");
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Uventet fejl ved opdatering af bruger {TargetUserId}", id);
-                return StatusCode(500, "Der opstod en intern serverfejl.");
-            }
+
+            userToUpdate.Username = userDto.Username;
+            userToUpdate.Email = userDto.Email;
+            userToUpdate.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("Bruger {TargetUserId} blev opdateret succesfuldt.", id);
+            return NoContent();
         }
 
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            try
+            _logger.LogInformation("Forsøger at registrere ny bruger med email: {Email}", dto.Email);
+
+            if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
             {
-                _logger.LogInformation("Forsøger at registrere ny bruger med email: {Email}", dto.Email);
-
-                if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
-                {
-                    _logger.LogWarning("Registrering fejlede: Email {Email} er allerede i brug.", dto.Email);
-                    return BadRequest("En bruger med denne email findes allerede.");
-                }
-
-                string hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
-
-                if (userRole == null)
-                {
-                    _logger.LogError("Kritisk fejl: Standard brugerrolle 'User' blev ikke fundet i databasen under registrering.");
-                    return StatusCode(500, "Systemkonfigurationsfejl. Kontakt venligst support.");
-                }
-
-                var user = new User
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Email = dto.Email,
-                    HashedPassword = hashedPassword,
-                    Username = dto.Username,
-                    // PasswordBackdoor fjernet permanent pga. sikkerhedsrisiko
-                    RoleId = userRole.Id,
-                };
-
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Bruger med email {Email} blev oprettet succesfuldt med ID {UserId}", user.Email, user.Id);
-                return Ok(new { message = "Bruger oprettet!", userId = user.Id });
+                _logger.LogWarning("Registrering fejlede: Email {Email} er allerede i brug.", dto.Email);
+                return BadRequest("En bruger med denne email findes allerede.");
             }
-            catch (Exception ex)
+
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
+
+            if (userRole == null)
             {
-                _logger.LogError(ex, "Uventet fejl ved registrering af bruger med email: {Email}", dto?.Email);
-                return StatusCode(500, "Der opstod en intern serverfejl ved oprettelse af bruger.");
+                _logger.LogError("Kritisk fejl: Standard brugerrolle 'User' blev ikke fundet i databasen under registrering.");
+                // Kaster en exception, som vores globale handler fanger og returnerer som en 500-fejl.
+                throw new InvalidOperationException("Systemkonfigurationsfejl: Standard brugerrolle 'User' mangler.");
             }
+
+            var user = new User
+            {
+                Id = Guid.NewGuid().ToString(),
+                Email = dto.Email,
+                HashedPassword = hashedPassword,
+                Username = dto.Username,
+                RoleId = userRole.Id,
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Bruger med email {Email} blev oprettet succesfuldt med ID {UserId}", user.Email, user.Id);
+            return Ok(new { message = "Bruger oprettet!", userId = user.Id });
         }
 
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            try
+            _logger.LogInformation("Login-forsøg for email: {Email}", dto.Email);
+
+            if (_loginAttemptService.IsLockedOut(dto.Email))
             {
-                _logger.LogInformation("Login-forsøg for email: {Email}", dto.Email);
-
-                if (_loginAttemptService.IsLockedOut(dto.Email))
+                var remainingSeconds = _loginAttemptService.GetRemainingLockoutSeconds(dto.Email);
+                _logger.LogWarning("Login afvist for {Email} pga. lockout. Resterende tid: {Seconds} sekunder.", dto.Email, remainingSeconds);
+                return StatusCode(429, new
                 {
-                    var remainingSeconds = _loginAttemptService.GetRemainingLockoutSeconds(dto.Email);
-                    _logger.LogWarning("Login afvist for {Email} pga. lockout. Resterende tid: {Seconds} sekunder.", dto.Email, remainingSeconds);
-                    return StatusCode(429, new
-                    {
-                        message = "Konto midlertidigt låst pga. for mange mislykkede login forsøg.",
-                        remainingLockoutSeconds = remainingSeconds
-                    });
-                }
-
-                var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == dto.Email);
-
-                if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword))
-                {
-                    var delaySeconds = _loginAttemptService.RecordFailedAttempt(dto.Email);
-                    _logger.LogWarning("Mislykket login-forsøg for {Email}. Delay på {Delay} sekunder påført.", dto.Email, delaySeconds);
-
-                    if (delaySeconds > 0)
-                    {
-                        await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
-                    }
-                    return Unauthorized("Forkert email eller adgangskode");
-                }
-
-                _loginAttemptService.RecordSuccessfulLogin(dto.Email);
-
-                user.LastLogin = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-
-                var token = _jwtService.GenerateToken(user);
-                _logger.LogInformation("Bruger {Email} loggede succesfuldt ind.", user.Email);
-                return Ok(new
-                {
-                    token,
-                    user = new { id = user.Id, email = user.Email, username = user.Username, role = user.Role?.Name ?? "User" }
+                    message = "Konto midlertidigt låst pga. for mange mislykkede login forsøg.",
+                    remainingLockoutSeconds = remainingSeconds
                 });
             }
-            catch (Exception ex)
+
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword))
             {
-                _logger.LogError(ex, "Uventet fejl under login-processen for {Email}", dto?.Email);
-                return StatusCode(500, "Der opstod en intern serverfejl ved login.");
+                var delaySeconds = _loginAttemptService.RecordFailedAttempt(dto.Email);
+                _logger.LogWarning("Mislykket login-forsøg for {Email}. Delay på {Delay} sekunder påført.", dto.Email, delaySeconds);
+
+                if (delaySeconds > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                }
+                return Unauthorized("Forkert email eller adgangskode");
             }
+
+            _loginAttemptService.RecordSuccessfulLogin(dto.Email);
+
+            user.LastLogin = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var token = _jwtService.GenerateToken(user);
+            _logger.LogInformation("Bruger {Email} loggede succesfuldt ind.", user.Email);
+            return Ok(new
+            {
+                token,
+                user = new { id = user.Id, email = user.Email, username = user.Username, role = user.Role?.Name ?? "User" }
+            });
         }
 
         [Authorize]
         [HttpGet("me")]
         public async Task<IActionResult> GetCurrentUser()
         {
-            try
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
             {
-                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (string.IsNullOrEmpty(userId))
-                {
-                    _logger.LogWarning("Uautoriseret 'me' anmodning: Token mangler NameIdentifier claim.");
-                    return Unauthorized();
-                }
-
-                _logger.LogInformation("Henter detaljer for indlogget bruger: {UserId}", userId);
-                var user = await _context.Users
-                    .Include(u => u.Role)
-                    .FirstOrDefaultAsync(u => u.Id == userId);
-
-                if (user == null)
-                {
-                    _logger.LogError("Bruger {UserId} fra gyldigt token blev ikke fundet i databasen.", userId);
-                    return NotFound("Brugeren fra dit token eksisterer ikke længere.");
-                }
-
-                return Ok(new
-                {
-                    user.Id,
-                    user.Email,
-                    user.Username,
-                    user.LastLogin,
-                    user.CreatedAt,
-                    Role = user.Role?.Name ?? "User"
-                });
+                _logger.LogWarning("Uautoriseret 'me' anmodning: Token mangler NameIdentifier claim.");
+                return Unauthorized();
             }
-            catch (Exception ex)
+
+            _logger.LogInformation("Henter detaljer for indlogget bruger: {UserId}", userId);
+            var user = await _context.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
             {
-                _logger.LogError(ex, "Uventet fejl ved hentning af 'me' for bruger: {UserId}", User.FindFirstValue(ClaimTypes.NameIdentifier));
-                return StatusCode(500, "Der opstod en intern serverfejl.");
+                _logger.LogError("Bruger {UserId} fra gyldigt token blev ikke fundet i databasen.", userId);
+                return NotFound("Brugeren fra dit token eksisterer ikke længere.");
             }
+
+            return Ok(new
+            {
+                user.Id,
+                user.Email,
+                user.Username,
+                user.LastLogin,
+                user.CreatedAt,
+                Role = user.Role?.Name ?? "User"
+            });
         }
 
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteUser(string id)
         {
-            try
+            _logger.LogInformation("Admin {AdminUser} forsøger at slette bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.Name), id);
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
             {
-                _logger.LogInformation("Admin {AdminUser} forsøger at slette bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.Name), id);
-                var user = await _context.Users.FindAsync(id);
-                if (user == null)
-                {
-                    _logger.LogWarning("Sletning fejlede: Bruger med ID {TargetUserId} blev ikke fundet.", id);
-                    return NotFound();
-                }
-                _context.Users.Remove(user);
-                await _context.SaveChangesAsync();
+                _logger.LogWarning("Sletning fejlede: Bruger med ID {TargetUserId} blev ikke fundet.", id);
+                return NotFound();
+            }
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
 
-                _logger.LogInformation("Bruger {TargetUserId} blev slettet succesfuldt af {AdminUser}.", id, User.FindFirstValue(ClaimTypes.Name));
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Uventet fejl ved sletning af bruger {TargetUserId}", id);
-                return StatusCode(500, "Der opstod en intern serverfejl.");
-            }
+            _logger.LogInformation("Bruger {TargetUserId} blev slettet succesfuldt af {AdminUser}.", id, User.FindFirstValue(ClaimTypes.Name));
+            return NoContent();
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}/role")]
         public async Task<IActionResult> AssignUserRole(string id, [FromBody] AssignRoleDto dto)
         {
-            try
+            _logger.LogInformation("Admin {AdminUser} forsøger at tildele RoleId {RoleId} til bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.Name), dto.RoleId, id);
+
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
             {
-                _logger.LogInformation("Admin {AdminUser} forsøger at tildele RoleId {RoleId} til bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.Name), dto.RoleId, id);
-
-                var user = await _context.Users.FindAsync(id);
-                if (user == null)
-                {
-                    _logger.LogWarning("Rolletildeling fejlede: Bruger med ID {TargetUserId} blev ikke fundet.", id);
-                    return NotFound("Bruger ikke fundet.");
-                }
-
-                var role = await _context.Roles.FindAsync(dto.RoleId);
-                if (role == null)
-                {
-                    _logger.LogWarning("Rolletildeling fejlede: Rolle med ID {RoleId} er ugyldig.", dto.RoleId);
-                    return BadRequest("Ugyldig rolle.");
-                }
-
-                user.RoleId = dto.RoleId;
-                user.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Rollen '{RoleName}' blev tildelt til bruger {UserEmail} af {AdminUser}.", role.Name, user.Email, User.FindFirstValue(ClaimTypes.Name));
-                return Ok(new { message = $"Rollen '{role.Name}' blev tildelt til bruger {user.Email}." });
+                _logger.LogWarning("Rolletildeling fejlede: Bruger med ID {TargetUserId} blev ikke fundet.", id);
+                return NotFound("Bruger ikke fundet.");
             }
-            catch (Exception ex)
+
+            var role = await _context.Roles.FindAsync(dto.RoleId);
+            if (role == null)
             {
-                _logger.LogError(ex, "Uventet fejl ved tildeling af rolle til bruger {TargetUserId}", id);
-                return StatusCode(500, "Der opstod en intern serverfejl.");
+                _logger.LogWarning("Rolletildeling fejlede: Rolle med ID {RoleId} er ugyldig.", dto.RoleId);
+                return BadRequest("Ugyldig rolle.");
             }
+
+            user.RoleId = dto.RoleId;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Rollen '{RoleName}' blev tildelt til bruger {UserEmail} af {AdminUser}.", role.Name, user.Email, User.FindFirstValue(ClaimTypes.Name));
+            return Ok(new { message = $"Rollen '{role.Name}' blev tildelt til bruger {user.Email}." });
         }
 
         [Authorize(Roles = "Admin")]
         [HttpGet("roles")]
         public async Task<ActionResult<object>> GetAvailableRoles()
         {
-            try
-            {
-                _logger.LogInformation("Admin {AdminUser} henter listen over tilgængelige roller.", User.FindFirstValue(ClaimTypes.Name));
-                var roles = await _context.Roles
-                    .Select(r => new { id = r.Id, name = r.Name, description = r.Description })
-                    .ToListAsync();
-                return Ok(roles);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Uventet fejl ved hentning af tilgængelige roller.");
-                return StatusCode(500, "Der opstod en intern serverfejl.");
-            }
+            _logger.LogInformation("Admin {AdminUser} henter listen over tilgængelige roller.", User.FindFirstValue(ClaimTypes.Name));
+            var roles = await _context.Roles
+                .Select(r => new { id = r.Id, name = r.Name, description = r.Description })
+                .ToListAsync();
+            return Ok(roles);
         }
 
         [Authorize(Roles = "Admin")]
         [HttpGet("login-status/{email}")]
         public IActionResult GetLoginStatus(string email)
         {
-            try
-            {
-                _logger.LogInformation("Admin {AdminUser} tjekkede login-status for email: {TargetEmail}", User.Identity.Name, email);
+            _logger.LogInformation("Admin {AdminUser} tjekkede login-status for email: {TargetEmail}", User.Identity.Name, email);
 
-                var attemptInfo = _loginAttemptService.GetLoginAttemptInfo(email);
-                var isLockedOut = _loginAttemptService.IsLockedOut(email);
+            var attemptInfo = _loginAttemptService.GetLoginAttemptInfo(email);
+            var isLockedOut = _loginAttemptService.IsLockedOut(email);
 
-                return Ok(new
-                {
-                    email,
-                    isLockedOut,
-                    failedAttempts = attemptInfo?.FailedAttempts ?? 0,
-                    lastAttempt = attemptInfo?.LastAttempt,
-                    lockoutUntil = attemptInfo?.LockoutUntil,
-                    remainingLockoutSeconds = _loginAttemptService.GetRemainingLockoutSeconds(email)
-                });
-            }
-            catch (Exception ex)
+            return Ok(new
             {
-                _logger.LogError(ex, "Fejl ved hentning af login-status for email: {Email}", email);
-                return StatusCode(500, "Der opstod en intern serverfejl.");
-            }
+                email,
+                isLockedOut,
+                failedAttempts = attemptInfo?.FailedAttempts ?? 0,
+                lastAttempt = attemptInfo?.LastAttempt,
+                lockoutUntil = attemptInfo?.LockoutUntil,
+                remainingLockoutSeconds = _loginAttemptService.GetRemainingLockoutSeconds(email)
+            });
         }
     }
 
