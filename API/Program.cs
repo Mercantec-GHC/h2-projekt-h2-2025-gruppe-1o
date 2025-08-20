@@ -25,6 +25,11 @@ public class Program
         builder.Services.AddDbContext<AppDBContext>(options =>
                 options.UseNpgsql(connectionString));
 
+
+        builder.Services.AddMemoryCache();
+
+        builder.Services.AddSingleton<LoginAttemptService>();
+
         // Registrer JWT Service
         builder.Services.AddScoped<JwtService>();
 

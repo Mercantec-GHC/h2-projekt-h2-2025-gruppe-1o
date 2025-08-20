@@ -7,139 +7,146 @@ using System.Security.Claims;
 
 namespace API.Controllers
 {
-    /// <summary>
-    /// Håndterer oprettelse og visning af bookinger.
-    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Kræver login for alle handlinger i denne controller
+    [Authorize]
     public class BookingsController : ControllerBase
     {
         private readonly AppDBContext _context;
+        private readonly ILogger<BookingsController> _logger;
 
-        /// <summary>
-        /// Initialiserer en ny instans af BookingsController.
-        /// </summary>
-        /// <param name="context">Database context for booking-systemet.</param>
-        public BookingsController(AppDBContext context)
+        public BookingsController(AppDBContext context, ILogger<BookingsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
-        /// <summary>
-        /// Opretter en ny booking for den indloggede bruger.
-        /// </summary>
-        /// <param name="bookingDto">Data for den nye booking, inklusiv værelsestype-ID og datoer.</param>
-        /// <returns>Detaljer om den nyoprettede booking.</returns>
-        /// <response code="201">Returnerer den nyoprettede booking.</response>
-        /// <response code="400">Hvis input-data er ugyldigt.</response>
-        /// <response code="401">Hvis brugeren ikke er logget ind.</response>
-        /// <response code="409">Hvis der ikke er ledige værelser af den valgte type.</response>
         [HttpPost]
         public async Task<ActionResult<BookingGetDto>> CreateBooking(BookingCreateDto bookingDto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (string.IsNullOrEmpty(userId))
+            try
             {
-                return Unauthorized("Bruger-ID ikke fundet i token.");
+                _logger.LogInformation("Bruger {UserId} forsøger at oprette booking for RoomTypeId {RoomTypeId} fra {CheckIn} til {CheckOut}",
+                    userId, bookingDto.RoomTypeId, bookingDto.CheckInDate, bookingDto.CheckOutDate);
+
+                if (string.IsNullOrEmpty(userId))
+                {
+                    _logger.LogWarning("CreateBooking afvist: Bruger-ID ikke fundet i token.");
+                    return Unauthorized("Bruger-ID ikke fundet i token.");
+                }
+
+                var roomType = await _context.RoomTypes.Include(rt => rt.Rooms)
+                    .FirstOrDefaultAsync(rt => rt.Id == bookingDto.RoomTypeId);
+
+                if (roomType == null)
+                {
+                    _logger.LogWarning("Booking for bruger {UserId} fejlede: Værelsestype med ID {RoomTypeId} findes ikke.", userId, bookingDto.RoomTypeId);
+                    return BadRequest("Den valgte værelsestype findes ikke.");
+                }
+
+                var bookedCount = await _context.Bookings
+                    .CountAsync(b => b.RoomTypeId == bookingDto.RoomTypeId &&
+                                     b.CheckInDate < bookingDto.CheckOutDate &&
+                                     b.CheckOutDate > bookingDto.CheckInDate &&
+                                     b.Status != "Cancelled");
+
+                if (bookedCount >= roomType.Rooms.Count)
+                {
+                    _logger.LogWarning("Booking for bruger {UserId} fejlede: Ingen ledige værelser af type {RoomTypeId} i den valgte periode.", userId, bookingDto.RoomTypeId);
+                    return Conflict("Der er desværre ingen ledige værelser af den valgte type i den angivne periode.");
+                }
+
+                var nights = (bookingDto.CheckOutDate - bookingDto.CheckInDate).Days;
+                if (nights <= 0)
+                {
+                    _logger.LogWarning("Booking for bruger {UserId} fejlede: Check-ud dato er ikke efter check-in dato.", userId);
+                    return BadRequest("Check-ud dato skal være efter check-in dato.");
+                }
+
+                var booking = new Booking
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    UserId = userId,
+                    RoomTypeId = bookingDto.RoomTypeId,
+                    RoomId = null,
+                    CheckInDate = bookingDto.CheckInDate.ToUniversalTime(),
+                    CheckOutDate = bookingDto.CheckOutDate.ToUniversalTime(),
+                    TotalPrice = nights * roomType.BasePrice,
+                    Status = "Confirmed"
+                };
+
+                _context.Bookings.Add(booking);
+                await _context.SaveChangesAsync();
+
+                var resultDto = new BookingGetDto
+                {
+                    Id = booking.Id,
+                    CheckInDate = booking.CheckInDate,
+                    CheckOutDate = booking.CheckOutDate,
+                    TotalPrice = booking.TotalPrice,
+                    Status = booking.Status,
+                    RoomTypeName = roomType.Name,
+                    RoomNumber = "Not Assigned",
+                    UserEmail = User.FindFirstValue(ClaimTypes.Email) ?? "",
+                    CreatedAt = booking.CreatedAt
+                };
+
+                _logger.LogInformation("Booking {BookingId} oprettet succesfuldt for bruger {UserId}.", booking.Id, userId);
+                return CreatedAtAction(nameof(GetBooking), new { id = booking.Id }, resultDto);
             }
-
-            // Find den valgte værelsestype og inkluder dens relaterede værelser for at kunne tælle totalen
-            var roomType = await _context.RoomTypes.Include(rt => rt.Rooms)
-                .FirstOrDefaultAsync(rt => rt.Id == bookingDto.RoomTypeId);
-
-            if (roomType == null)
+            catch (Exception ex)
             {
-                return BadRequest("Den valgte værelsestype findes ikke.");
+                _logger.LogError(ex, "Uventet fejl ved oprettelse af booking for bruger {UserId}", userId);
+                return StatusCode(500, "Der opstod en intern serverfejl ved oprettelse af booking.");
             }
-
-            // Dobbelttjek for tilgængelighed for at undgå race conditions
-            var bookedCount = await _context.Bookings
-                .CountAsync(b => b.RoomTypeId == bookingDto.RoomTypeId &&
-                                 b.CheckInDate < bookingDto.CheckOutDate &&
-                                 b.CheckOutDate > bookingDto.CheckInDate &&
-                                 b.Status != "Cancelled");
-
-            if (bookedCount >= roomType.Rooms.Count)
-            {
-                return Conflict("Der er desværre ingen ledige værelser af den valgte type i den angivne periode.");
-            }
-
-            var nights = (bookingDto.CheckOutDate - bookingDto.CheckInDate).Days;
-            if (nights <= 0)
-            {
-                return BadRequest("Check-ud dato skal være efter check-in dato.");
-            }
-
-            var booking = new Booking
-            {
-                UserId = userId,
-                RoomTypeId = bookingDto.RoomTypeId, // Korrekt: Bruger RoomTypeId
-                RoomId = null, // Vigtigt: Sættes til null, da specifikt værelse først tildeles ved check-in
-                CheckInDate = bookingDto.CheckInDate.ToUniversalTime(),
-                CheckOutDate = bookingDto.CheckOutDate.ToUniversalTime(),
-                TotalPrice = nights * roomType.BasePrice, // Grundpris fra værelsestypen
-                Status = "Confirmed"
-            };
-
-            _context.Bookings.Add(booking);
-            await _context.SaveChangesAsync();
-
-            // Opret den DTO, der skal returneres til klienten
-            var resultDto = new BookingGetDto
-            {
-                Id = booking.Id,
-                CheckInDate = booking.CheckInDate,
-                CheckOutDate = booking.CheckOutDate,
-                TotalPrice = booking.TotalPrice,
-                Status = booking.Status,
-                RoomTypeName = roomType.Name,
-                RoomNumber = "Not Assigned", // Værelse er ikke tildelt endnu
-                UserEmail = User.FindFirstValue(ClaimTypes.Email) ?? "",
-                CreatedAt = booking.CreatedAt
-            };
-
-            return CreatedAtAction(nameof(GetBooking), new { id = booking.Id }, resultDto);
         }
 
-        /// <summary>
-        /// Henter en specifik booking ud fra dens ID.
-        /// </summary>
-        /// <param name="id">Det unikke ID for bookingen.</param>
-        /// <returns>Detaljer om den specifikke booking.</returns>
         [HttpGet("{id}")]
         public async Task<ActionResult<BookingGetDto>> GetBooking(string id)
         {
-            var booking = await _context.Bookings
-                .Include(b => b.RoomType)
-                .Include(b => b.Room) // Inkluder det specifikke værelse (kan være null)
-                .Include(b => b.User)
-                .FirstOrDefaultAsync(b => b.Id == id);
-
-            if (booking == null)
-            {
-                return NotFound();
-            }
-
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            // Simpel adgangskontrol: Man må se sin egen booking, eller hvis man er personale
-            if (booking.UserId != currentUserId && !User.IsInRole("Admin") && !User.IsInRole("Receptionist"))
+            try
             {
-                return Forbid();
-            }
+                _logger.LogInformation("Bruger {UserId} anmoder om booking med ID {BookingId}", currentUserId, id);
 
-            return new BookingGetDto
+                var booking = await _context.Bookings
+                    .Include(b => b.RoomType)
+                    .Include(b => b.Room)
+                    .Include(b => b.User)
+                    .FirstOrDefaultAsync(b => b.Id == id);
+
+                if (booking == null)
+                {
+                    _logger.LogWarning("Booking med ID {BookingId} blev ikke fundet (anmodet af {UserId}).", id, currentUserId);
+                    return NotFound();
+                }
+
+                if (booking.UserId != currentUserId && !User.IsInRole("Admin") && !User.IsInRole("Receptionist"))
+                {
+                    _logger.LogWarning("Uautoriseret forsøg: Bruger {RequestingUserId} forsøgte at tilgå booking {BookingId}, som tilhører bruger {OwnerId}.", currentUserId, id, booking.UserId);
+                    return Forbid();
+                }
+
+                _logger.LogInformation("Booking {BookingId} hentet succesfuldt for bruger {UserId}", id, currentUserId);
+                return new BookingGetDto
+                {
+                    Id = booking.Id,
+                    CheckInDate = booking.CheckInDate,
+                    CheckOutDate = booking.CheckOutDate,
+                    TotalPrice = booking.TotalPrice,
+                    Status = booking.Status,
+                    RoomTypeName = booking.RoomType?.Name ?? "N/A",
+                    RoomNumber = booking.Room?.RoomNumber ?? "Not Assigned",
+                    UserEmail = booking.User?.Email ?? "N/A",
+                    CreatedAt = booking.CreatedAt
+                };
+            }
+            catch (Exception ex)
             {
-                Id = booking.Id,
-                CheckInDate = booking.CheckInDate,
-                CheckOutDate = booking.CheckOutDate,
-                TotalPrice = booking.TotalPrice,
-                Status = booking.Status,
-                RoomTypeName = booking.RoomType?.Name ?? "N/A",
-                RoomNumber = booking.Room?.RoomNumber ?? "Not Assigned", // Viser "Not Assigned" hvis RoomId er null
-                UserEmail = booking.User?.Email ?? "N/A",
-                CreatedAt = booking.CreatedAt
-            };
+                _logger.LogError(ex, "Uventet fejl ved hentning af booking {BookingId} for bruger {UserId}", id, currentUserId);
+                return StatusCode(500, "Der opstod en intern serverfejl.");
+            }
         }
     }
 }
