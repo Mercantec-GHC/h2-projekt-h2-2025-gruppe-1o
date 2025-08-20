@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20250820120023_UpdateManagerPassword")]
-    partial class UpdateManagerPassword
+    [Migration("20250820132216_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -38,6 +38,10 @@ namespace API.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordBackdoor")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int?>("RoomId")
                         .HasColumnType("integer");
@@ -103,6 +107,10 @@ namespace API.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<string>("PasswordBackdoor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -120,6 +128,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Standard bruger",
                             Name = "User",
+                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -128,6 +137,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Rengøringspersonale",
                             Name = "Housekeeping",
+                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -136,6 +146,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Receptionspersonale",
                             Name = "Receptionist",
+                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
@@ -144,6 +155,7 @@ namespace API.Migrations
                             CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Description = "Hotel Manager",
                             Name = "Manager",
+                            PasswordBackdoor = "",
                             UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
@@ -335,9 +347,9 @@ namespace API.Migrations
                             Id = "f2b72c57-632b-4a88-a476-2a1c72787e9c",
                             CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Email = "manager@hotel.dk",
-                            HashedPassword = "$2a$11$e.h9qi30632t342.k2R9P.3hF3sA7rq1qV48z4cAM3q2y2j5n5q6m",
+                            HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
                             LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            PasswordBackdoor = "",
+                            PasswordBackdoor = "Password123!",
                             RoleId = "4",
                             UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Username = "HotelManager"

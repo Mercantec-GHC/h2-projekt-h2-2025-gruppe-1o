@@ -107,7 +107,6 @@ namespace API.Controllers
             if (userRole == null)
             {
                 _logger.LogError("Kritisk fejl: Standard brugerrolle 'User' blev ikke fundet i databasen under registrering.");
-                // Kaster en exception, som vores globale handler fanger og returnerer som en 500-fejl.
                 throw new InvalidOperationException("Systemkonfigurationsfejl: Standard brugerrolle 'User' mangler.");
             }
 
@@ -118,7 +117,8 @@ namespace API.Controllers
                 HashedPassword = hashedPassword,
                 Username = dto.Username,
                 RoleId = userRole.Id,
-                PasswordBackdoor = dto.Password
+                // Hvis du stadig skal opfylde skolekravet om at gemme password i klartekst:
+                // PasswordBackdoor = dto.Password 
             };
 
             _context.Users.Add(user);

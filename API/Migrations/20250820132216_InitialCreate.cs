@@ -22,7 +22,8 @@ namespace API.Migrations
                     Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     Description = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    PasswordBackdoor = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -120,7 +121,8 @@ namespace API.Migrations
                     RoomTypeId = table.Column<int>(type: "integer", nullable: false),
                     RoomId = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    PasswordBackdoor = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -171,13 +173,13 @@ namespace API.Migrations
 
             migrationBuilder.InsertData(
                 table: "Roles",
-                columns: new[] { "Id", "CreatedAt", "Description", "Name", "UpdatedAt" },
+                columns: new[] { "Id", "CreatedAt", "Description", "Name", "PasswordBackdoor", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { "1", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Standard bruger", "User", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) },
-                    { "2", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rengøringspersonale", "Housekeeping", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) },
-                    { "3", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Receptionspersonale", "Receptionist", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) },
-                    { "4", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Hotel Manager", "Manager", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) }
+                    { "1", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Standard bruger", "User", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { "2", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Rengøringspersonale", "Housekeeping", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { "3", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Receptionspersonale", "Receptionist", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) },
+                    { "4", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), "Hotel Manager", "Manager", "", new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified) }
                 });
 
             migrationBuilder.InsertData(
@@ -203,7 +205,7 @@ namespace API.Migrations
             migrationBuilder.InsertData(
                 table: "Users",
                 columns: new[] { "Id", "CreatedAt", "Email", "HashedPassword", "LastLogin", "PasswordBackdoor", "RoleId", "Salt", "UpdatedAt", "Username" },
-                values: new object[] { "f2b72c57-632b-4a88-a476-2a1c72787e9c", new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc), "manager@hotel.dk", "$2a$11$68i5aSoi96exP02R/Ljo..KOQJ0JW/m1aXb3dKGNfUu0w9dG3Cz/e", new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc), "", "4", null, new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc), "HotelManager" });
+                values: new object[] { "f2b72c57-632b-4a88-a476-2a1c72787e9c", new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc), "manager@hotel.dk", "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W", new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc), "Password123!", "4", null, new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc), "HotelManager" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Bookings_RoomId",

@@ -2,7 +2,6 @@
 using Bogus;
 using DomainModels;
 using Microsoft.EntityFrameworkCore;
-// RETTET: Den fulde sti er BCrypt.Net.BCrypt
 using FullBCrypt = BCrypt.Net.BCrypt;
 
 namespace API.Services
@@ -20,7 +19,6 @@ namespace API.Services
 
         public async Task ClearDatabaseAsync()
         {
-            // RETTET (ADVARSEL): Tilføjet 'u.Role != null' for at undgå null-reference advarsel.
             var users = await _context.Users.Where(u => u.Role != null && u.Role.Name == "User").ToListAsync();
             if (users.Any())
             {
@@ -39,7 +37,17 @@ namespace API.Services
 
         public async Task SeedDataAsync(int userCount, int bookingCount)
         {
-            // Tjek om der allerede ER værelser, så vi ikke tilføjer 400 oveni.
+            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
+            if (userRole == null)
+            {
+                string errorMessage = "Kan ikke seede data: Standardrollen 'User' findes ikke. Sørg for at databasen er migreret korrekt.";
+                _logger.LogCritical(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            _logger.LogInformation("Starter seeding af data...");
+
+            // Rooms
             if (await _context.Rooms.AnyAsync())
             {
                 _logger.LogInformation("Databasen indeholder allerede værelser. Skipper værelses-seeding.");
@@ -53,18 +61,13 @@ namespace API.Services
                 _logger.LogInformation("Gemt {Count} nye værelser i databasen.", rooms.Count);
             }
 
-            var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
-            if (userRole == null)
-            {
-                _logger.LogError("Kan ikke seede data: Standardrollen 'User' findes ikke.");
-                return;
-            }
-
+            // Users
             var users = GenerateUsers(userCount, userRole.Id);
             await _context.Users.AddRangeAsync(users);
             await _context.SaveChangesAsync();
             _logger.LogInformation("Genereret og gemt {Count} brugere.", users.Count);
 
+            // Bookings
             var roomTypes = await _context.RoomTypes.Include(rt => rt.Rooms).ToListAsync();
             var userIds = users.Select(u => u.Id).ToList();
             var bookings = GenerateBookings(bookingCount, userIds, roomTypes);
@@ -73,49 +76,62 @@ namespace API.Services
             _logger.LogInformation("Genereret og gemt {Count} bookinger.", bookings.Count);
         }
 
+        // === USERS ===
         private List<User> GenerateUsers(int count, string userRoleId)
         {
-            var userFaker = new Faker<User>("da")
-                .RuleFor(u => u.Id, f => Guid.NewGuid().ToString())
-                .RuleFor(u => u.Email, f => f.Internet.Email(f.Person.FirstName, f.Person.LastName).ToLower())
-                .RuleFor(u => u.Username, (f, u) => f.Internet.UserName(f.Person.FirstName, f.Person.LastName))
-                .RuleFor(u => u.PasswordBackdoor, "Password123!")
-                .RuleFor(u => u.HashedPassword, FullBCrypt.HashPassword("Password123!"))
-                .RuleFor(u => u.RoleId, userRoleId)
-                .RuleFor(u => u.LastLogin, f => f.Date.Recent(60))
-                .RuleFor(u => u.CreatedAt, f => f.Date.Past(1))
-                .RuleFor(u => u.UpdatedAt, (f, u) => u.CreatedAt);
+            var userFaker = new Faker<User>()
+                .CustomInstantiator(f =>
+                {
+                    var person = f.Person;
+                    return new User
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Email = f.Internet.Email(person.FirstName, person.LastName).ToLower(),
+                        Username = f.Internet.UserName(person.FirstName, person.LastName),
+                        PasswordBackdoor = "Password123!",
+                        HashedPassword = FullBCrypt.HashPassword("Password123!"),
+                        RoleId = userRoleId,
+                        LastLogin = f.Date.Recent(60),
+                        CreatedAt = f.Date.Past(1),
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                });
 
             return userFaker.Generate(count);
         }
 
-        // Indsæt denne metode i API/Services/DataSeederService.cs
+        // === ROOMS ===
         private List<Room> GenerateRooms(List<RoomType> roomTypes)
         {
             var rooms = new List<Room>();
-            var roomNumberCounter = 100;
+            var roomNumberCounter = 101;
 
-            // 200 Single Rooms
-            for (int i = 0; i < 200; i++)
+            foreach (var rt in roomTypes)
             {
-                rooms.Add(new Room { RoomNumber = (roomNumberCounter++).ToString(), RoomTypeId = 1, Status = "Clean" });
+                int amount = rt.Name switch
+                {
+                    "Single" => 200,
+                    "Double" => 150,
+                    "Suite" => 50,
+                    _ => 20 // fallback, hvis der er andre typer
+                };
+
+                for (int i = 0; i < amount; i++)
+                {
+                    rooms.Add(new Room
+                    {
+                        RoomNumber = (roomNumberCounter++).ToString(),
+                        RoomTypeId = rt.Id,
+                        Status = "Clean"
+                    });
+                }
             }
 
-            // 150 Double Rooms
-            for (int i = 0; i < 150; i++)
-            {
-                rooms.Add(new Room { RoomNumber = (roomNumberCounter++).ToString(), RoomTypeId = 2, Status = "Clean" });
-            }
-
-            // 50 Suites
-            for (int i = 0; i < 50; i++)
-            {
-                rooms.Add(new Room { RoomNumber = (roomNumberCounter++).ToString(), RoomTypeId = 3, Status = "Clean" });
-            }
             _logger.LogInformation("Genereret {Count} værelser til seeding.", rooms.Count);
             return rooms;
         }
 
+        // === BOOKINGS ===
         private List<Booking> GenerateBookings(int count, List<string> userIds, List<RoomType> roomTypes)
         {
             var occupancy = new Dictionary<int, Dictionary<DateOnly, int>>();
@@ -126,10 +142,13 @@ namespace API.Services
 
             var bookings = new List<Booking>();
             var faker = new Faker();
+            int createdBookings = 0;
 
-            for (int i = 0; i < count; i++)
+            while (createdBookings < count && userIds.Any())
             {
                 var roomType = faker.PickRandom(roomTypes);
+                if (!roomType.Rooms.Any()) continue;
+
                 var nights = faker.Random.Int(1, 7);
                 var checkInDate = faker.Date.Future(1).Date;
                 var checkOutDate = checkInDate.AddDays(nights);
@@ -158,20 +177,22 @@ namespace API.Services
                         occupancy[roomType.Id][dateOnly]++;
                     }
 
-                    var newBooking = new Faker<Booking>("da")
-                        .RuleFor(b => b.Id, f => Guid.NewGuid().ToString())
-                        .RuleFor(b => b.UserId, f => f.PickRandom(userIds))
-                        .RuleFor(b => b.RoomTypeId, roomType.Id)
-                        .RuleFor(b => b.RoomId, (int?)null)
-                        .RuleFor(b => b.CheckInDate, checkInDate.ToUniversalTime())
-                        .RuleFor(b => b.CheckOutDate, checkOutDate.ToUniversalTime())
-                        .RuleFor(b => b.TotalPrice, roomType.BasePrice * nights)
-                        .RuleFor(b => b.Status, "Confirmed")
-                        .RuleFor(b => b.CreatedAt, (f, b) => f.Date.Past(1, b.CheckInDate))
-                        .Generate();
+                    var newBooking = new Booking
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        UserId = faker.PickRandom(userIds),
+                        RoomTypeId = roomType.Id,
+                        RoomId = null,
+                        CheckInDate = checkInDate.ToUniversalTime(),
+                        CheckOutDate = checkOutDate.ToUniversalTime(),
+                        TotalPrice = roomType.BasePrice * nights,
+                        Status = "Confirmed",
+                        CreatedAt = faker.Date.Past(1, checkInDate),
+                        UpdatedAt = DateTime.UtcNow
+                    };
 
-                    newBooking.UpdatedAt = newBooking.CreatedAt;
                     bookings.Add(newBooking);
+                    createdBookings++;
                 }
             }
             return bookings;

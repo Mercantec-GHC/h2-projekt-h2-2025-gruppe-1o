@@ -344,7 +344,7 @@ namespace API.Migrations
                             Id = "f2b72c57-632b-4a88-a476-2a1c72787e9c",
                             CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             Email = "manager@hotel.dk",
-                            HashedPassword = "$2a$11$e.h9qi30632t342.k2R9P.3hF3sA7rq1qV48z4cAM3q2y2j5n5q6m",
+                            HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
                             LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
                             PasswordBackdoor = "Password123!",
                             RoleId = "4",

@@ -34,5 +34,27 @@ namespace API.Controllers
             throw new Exception("Dette er en bevidst test-fejl for at verificere den globale handler!");
         }
 
+        [HttpGet("test-bcrypt")]
+        public IActionResult TestBcrypt()
+        {
+            string passwordFromUser = "Password123!";
+            string hashFromDb = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W";
+
+            _logger.LogInformation("--- Kører BCrypt Isolationstest ---");
+            _logger.LogInformation("Test Password: '{password}'", passwordFromUser);
+            _logger.LogInformation("Test Hash: '{hash}'", hashFromDb);
+
+            bool result = BCrypt.Net.BCrypt.Verify(passwordFromUser, hashFromDb);
+
+            _logger.LogInformation("Resultat af isoleret BCrypt.Verify: {result}", result);
+
+            return Ok(new
+            {
+                passwordUsed = passwordFromUser,
+                hashUsed = hashFromDb,
+                isMatch = result
+            });
+        }
+
     }
 }

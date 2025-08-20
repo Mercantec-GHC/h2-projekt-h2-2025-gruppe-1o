@@ -92,21 +92,6 @@ namespace API.Data
             };
             modelBuilder.Entity<Role>().HasData(roles);
 
-            // Seed en Manager-bruger med statiske værdier
-            var staticDate = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Utc);
-            var managerUser = new User
-            {
-                Id = "f2b72c57-632b-4a88-a476-2a1c72787e9c",
-                Email = "manager@hotel.dk",
-                Username = "HotelManager",
-                HashedPassword = "$2a$11$e.h9qi30632t342.k2R9P.3hF3sA7rq1qV48z4cAM3q2y2j5n5q6m",
-                PasswordBackdoor = "Password123!",
-                RoleId = "4",
-                CreatedAt = staticDate,
-                UpdatedAt = staticDate,
-                LastLogin = staticDate
-            };
-            modelBuilder.Entity<User>().HasData(managerUser);
 
             // Seed Værelsestyper
             var roomTypes = new[]
