@@ -29,7 +29,8 @@ namespace API.Controllers
 
         [HttpPost("seed")]
         public async Task<IActionResult> SeedDatabase([FromQuery] int userCount = 50, [FromQuery] int bookingCount = 200)
-        {
+        
+       {
             if (!_environment.IsDevelopment())
             {
                 _logger.LogWarning("Sikkerhedsbrud: Forsøg på at seede data i et ikke-udviklingsmiljø ({EnvironmentName}).", _environment.EnvironmentName);

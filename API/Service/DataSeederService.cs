@@ -91,8 +91,8 @@ namespace API.Services
                         PasswordBackdoor = "Password123!",
                         HashedPassword = FullBCrypt.HashPassword("Password123!"),
                         RoleId = userRoleId,
-                        LastLogin = f.Date.Recent(60),
-                        CreatedAt = f.Date.Past(1),
+                        LastLogin = f.Date.Recent(60).ToUniversalTime(),
+                        CreatedAt = f.Date.Past(1).ToUniversalTime(),
                         UpdatedAt = DateTime.UtcNow
                     };
                 });
@@ -144,10 +144,12 @@ namespace API.Services
             var faker = new Faker();
             int createdBookings = 0;
 
+            // Brug en while-løkke for at sikre, at vi opretter det ønskede antal bookinger,
+            // selvom nogle forsøg fejler pga. manglende ledighed.
             while (createdBookings < count && userIds.Any())
             {
                 var roomType = faker.PickRandom(roomTypes);
-                if (!roomType.Rooms.Any()) continue;
+                if (!roomType.Rooms.Any()) continue; 
 
                 var nights = faker.Random.Int(1, 7);
                 var checkInDate = faker.Date.Future(1).Date;
@@ -183,11 +185,11 @@ namespace API.Services
                         UserId = faker.PickRandom(userIds),
                         RoomTypeId = roomType.Id,
                         RoomId = null,
-                        CheckInDate = checkInDate.ToUniversalTime(),
-                        CheckOutDate = checkOutDate.ToUniversalTime(),
+                        CheckInDate = checkInDate.ToUniversalTime(), 
+                        CheckOutDate = checkOutDate.ToUniversalTime(), 
                         TotalPrice = roomType.BasePrice * nights,
                         Status = "Confirmed",
-                        CreatedAt = faker.Date.Past(1, checkInDate),
+                        CreatedAt = faker.Date.Past(1, checkInDate).ToUniversalTime(), 
                         UpdatedAt = DateTime.UtcNow
                     };
 
