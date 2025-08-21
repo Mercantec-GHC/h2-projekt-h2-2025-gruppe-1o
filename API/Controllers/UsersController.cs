@@ -27,7 +27,7 @@ namespace API.Controllers
             _loginAttemptService = loginAttemptService;
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin, Manager")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserGetDto>>> GetUsers()
         {

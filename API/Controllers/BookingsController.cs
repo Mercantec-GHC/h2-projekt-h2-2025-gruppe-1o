@@ -50,7 +50,8 @@ namespace API.Controllers
             if (fromDate.HasValue)
             {
                 // Find bookinger, der er aktive på eller efter den angivne dato
-                query = query.Where(b => b.CheckOutDate.Date >= fromDate.Value.Date);
+                var fromDateUtc = fromDate.Value.ToUniversalTime();
+                query = query.Where(b => b.CheckOutDate.Date >= fromDateUtc.Date);
             }
 
             var result = await query.Select(b => new BookingGetDto

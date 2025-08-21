@@ -21,31 +21,48 @@ namespace API.Controllers
             _cache = cache;
         }
 
-        [HttpGet("types")] // Nyt endpoint til at hente alle værelsestyper
-        public async Task<IActionResult> GetRoomTypes()
+        [HttpGet("types")]
+        public async Task<IActionResult> GetRoomTypes([FromQuery] string? sortBy, [FromQuery] bool desc = false)
         {
-            // Definer en unik nøgle for de data, du vil cache
-            const string cacheKey = "allRoomTypes";
+            // Trin 4: Opret en dynamisk cache-nøgle
+            var cacheKey = $"allRoomTypes_sortBy={sortBy ?? "default"}_desc={desc}";
             _logger.LogInformation("Forsøger at hente værelsestyper fra cache med nøglen '{CacheKey}'", cacheKey);
 
             // Prøv at hente fra cache først
             if (_cache.TryGetValue(cacheKey, out List<RoomType> cachedRoomTypes))
             {
-                _logger.LogInformation("Cache hit! Returnerer {Count} værelsestyper fra cachen.", cachedRoomTypes.Count);
+                _logger.LogInformation("Cache hit! Returnerer {Count} værelsestyper fra cachen for nøglen '{CacheKey}'.", cachedRoomTypes.Count, cacheKey);
                 return Ok(cachedRoomTypes);
             }
 
-            // Hvis data ikke var i cachen (cache miss), så hent fra databasen
-            _logger.LogInformation("Cache miss. Henter værelsestyper fra databasen.");
-            var roomTypesFromDb = await _context.RoomTypes.ToListAsync();
+            // Trin 2: Start en IQueryable forespørgsel
+            _logger.LogInformation("Cache miss for '{CacheKey}'. Henter værelsestyper fra databasen.", cacheKey);
+            var query = _context.RoomTypes.AsQueryable();
+
+            // Trin 3: Tilføj sorteringslogik
+            switch (sortBy?.ToLower())
+            {
+                case "price":
+                    query = desc ? query.OrderByDescending(rt => rt.BasePrice) : query.OrderBy(rt => rt.BasePrice);
+                    break;
+                case "capacity":
+                    query = desc ? query.OrderByDescending(rt => rt.Capacity) : query.OrderBy(rt => rt.Capacity);
+                    break;
+                default:
+                    query = query.OrderBy(rt => rt.Name); // Standard sortering
+                    break;
+            }
+
+            // Eksekver den færdigbyggede query mod databasen
+            var roomTypesFromDb = await query.ToListAsync();
 
             // Gem de friske data i cachen til næste gang
             var cacheOptions = new MemoryCacheEntryOptions()
-                .SetSlidingExpiration(TimeSpan.FromMinutes(5)) // Udøber efter 5 min inaktivitet
-                .SetAbsoluteExpiration(TimeSpan.FromMinutes(60)); // Udløber senest om 60 min
+                .SetSlidingExpiration(TimeSpan.FromMinutes(5))
+                .SetAbsoluteExpiration(TimeSpan.FromMinutes(60));
 
             _cache.Set(cacheKey, roomTypesFromDb, cacheOptions);
-            _logger.LogInformation("Gemt {Count} værelsestyper i cachen.", roomTypesFromDb.Count);
+            _logger.LogInformation("Gemt {Count} værelsestyper i cachen for nøglen '{CacheKey}'.", roomTypesFromDb.Count, cacheKey);
 
             return Ok(roomTypesFromDb);
         }
