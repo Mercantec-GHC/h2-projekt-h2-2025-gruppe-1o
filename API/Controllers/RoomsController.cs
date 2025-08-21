@@ -14,7 +14,7 @@ namespace API.Controllers
         private readonly ILogger<RoomsController> _logger;
         private readonly IMemoryCache _cache;
 
-        public RoomsController(AppDBContext context, ILogger<RoomsController> logger)
+        public RoomsController(AppDBContext context, ILogger<RoomsController> logger, IMemoryCache cache)
         {
             _context = context;
             _logger = logger;
