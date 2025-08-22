@@ -35,6 +35,7 @@ try
     builder.Services.AddSingleton<LoginAttemptService>();
     builder.Services.AddScoped<JwtService>();
     builder.Services.AddScoped<DataSeederService>();
+    builder.Services.AddScoped<API.Repositories.IBookingRepository, API.Repositories.BookingRepository>();
 
     // JWT Authentication
     var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";

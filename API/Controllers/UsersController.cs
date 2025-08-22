@@ -10,6 +10,9 @@ using System.Security.Claims;
 
 namespace API.Controllers
 {
+    /// <summary>
+    /// Håndterer brugerrelaterede operationer, herunder autentificering, registrering og administration.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class UsersController : ControllerBase
@@ -19,6 +22,9 @@ namespace API.Controllers
         private readonly ILogger<UsersController> _logger;
         private readonly LoginAttemptService _loginAttemptService;
 
+        /// <summary>
+        /// Initialiserer en ny instans af UsersController.
+        /// </summary>
         public UsersController(AppDBContext context, JwtService jwtService, ILogger<UsersController> logger, LoginAttemptService loginAttemptService)
         {
             _context = context;
@@ -27,8 +33,18 @@ namespace API.Controllers
             _loginAttemptService = loginAttemptService;
         }
 
+        /// <summary>
+        /// Henter en liste over alle brugere i systemet. Kræver 'Admin' eller 'Manager' rolle.
+        /// </summary>
+        /// <returns>En liste af brugere.</returns>
+        /// <response code="200">Returnerer en liste af alle brugere.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle.</response>
         [Authorize(Roles = "Admin, Manager")]
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<IEnumerable<UserGetDto>>> GetUsers()
         {
             var adminName = User.FindFirstValue(ClaimTypes.Name) ?? "Ukendt Admin";
@@ -43,7 +59,16 @@ namespace API.Controllers
             return Ok(users);
         }
 
+        /// <summary>
+        /// Henter offentlige oplysninger om en specifik bruger via ID.
+        /// </summary>
+        /// <param name="id">ID for den bruger, der skal hentes.</param>
+        /// <returns>Den fundne brugers offentlige data.</returns>
+        /// <response code="200">Returnerer brugerens data.</response>
+        /// <response code="404">Hvis en bruger med det angivne ID ikke findes.</response>
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserGetDto>> GetUser(string id)
         {
             _logger.LogInformation("Forsøger at hente bruger med ID: {UserId}", id);
@@ -59,8 +84,25 @@ namespace API.Controllers
             return UserMapping.ToUserGetDto(user);
         }
 
+        /// <summary>
+        /// Opdaterer en brugers profiloplysninger (brugernavn og email).
+        /// </summary>
+        /// <remarks>
+        /// En bruger kan kun opdatere sin egen profil, medmindre brugeren har rollen 'Admin'.
+        /// </remarks>
+        /// <param name="id">ID for den bruger, der skal opdateres.</param>
+        /// <param name="userDto">De nye oplysninger for brugeren.</param>
+        /// <returns>Ingen indhold ved succes.</returns>
+        /// <response code="204">Brugeren blev succesfuldt opdateret.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren forsøger at opdatere en andens profil uden 'Admin' rettigheder.</response>
+        /// <response code="404">Hvis en bruger med det angivne ID ikke findes.</response>
         [Authorize]
         [HttpPut("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> PutUser(string id, [FromBody] UserUpdateDto userDto)
         {
             _logger.LogInformation("Bruger {RequestingUserId} forsøger at opdatere bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.NameIdentifier), id);
@@ -89,8 +131,19 @@ namespace API.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Registrerer en ny bruger i systemet.
+        /// </summary>
+        /// <param name="dto">Registreringsdata for den nye bruger.</param>
+        /// <returns>En bekræftelsesmeddelelse.</returns>
+        /// <response code="200">Brugeren blev oprettet succesfuldt.</response>
+        /// <response code="400">Hvis e-mailen allerede er i brug.</response>
+        /// <response code="500">Hvis den påkrævede 'User'-rolle mangler i databasen (systemkonfigurationsfejl).</response>
         [AllowAnonymous]
         [HttpPost("register")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
             _logger.LogInformation("Forsøger at registrere ny bruger med email: {Email}", dto.Email);
@@ -117,8 +170,6 @@ namespace API.Controllers
                 HashedPassword = hashedPassword,
                 Username = dto.Username,
                 RoleId = userRole.Id,
-                // Hvis du stadig skal opfylde skolekravet om at gemme password i klartekst:
-                // PasswordBackdoor = dto.Password 
             };
 
             _context.Users.Add(user);
@@ -128,8 +179,22 @@ namespace API.Controllers
             return Ok(new { message = "Bruger oprettet!", userId = user.Id });
         }
 
+        /// <summary>
+        /// Authentificerer en bruger og returnerer en JWT-token.
+        /// </summary>
+        /// <remarks>
+        /// Systemet har brute-force beskyttelse. Efter for mange mislykkede forsøg, låses kontoen midlertidigt.
+        /// </remarks>
+        /// <param name="dto">Loginoplysninger (email og password).</param>
+        /// <returns>Et JWT-token og brugerinformation ved succesfuld login.</returns>
+        /// <response code="200">Login var succesfuldt. Token og brugerinfo returneres.</response>
+        /// <response code="401">Ugyldig email eller adgangskode.</response>
+        /// <response code="429">Kontoen er midlertidigt låst pga. for mange mislykkede forsøg.</response>
         [AllowAnonymous]
         [HttpPost("login")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
         public async Task<IActionResult> Login(LoginDto dto)
         {
             _logger.LogInformation("Login-forsøg for email: {Email}", dto.Email);
@@ -173,8 +238,18 @@ namespace API.Controllers
             });
         }
 
+        /// <summary>
+        /// Henter detaljerede oplysninger om den aktuelt indloggede bruger.
+        /// </summary>
+        /// <returns>Oplysninger om den indloggede bruger.</returns>
+        /// <response code="200">Returnerer brugeroplysninger.</response>
+        /// <response code="401">Hvis token mangler eller er ugyldigt.</response>
+        /// <response code="404">Hvis brugeren, der er angivet i tokenet, ikke længere eksisterer.</response>
         [Authorize]
         [HttpGet("me")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> GetCurrentUser()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -206,8 +281,21 @@ namespace API.Controllers
             });
         }
 
+        /// <summary>
+        /// Sletter en bruger fra systemet. Kræver 'Admin' rolle.
+        /// </summary>
+        /// <param name="id">ID for den bruger, der skal slettes.</param>
+        /// <returns>Ingen indhold ved succes.</returns>
+        /// <response code="204">Brugeren blev succesfuldt slettet.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har 'Admin' rollen.</response>
+        /// <response code="404">Hvis en bruger med det angivne ID ikke findes.</response>
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteUser(string id)
         {
             _logger.LogInformation("Admin {AdminUser} forsøger at slette bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.Name), id);
@@ -224,8 +312,24 @@ namespace API.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// Tildeler en ny rolle til en bruger. Kræver 'Admin' rolle.
+        /// </summary>
+        /// <param name="id">ID for den bruger, der skal have tildelt en ny rolle.</param>
+        /// <param name="dto">Objekt, der indeholder ID for den nye rolle.</param>
+        /// <returns>En bekræftelsesmeddelelse.</returns>
+        /// <response code="200">Rollen blev succesfuldt tildelt.</response>
+        /// <response code="400">Hvis det angivne rolle-ID er ugyldigt.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har 'Admin' rollen.</response>
+        /// <response code="404">Hvis en bruger med det angivne ID ikke findes.</response>
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}/role")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> AssignUserRole(string id, [FromBody] AssignRoleDto dto)
         {
             _logger.LogInformation("Admin {AdminUser} forsøger at tildele RoleId {RoleId} til bruger {TargetUserId}", User.FindFirstValue(ClaimTypes.Name), dto.RoleId, id);
@@ -252,8 +356,18 @@ namespace API.Controllers
             return Ok(new { message = $"Rollen '{role.Name}' blev tildelt til bruger {user.Email}." });
         }
 
+        /// <summary>
+        /// Henter en liste over alle tilgængelige roller i systemet. Kræver 'Admin' rolle.
+        /// </summary>
+        /// <returns>En liste af roller med deres ID, navn og beskrivelse.</returns>
+        /// <response code="200">Returnerer listen af roller.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har 'Admin' rollen.</response>
         [Authorize(Roles = "Admin")]
         [HttpGet("roles")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<object>> GetAvailableRoles()
         {
             _logger.LogInformation("Admin {AdminUser} henter listen over tilgængelige roller.", User.FindFirstValue(ClaimTypes.Name));
@@ -263,8 +377,19 @@ namespace API.Controllers
             return Ok(roles);
         }
 
+        /// <summary>
+        /// Tjekker login-status og eventuel lockout for en specifik email. Kræver 'Admin' rolle.
+        /// </summary>
+        /// <param name="email">E-mailadressen der skal tjekkes.</param>
+        /// <returns>Detaljer om login-forsøg og lockout-status.</returns>
+        /// <response code="200">Returnerer login-status for den angivne email.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har 'Admin' rollen.</response>
         [Authorize(Roles = "Admin")]
         [HttpGet("login-status/{email}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public IActionResult GetLoginStatus(string email)
         {
             _logger.LogInformation("Admin {AdminUser} tjekkede login-status for email: {TargetEmail}", User.Identity.Name, email);
@@ -284,18 +409,35 @@ namespace API.Controllers
         }
     }
 
-    // === DTOs anvendt i denne controller ===
+    // Bemærk: DTO'er bør normalt ligge i deres egne filer i en Dto-mappe,
+    // men er inkluderet her for fuldstændighedens skyld i eksemplet.
+
+    /// <summary>
+    /// Data Transfer Object til at tildele en rolle.
+    /// </summary>
     public class AssignRoleDto
     {
+        /// <summary>
+        /// ID for den rolle, der skal tildeles.
+        /// </summary>
         [Required]
         public string RoleId { get; set; } = string.Empty;
     }
 
+    /// <summary>
+    /// Data Transfer Object til at opdatere en brugers oplysninger.
+    /// </summary>
     public class UserUpdateDto
     {
+        /// <summary>
+        /// Brugerens nye brugernavn.
+        /// </summary>
         [Required(ErrorMessage = "Brugernavn er påkrævet")]
         public string Username { get; set; } = string.Empty;
 
+        /// <summary>
+        /// Brugerens nye email-adresse.
+        /// </summary>
         [EmailAddress(ErrorMessage = "Ugyldig email adresse")]
         [Required(ErrorMessage = "Email er påkrævet")]
         public string Email { get; set; } = string.Empty;

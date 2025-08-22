@@ -6,6 +6,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers
 {
+    /// <summary>
+    /// Indeholder endpoints til administrative formål under udvikling.
+    /// </summary>
+    /// <remarks>
+    ///  **VIGTIGT:** Denne controller er kun beregnet til brug i et udviklingsmiljø.
+    /// Alle endpoints er beskyttet til kun at kunne kaldes af brugere med rollerne 'Manager' eller 'Admin'.
+    /// </remarks>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize(Roles = "Manager, Admin")] // Låst til de højeste roller
@@ -16,6 +23,9 @@ namespace API.Controllers
         private readonly AppDBContext _context;
         private readonly ILogger<DataSeederController> _logger;
 
+        /// <summary>
+        /// Initialiserer en ny instans af DataSeederController.
+        /// </summary>
         public DataSeederController(DataSeederService seederService, IWebHostEnvironment environment, AppDBContext context, ILogger<DataSeederController> logger)
         {
             _seederService = seederService;
@@ -24,13 +34,27 @@ namespace API.Controllers
             _logger = logger;
         }
 
-
-        
-
+        /// <summary>
+        /// Udfylder databasen med et antal genererede brugere og bookinger.
+        /// </summary>
+        /// <remarks>
+        /// Denne operation kan kun udføres i et **Development**-miljø.
+        /// Bruger Bogus-biblioteket til at skabe realistiske testdata.
+        /// </remarks>
+        /// <param name="userCount">Antallet af brugere, der skal genereres. Standard er 50.</param>
+        /// <param name="bookingCount">Det cirka antal bookinger, der skal genereres. Standard er 200.</param>
+        /// <returns>En bekræftelsesmeddelelse om, at databasen er blevet seedet.</returns>
+        /// <response code="200">Data blev succesfuldt genereret og indsat i databasen.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle, eller hvis applikationen ikke kører i 'Development' mode.</response>
+        /// <response code="500">Hvis der opstod en intern fejl under seeding-processen.</response>
         [HttpPost("seed")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SeedDatabase([FromQuery] int userCount = 50, [FromQuery] int bookingCount = 200)
-        
-       {
+        {
             if (!_environment.IsDevelopment())
             {
                 _logger.LogWarning("Sikkerhedsbrud: Forsøg på at seede data i et ikke-udviklingsmiljø ({EnvironmentName}).", _environment.EnvironmentName);
@@ -49,7 +73,23 @@ namespace API.Controllers
             }
         }
 
+        /// <summary>
+        /// Sletter alle genererede brugere og bookinger fra databasen.
+        /// </summary>
+        /// <remarks>
+        /// Denne operation kan kun udføres i et **Development**-miljø.
+        /// Handlingen kan ikke fortrydes.
+        /// </remarks>
+        /// <returns>En bekræftelsesmeddelelse om, at data er blevet slettet.</returns>
+        /// <response code="200">Data blev succesfuldt slettet.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle, eller hvis applikationen ikke kører i 'Development' mode.</response>
+        /// <response code="500">Hvis der opstod en intern fejl under sletningsprocessen.</response>
         [HttpDelete("clear")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ClearDatabase()
         {
             if (!_environment.IsDevelopment())
@@ -70,7 +110,20 @@ namespace API.Controllers
             }
         }
 
+        /// <summary>
+        /// Henter statistik over antallet af rækker i centrale tabeller.
+        /// </summary>
+        /// <remarks>
+        /// Denne operation kan kun udføres i et **Development**-miljø.
+        /// </remarks>
+        /// <returns>Et objekt med antallet af brugere, bookinger, værelser, værelsestyper og roller.</returns>
+        /// <response code="200">Returnerer et statistikobjekt.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle, eller hvis applikationen ikke kører i 'Development' mode.</response>
         [HttpGet("stats")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> GetDatabaseStats()
         {
             if (!_environment.IsDevelopment())
@@ -89,8 +142,5 @@ namespace API.Controllers
 
             return Ok(stats);
         }
-
-
-
     }
 }

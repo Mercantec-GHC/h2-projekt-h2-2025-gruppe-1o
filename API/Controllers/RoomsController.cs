@@ -6,6 +6,9 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace API.Controllers
 {
+    /// <summary>
+    /// Håndterer offentligt tilgængelige informationer om værelsestyper og deres ledighed.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class RoomsController : ControllerBase
@@ -14,6 +17,12 @@ namespace API.Controllers
         private readonly ILogger<RoomsController> _logger;
         private readonly IMemoryCache _cache;
 
+        /// <summary>
+        /// Initialiserer en ny instans af RoomsController.
+        /// </summary>
+        /// <param name="context">Database context for at interagere med databasen.</param>
+        /// <param name="logger">Logger til at logge information og fejl.</param>
+        /// <param name="cache">Memory cache til at forbedre performance ved gentagne kald.</param>
         public RoomsController(AppDBContext context, ILogger<RoomsController> logger, IMemoryCache cache)
         {
             _context = context;
@@ -21,25 +30,34 @@ namespace API.Controllers
             _cache = cache;
         }
 
+        /// <summary>
+        /// Henter en liste over alle tilgængelige værelsestyper på hotellet.
+        /// </summary>
+        /// <remarks>
+        /// Resultatet af dette kald caches for at forbedre ydeevnen.
+        /// Gyldige værdier for 'sortBy' er 'price' og 'capacity'.
+        /// Hvis 'sortBy' ikke angives, sorteres der som standard efter navn.
+        /// </remarks>
+        /// <param name="sortBy">Valgfrit. Feltet, der skal sorteres efter ('price' eller 'capacity').</param>
+        /// <param name="desc">Valgfrit. Angiver om sorteringen skal være i faldende rækkefølge. Standard er 'false'.</param>
+        /// <returns>En liste af værelsestyper.</returns>
+        /// <response code="200">Returnerer en liste af værelsestyper, eventuelt sorteret.</response>
         [HttpGet("types")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRoomTypes([FromQuery] string? sortBy, [FromQuery] bool desc = false)
         {
-            // Trin 4: Opret en dynamisk cache-nøgle
             var cacheKey = $"allRoomTypes_sortBy={sortBy ?? "default"}_desc={desc}";
             _logger.LogInformation("Forsøger at hente værelsestyper fra cache med nøglen '{CacheKey}'", cacheKey);
 
-            // Prøv at hente fra cache først
             if (_cache.TryGetValue(cacheKey, out List<RoomType> cachedRoomTypes))
             {
                 _logger.LogInformation("Cache hit! Returnerer {Count} værelsestyper fra cachen for nøglen '{CacheKey}'.", cachedRoomTypes.Count, cacheKey);
                 return Ok(cachedRoomTypes);
             }
 
-            // Trin 2: Start en IQueryable forespørgsel
             _logger.LogInformation("Cache miss for '{CacheKey}'. Henter værelsestyper fra databasen.", cacheKey);
             var query = _context.RoomTypes.AsQueryable();
 
-            // Trin 3: Tilføj sorteringslogik
             switch (sortBy?.ToLower())
             {
                 case "price":
@@ -49,14 +67,12 @@ namespace API.Controllers
                     query = desc ? query.OrderByDescending(rt => rt.Capacity) : query.OrderBy(rt => rt.Capacity);
                     break;
                 default:
-                    query = query.OrderBy(rt => rt.Name); // Standard sortering
+                    query = query.OrderBy(rt => rt.Name);
                     break;
             }
 
-            // Eksekver den færdigbyggede query mod databasen
             var roomTypesFromDb = await query.ToListAsync();
 
-            // Gem de friske data i cachen til næste gang
             var cacheOptions = new MemoryCacheEntryOptions()
                 .SetSlidingExpiration(TimeSpan.FromMinutes(5))
                 .SetAbsoluteExpiration(TimeSpan.FromMinutes(60));
@@ -67,9 +83,22 @@ namespace API.Controllers
             return Ok(roomTypesFromDb);
         }
 
-
-
+        /// <summary>
+        /// Finder ledige værelsestyper baseret på ankomst, afrejse og antal gæster.
+        /// </summary>
+        /// <remarks>
+        /// Dette er det primære søge-endpoint for gæster. Det returnerer en liste af værelsestyper,
+        /// hvor der er mindst ét ledigt værelse i den angivne periode, og som har kapacitet til det angivne antal gæster.
+        /// </remarks>
+        /// <param name="checkInDate">Den ønskede ankomstdato.</param>
+        /// <param name="checkOutDate">Den ønskede afrejsedato.</param>
+        /// <param name="numberOfGuests">Antallet af gæster, der skal overnatte.</param>
+        /// <returns>En liste af ledige værelsestyper med antallet af ledige værelser for hver type.</returns>
+        /// <response code="200">Returnerer en liste af ledige værelsestyper.</response>
+        /// <response code="400">Hvis check-ud datoen er før eller samme dag som check-in datoen.</response>
         [HttpGet("availability")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult<IEnumerable<RoomTypeGetDto>>> GetAvailableRoomTypes(
             [FromQuery] DateTime checkInDate,
             [FromQuery] DateTime checkOutDate,

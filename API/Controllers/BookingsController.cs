@@ -3,11 +3,15 @@ using DomainModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory; // Tilføjet for IMemoryCache
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 
 namespace API.Controllers
 {
+    /// <summary>
+    /// Håndterer alle operationer relateret til bookinger, såsom oprettelse, hentning og administration.
+    /// Kræver som udgangspunkt at brugeren er logget ind.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
@@ -15,18 +19,38 @@ namespace API.Controllers
     {
         private readonly AppDBContext _context;
         private readonly ILogger<BookingsController> _logger;
-        private readonly IMemoryCache _cache; // Tilføjet cache felt
+        private readonly IMemoryCache _cache;
 
-        // Opdateret constructor til at modtage IMemoryCache
+        /// <summary>
+        /// Initialiserer en ny instans af BookingsController med de nødvendige dependencies.
+        /// </summary>
+        /// <param name="context">Database context for at interagere med databasen.</param>
+        /// <param name="logger">Logger til at logge information og fejl.</param>
+        /// <param name="cache">Memory cache til at forbedre performance ved gentagne kald.</param>
         public BookingsController(AppDBContext context, ILogger<BookingsController> logger, IMemoryCache cache)
         {
             _context = context;
             _logger = logger;
-            _cache = cache; // Tildel cache
+            _cache = cache;
         }
 
+        /// <summary>
+        /// Henter en liste over alle bookinger. Kræver 'Receptionist' eller 'Manager' rolle.
+        /// </summary>
+        /// <remarks>
+        /// Giver mulighed for at filtrere bookinger baseret på bruger-ID og en startdato.
+        /// </remarks>
+        /// <param name="userId">Valgfrit. Filtrer bookinger til kun at inkludere denne specifikke bruger.</param>
+        /// <param name="fromDate">Valgfrit. Returnerer bookinger, der er aktive på eller efter denne dato (baseret på CheckOutDate).</param>
+        /// <returns>En liste over bookinger, der matcher de angivne filtre.</returns>
+        /// <response code="200">Returnerer en liste af bookinger.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle (Receptionist eller Manager).</response>
         [HttpGet]
         [Authorize(Roles = "Receptionist,Manager")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<ActionResult<IEnumerable<BookingGetDto>>> GetBookings(
         [FromQuery] string? userId,
         [FromQuery] DateTime? fromDate)
@@ -40,16 +64,13 @@ namespace API.Controllers
                 .OrderByDescending(b => b.CreatedAt)
                 .AsQueryable();
 
-            // Tilføj filter for bruger-ID, hvis det er angivet
             if (!string.IsNullOrEmpty(userId))
             {
                 query = query.Where(b => b.UserId == userId);
             }
 
-            // Tilføj filter for startdato, hvis det er angivet
             if (fromDate.HasValue)
             {
-                // Find bookinger, der er aktive på eller efter den angivne dato
                 var fromDateUtc = fromDate.Value.ToUniversalTime();
                 query = query.Where(b => b.CheckOutDate.Date >= fromDateUtc.Date);
             }
@@ -71,8 +92,18 @@ namespace API.Controllers
             return Ok(result);
         }
 
-        // NYT ENDPOINT MED CACHING
+        /// <summary>
+        /// Henter alle bookinger for den aktuelt indloggede bruger.
+        /// </summary>
+        /// <remarks>
+        /// Resultatet af dette kald caches i 10 sekunder for at forbedre ydeevnen ved gentagne kald.
+        /// </remarks>
+        /// <returns>En liste over den indloggede brugers bookinger.</returns>
+        /// <response code="200">Returnerer en liste af brugerens bookinger.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret eller token er ugyldigt.</response>
         [HttpGet("my-bookings")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<IEnumerable<BookingGetDto>>> GetMyBookings()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -81,11 +112,9 @@ namespace API.Controllers
                 return Unauthorized("Bruger-ID ikke fundet i token.");
             }
 
-            // Definer en unik cache-nøgle for denne specifikke bruger
             var cacheKey = $"my_bookings_{userId}";
             _logger.LogInformation("Bruger {UserId} forsøger at hente 'my-bookings' fra cache med nøglen '{CacheKey}'", userId, cacheKey);
 
-            // Forsøg at hente fra cache først
             if (_cache.TryGetValue(cacheKey, out List<BookingGetDto> cachedBookings))
             {
                 _logger.LogInformation("Cache hit for {CacheKey}! Returnerer {Count} bookinger fra cachen.", cacheKey, cachedBookings.Count);
@@ -95,8 +124,8 @@ namespace API.Controllers
             _logger.LogInformation("Cache miss for {CacheKey}. Henter bookinger fra databasen for bruger {UserId}.", cacheKey, userId);
             var bookings = await _context.Bookings
                 .Where(b => b.UserId == userId)
-                .Include(b => b.RoomType) // Eager loading for at få RoomTypeName
-                .Include(b => b.Room)     // Eager loading for at få RoomNumber
+                .Include(b => b.RoomType)
+                .Include(b => b.Room)
                 .Include(b => b.User)
                 .OrderByDescending(b => b.CreatedAt)
                 .Select(b => new BookingGetDto
@@ -108,14 +137,13 @@ namespace API.Controllers
                     Status = b.Status,
                     RoomTypeName = b.RoomType.Name,
                     RoomNumber = b.Room != null ? b.Room.RoomNumber : "Not Assigned",
-                    UserEmail = b.User.Email, // User er allerede tilgængelig via relationen
+                    UserEmail = b.User.Email,
                     CreatedAt = b.CreatedAt
                 })
                 .ToListAsync();
 
-            // Gem de friske data i cachen med en kort levetid
             var cacheOptions = new MemoryCacheEntryOptions()
-                .SetAbsoluteExpiration(TimeSpan.FromSeconds(10)); // Kort cache levetid
+                .SetAbsoluteExpiration(TimeSpan.FromSeconds(10));
 
             _cache.Set(cacheKey, bookings, cacheOptions);
             _logger.LogInformation("Gemt {Count} bookinger i cachen for {CacheKey}.", bookings.Count, cacheKey);
@@ -123,8 +151,20 @@ namespace API.Controllers
             return Ok(bookings);
         }
 
-
+        /// <summary>
+        /// Opretter en ny booking for den indloggede bruger.
+        /// </summary>
+        /// <param name="bookingDto">Data for den nye booking, der skal oprettes.</param>
+        /// <returns>Den nyoprettede booking.</returns>
+        /// <response code="201">Returnerer den nyoprettede booking og en 'Location' header til ressourcen.</response>
+        /// <response code="400">Hvis input-data er ugyldigt (f.eks. ugyldig dato eller værelsestype).</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="409">Hvis der ikke er ledige værelser af den valgte type i den angivne periode.</response>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<ActionResult<BookingGetDto>> CreateBooking(BookingCreateDto bookingDto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -147,9 +187,9 @@ namespace API.Controllers
 
             var bookedCount = await _context.Bookings
                 .CountAsync(b => b.RoomTypeId == bookingDto.RoomTypeId &&
-                                    b.CheckInDate < bookingDto.CheckOutDate &&
-                                    b.CheckOutDate > bookingDto.CheckInDate &&
-                                    b.Status != "Cancelled");
+                                     b.CheckInDate < bookingDto.CheckOutDate &&
+                                     b.CheckOutDate > bookingDto.CheckInDate &&
+                                     b.Status != "Cancelled");
 
             if (bookedCount >= roomType.Rooms.Count)
             {
@@ -179,11 +219,9 @@ namespace API.Controllers
             _context.Bookings.Add(booking);
             await _context.SaveChangesAsync();
 
-            // CACHE INVALIDATION: Ryd cachen for brugerens bookinger
             var cacheKey = $"my_bookings_{userId}";
             _cache.Remove(cacheKey);
             _logger.LogInformation("Cache for {CacheKey} blev ryddet pga. ny booking.", cacheKey);
-
 
             var resultDto = new BookingGetDto
             {
@@ -202,7 +240,24 @@ namespace API.Controllers
             return CreatedAtAction(nameof(GetBooking), new { id = booking.Id }, resultDto);
         }
 
+        /// <summary>
+        /// Henter en specifik booking baseret på dens unikke ID.
+        /// </summary>
+        /// <remarks>
+        /// En almindelig bruger kan kun hente sine egne bookinger. 
+        /// En 'Receptionist' eller 'Admin' kan hente enhver booking.
+        /// </remarks>
+        /// <param name="id">ID for den booking, der skal hentes.</param>
+        /// <returns>Den fundne booking.</returns>
+        /// <response code="200">Returnerer den specifikke booking.</response>
+        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
+        /// <response code="403">Hvis brugeren forsøger at tilgå en booking, de ikke ejer, og ikke har en admin-rolle.</response>
+        /// <response code="404">Hvis en booking med det angivne ID ikke blev fundet.</response>
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<BookingGetDto>> GetBooking(string id)
         {
             var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -220,6 +275,7 @@ namespace API.Controllers
                 return NotFound();
             }
 
+            // Sikkerhedstjek: Brugeren skal enten eje bookingen eller være receptionist/admin
             if (booking.UserId != currentUserId && !User.IsInRole("Admin") && !User.IsInRole("Receptionist"))
             {
                 _logger.LogWarning("Uautoriseret forsøg: Bruger {RequestingUserId} forsøgte at tilgå booking {BookingId}, som tilhører bruger {OwnerId}.", currentUserId, id, booking.UserId);
