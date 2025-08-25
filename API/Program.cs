@@ -108,16 +108,16 @@ try
 
     // ---- Middleware Pipeline ----
 
-    // KORREKT FEJLHÅNDTERING: Viser detaljerede fejl i Development, og en generisk side i Production.
+
     if (app.Environment.IsDevelopment())
     {
-        app.UseDeveloperExceptionPage(); // <--- DENNE VISER DEN RIGTIGE FEJL
+        app.UseDeveloperExceptionPage(); 
         app.UseSwagger();
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
     }
     else
     {
-        app.UseExceptionHandler("/error"); // <--- Denne bruges kun i produktion
+        app.UseExceptionHandler("/error"); 
         app.UseHsts();
     }
 
