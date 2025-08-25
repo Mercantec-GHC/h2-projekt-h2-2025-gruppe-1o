@@ -1,5 +1,4 @@
-﻿
-<div class="booking-form-card">
+﻿<div class="booking-form-card">
     <h2 class="form-title">Find dit perfekte værelse</h2>
     <EditForm Model="_searchQuery" OnValidSubmit="HandleSearch">
         <DataAnnotationsValidator />
@@ -14,17 +13,15 @@
     </EditForm>
 </div>
 
-
 @code {
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
-    private readonly SearchQuery _searchQuery = new();
+    private SearchQuery _searchQuery { get; set; } = new();
 
     private void HandleSearch()
     {
         var url = $"/search-results?checkin={_searchQuery.CheckInDate.Value:yyyy-MM-dd}&checkout={_searchQuery.CheckOutDate.Value:yyyy-MM-dd}&guests={_searchQuery.GuestCount}";
-        Console.WriteLine($"Søger... Navigerer til: {url}");
         Navigation.NavigateTo(url);
     }
 

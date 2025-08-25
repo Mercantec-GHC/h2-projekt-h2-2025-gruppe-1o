@@ -97,10 +97,10 @@ try
     {
         options.AddPolicy("AllowSpecificOrigins", corsBuilder =>
         {
-            corsBuilder.WithOrigins("http://localhost:5085", "http://localhost:8052", "https://h2.mercantec.tech")
-                   .AllowAnyMethod()
-                   .AllowAnyHeader()
-                   .WithExposedHeaders("Content-Disposition");
+            // Tilføj dine localhost-adresser her
+            corsBuilder.WithOrigins("http://localhost:5085", "https://localhost:7285", "https://h2.mercantec.tech")
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
         });
     });
 
