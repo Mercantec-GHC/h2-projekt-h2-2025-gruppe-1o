@@ -1,0 +1,37 @@
+﻿
+<div class="booking-form-card">
+    <h2 class="form-title">Find dit perfekte værelse</h2>
+    <EditForm Model="_searchQuery" OnValidSubmit="HandleSearch">
+        <DataAnnotationsValidator />
+        <div class="form-inputs">
+            <DatePickerInput Label="Ankomst" @bind-Value="_searchQuery.CheckInDate" />
+            <DatePickerInput Label="Afrejse" @bind-Value="_searchQuery.CheckOutDate" />
+            <GuestCounterInput Label="Antal gæster" @bind-Value="_searchQuery.GuestCount" />
+        </div>
+        <ActionButton Type="ActionButton.ButtonType.Accent" IsSubmit="true">
+            Søg efter værelser
+        </ActionButton>
+    </EditForm>
+</div>
+
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private readonly SearchQuery _searchQuery = new();
+
+    private void HandleSearch()
+    {
+        var url = $"/search-results?checkin={_searchQuery.CheckInDate.Value:yyyy-MM-dd}&checkout={_searchQuery.CheckOutDate.Value:yyyy-MM-dd}&guests={_searchQuery.GuestCount}";
+        Console.WriteLine($"Søger... Navigerer til: {url}");
+        Navigation.NavigateTo(url);
+    }
+
+    private class SearchQuery
+    {
+        public DateTime? CheckInDate { get; set; } = DateTime.Today;
+        public DateTime? CheckOutDate { get; set; } = DateTime.Today.AddDays(1);
+        public int GuestCount { get; set; } = 2;
+    }
+}

@@ -1,0 +1,66 @@
+﻿.global-footer {
+    background-color: #003366; /* Twilight Blue */
+    color: #F8F9FA; /* Off-White */
+    padding: 48px 32px 24px 32px;
+    margin-top: auto; /* Skubber footeren til bunden af siden */
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    max-width: 1400px;
+    margin: 0 auto 32px auto;
+    gap: 32px;
+    flex-wrap: wrap; /* Gør den responsiv */
+}
+
+.footer-column {
+    flex: 1;
+    min-width: 250px; /* Sikrer at kolonnerne ikke bliver for smalle */
+}
+
+.footer-heading {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 18px;
+    font-weight: 600; /* Semi-Bold */
+    color: white;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #B89A64; /* Sunrise Gold accent */
+    padding-bottom: 8px;
+    display: inline-block;
+}
+
+.footer-column p {
+    font-family: 'Lato', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #DEE2E6; /* Lys grå for bedre læsbarhed */
+}
+
+.footer-column.links ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-column.links li {
+    margin-bottom: 8px;
+}
+
+.footer-column.links a {
+    color: #DEE2E6;
+    text-decoration: none;
+    transition: color 0.2s ease-in-out;
+}
+
+    .footer-column.links a:hover {
+        color: #B89A64; /* Sunrise Gold */
+    }
+
+.footer-bottom {
+    text-align: center;
+    border-top: 1px solid #004488; /* En lidt lysere blå som skiljelinje */
+    padding-top: 24px;
+    font-size: 14px;
+    color: #DEE2E6;
+}

@@ -1,0 +1,82 @@
+﻿@page "/search-results"
+@using Microsoft.AspNetCore.WebUtilities
+@using DomainModels
+@using Blazor.Components
+@inject NavigationManager Navigation
+@inject APIService ApiService
+
+<PageTitle>Søgeresultater</PageTitle>
+
+<div class="page-section">
+    <h2 class="section-title">Ledige værelser</h2>
+
+    @if (_isLoading)
+    {
+        <p>Søger efter ledige værelser...</p>
+    }
+    else
+    {
+        <p class="search-summary">
+            Viser resultater for: <strong>@_checkInDate.ToString("d. MMMM yyyy")</strong> til <strong>@_checkOutDate.ToString("d. MMMM yyyy")</strong> for <strong>@_guestCount gæster</strong>.
+        </p>
+
+        <div class="results-container">
+            @if (_availableRooms != null && _availableRooms.Any())
+            {
+                <div class="room-types-grid">
+                    @foreach (var room in _availableRooms)
+                    {
+                        <RoomTypeCard Title="@room.Name"
+                                      Price="@room.BasePrice"
+                                      Description="@room.Description"
+                                      Features="@(new List<string> { $"{room.Capacity} gæster" })"
+                                      ImageUrl="@GetImageUrlForRoom(room.Name)"
+                                      RoomTypeId="@room.Id" />
+                    }
+                </div>
+            }
+            else
+            {
+                <p>Der er desværre ingen ledige værelser i den valgte periode. Prøv venligst en anden søgning.</p>
+            }
+        </div>
+    }
+</div>
+
+
+@code {
+    private bool _isLoading = true;
+    private DateTime _checkInDate;
+    private DateTime _checkOutDate;
+    private int _guestCount;
+    private List<RoomTypeGetDto> _availableRooms = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+        // Aflæs og parse parametre
+        DateTime.TryParse(queryParams.TryGetValue("checkin", out var checkin) ? checkin.ToString() : "", out _checkInDate);
+        DateTime.TryParse(queryParams.TryGetValue("checkout", out var checkout) ? checkout.ToString() : "", out _checkOutDate);
+        int.TryParse(queryParams.TryGetValue("guests", out var guests) ? guests.ToString() : "", out _guestCount);
+
+        // Kald API'et for at hente de faktiske data
+        _availableRooms = await ApiService.GetAvailableRoomTypesAsync(_checkInDate, _checkOutDate, _guestCount) ?? new();
+
+        _isLoading = false;
+    }
+
+    // Midlertidig hjælpe-metode til at tildele billeder baseret på værelsesnavn.
+    // Senere bør ImageUrl komme direkte fra API'et.
+    private string GetImageUrlForRoom(string roomName)
+    {
+        return roomName.ToLower() switch
+        {
+            "standard værelse" => "/images/room-standard.png",
+            "deluxe suite" => "/images/room-deluxe.png",
+            "presidential suite" => "/images/room-presidential.png",
+            _ => "/images/room-default.png" // Et standardbillede
+        };
+    }
+}

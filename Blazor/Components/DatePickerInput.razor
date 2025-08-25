@@ -1,0 +1,28 @@
+﻿
+<div class="date-picker-wrapper">
+    <label for="@_inputId">@Label</label>
+    <input id="@_inputId" type="date" class="form-control" @bind="Value" />
+</div>
+
+@code {
+    // Giver komponenten et unikt ID for at koble label og input korrekt.
+    private readonly string _inputId = $"date-{Guid.NewGuid()}";
+
+    /// <summary>
+    /// Teksten der vises i labelen over input-feltet (f.eks. "Ankomst").
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "Vælg dato";
+
+    /// <summary>
+    /// Den valgte dato. Bruges til to-vejs databinding.
+    /// </summary>
+    [Parameter]
+    public DateTime? Value { get; set; }
+
+    /// <summary>
+    /// Callback der udløses, når datoen ændres.
+    /// </summary>
+    [Parameter]
+    public EventCallback<DateTime?> ValueChanged { get; set; }
+}

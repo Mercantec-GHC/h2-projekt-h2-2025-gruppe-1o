@@ -1,0 +1,27 @@
+﻿
+<div class="guest-counter-wrapper">
+    <label for="@_inputId">@Label</label>
+    <input id="@_inputId" type="number" min="1" class="form-control" @bind="Value" />
+</div>
+
+@code {
+    private readonly string _inputId = $"number-{Guid.NewGuid()}";
+
+    /// <summary>
+    /// Teksten der vises i labelen over input-feltet (f.eks. "Antal gæster").
+    /// </summary>
+    [Parameter]
+    public string Label { get; set; } = "Antal";
+
+    /// <summary>
+    /// Den valgte numeriske værdi. Bruges til to-vejs databinding.
+    /// </summary>
+    [Parameter]
+    public int Value { get; set; }
+
+    /// <summary>
+    /// Callback der udløses, når værdien ændres.
+    /// </summary>
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+}

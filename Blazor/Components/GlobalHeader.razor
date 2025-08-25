@@ -1,0 +1,29 @@
+﻿<header class="global-header">
+    <div class="header-content">
+        <div class="header-left">
+            <FlyhighLogo />
+        </div>
+        <nav class="header-nav">
+            <a href="/rooms">Værelser</a>
+            <a href="/facilities">Faciliteter</a>
+            <a href="/about">Om Os</a>
+        </nav>
+        <div class="header-right">
+            <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="LoginClicked">
+                Login
+            </ActionButton>
+        </div>
+    </div>
+</header>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private void LoginClicked()
+    {
+        // Denne vil senere navigere til /login-siden.
+        Navigation.NavigateTo("/login");
+        Console.WriteLine("Navigerer til login-siden...");
+    }
+}

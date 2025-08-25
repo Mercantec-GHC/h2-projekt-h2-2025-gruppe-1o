@@ -43,5 +43,7 @@ namespace DomainModels
         public decimal BasePrice { get; set; }
         public int Capacity { get; set; }
         public int AvailableCount { get; set; } // Antal ledige værelser af denne type
+
+        public string ImageUrl { get; set; } = string.Empty;
     }
 }

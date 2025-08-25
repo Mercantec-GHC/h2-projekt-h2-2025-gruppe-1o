@@ -1,0 +1,50 @@
+﻿.btn {
+    font-family: 'Lato', sans-serif;
+    font-weight: 700; /* Bold */
+    font-size: 16px;
+    padding: 12px 24px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+
+/* Primary Style - Twilight Blue */
+.btn-primary {
+    background-color: #003366;
+    color: white;
+    border-color: #003366;
+}
+
+    .btn-primary:hover {
+        background-color: #002244; /* Lidt mørkere ved hover */
+    }
+
+/* Accent Style (CTA) - Sunrise Gold */
+.btn-accent {
+    background-color: #B89A64;
+    color: white;
+    border-color: #B89A64;
+}
+
+    .btn-accent:hover {
+        background-color: #A08859; /* Lidt mørkere ved hover */
+    }
+
+/* Secondary Style - Outlined */
+.btn-secondary {
+    background-color: transparent;
+    color: #003366;
+    border-color: #003366;
+}
+
+    .btn-secondary:hover {
+        background-color: #E3F2FD; /* Clear Sky Blue */
+    }

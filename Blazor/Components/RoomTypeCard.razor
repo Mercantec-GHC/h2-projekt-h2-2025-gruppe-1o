@@ -1,0 +1,55 @@
+﻿@using Blazor.Components
+
+<div class="room-card">
+    <img class="room-image" src="@ImageUrl" alt="@Title" />
+    <div class="room-content">
+        <h3 class="room-title">@Title</h3>
+
+        <div class="features">
+            @foreach (var feature in Features)
+            {
+                <span class="feature-tag">@feature</span>
+            }
+        </div>
+
+        <p class="room-description">@Description</p>
+        <p class="room-price">Fra <strong>@Price.ToString("N0") kr.</strong> / nat</p>
+
+        <div class="room-action">
+            <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="ViewRoom">
+                Se detaljer
+            </ActionButton>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "Værelsestype";
+
+    [Parameter, EditorRequired]
+    public decimal Price { get; set; }
+
+    [Parameter, EditorRequired]
+    public string ImageUrl { get; set; } = "";
+
+    [Parameter]
+    public string Description { get; set; } = "";
+
+    [Parameter]
+    public List<string> Features { get; set; } = new();
+
+    [Parameter]
+    public int RoomTypeId { get; set; }
+
+    private void ViewRoom()
+    {
+        if (RoomTypeId > 0)
+        {
+            Navigation.NavigateTo($"/room-details/{RoomTypeId}");
+        }
+    }
+}
