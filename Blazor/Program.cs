@@ -1,10 +1,11 @@
-using System;
-using System.Net.Http;
 using Blazor.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Net.Http;
 
 namespace Blazor;
 
@@ -15,6 +16,7 @@ public class Program
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
+        
 
         // Læs API endpoint fra miljøvariabler eller brug default
         var envApiEndpoint = Environment.GetEnvironmentVariable("API_ENDPOINT");
@@ -23,6 +25,8 @@ public class Program
         Console.WriteLine($"API Endpoint: {apiEndpoint}");
 
         // Registrer HttpClient til API service med konfigurerbar endpoint
+        builder.Services.AddAuthorizationCore();
+        builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
         builder.Services.AddHttpClient<APIService>(client =>
         {
             client.BaseAddress = new Uri(apiEndpoint);

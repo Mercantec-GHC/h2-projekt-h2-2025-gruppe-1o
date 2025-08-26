@@ -28,6 +28,8 @@
 </div>
 
 @code {
+    [Inject]
+    private APIService ApiService { get; set; } = default!;
     HealthCheckResponse? healthCheck;
     HealthCheckResponse? dbHealthCheck;
 

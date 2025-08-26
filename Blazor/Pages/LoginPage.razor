@@ -1,0 +1,76 @@
+﻿@page "/login"
+@using DomainModels
+
+<PageTitle>Login</PageTitle>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-logo">F</div>
+        <h2 class="form-title">Flyhigh Hotel</h2>
+        <p class="form-subtitle">Log ind på din konto</p>
+
+        <EditForm Model="_loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+
+            <div class="form-group">
+                <label for="email">E-mail adresse</label>
+                <InputText id="email" class="form-control" @bind-Value="_loginModel.Email" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Adgangskode</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="_loginModel.Password" />
+            </div>
+
+            <div class="form-group-inline">
+                <div class="form-group-checkbox">
+                    <InputCheckbox id="rememberMe" @bind-Value="_rememberMe" />
+                    <label for="rememberMe">Husk mig</label>
+                </div>
+                <a href="/forgot-password" class="link-secondary">Glemt din adgangskode?</a>
+            </div>
+
+            <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">
+                Log ind
+            </ActionButton>
+        </EditForm>
+        <div class="form-footer">
+            Har du ikke en konto? <a href="/register">Opret her</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private APIService ApiService { get; set; } = default!; 
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private LoginDto _loginModel = new();
+    private bool _rememberMe = false;
+    private string? _errorMessage;
+
+    private async Task HandleLogin()
+    {
+        _errorMessage = null;
+        var token = await ApiService.LoginAsync(_loginModel); 
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            Console.WriteLine("Login succesfuld! Token modtaget.");
+            // Næste skridt vil være at gemme tokenet her.
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            _errorMessage = "Ugyldig email eller adgangskode. Prøv venligst igen.";
+        }
+    }
+}

@@ -1,0 +1,24 @@
+﻿@page "/my-bookings"
+@attribute [Authorize]
+
+<PageTitle>Mine Bookinger</PageTitle>
+
+<div class="page-section">
+    <h2 class="section-title">Mine Bookinger</h2>
+    <p>Hej, <strong>@user?.Identity?.Name</strong>!</p>
+    <p>Her vil en liste over dine bookinger blive vist i fremtiden.</p>
+</div>
+
+@code {
+    // Vi henter den nuværende brugerinformation fra CascadingParameter
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private ClaimsPrincipal? user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        user = authState.User;
+    }
+}

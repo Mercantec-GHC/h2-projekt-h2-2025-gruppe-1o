@@ -119,3 +119,113 @@ code {
     flex-direction: column;
     min-height: 100vh; /* Sørger for at siden minimum fylder hele skærmens højde */
 }
+
+
+/* Styling for Login og Register sider */
+.form-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 16px;
+    background-color: #f8f9fa; /* Cloud White */
+    min-height: calc(100vh - 160px); /* Juster efter header/footer højde */
+}
+
+.form-card {
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 450px;
+}
+
+.form-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background-color: #B89A64; /* Sunrise Gold */
+    color: white;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    border-radius: 8px;
+    margin: 0 auto 16px auto;
+}
+
+.form-title {
+    font-family: 'Montserrat', sans-serif;
+    text-align: center;
+    margin-bottom: 4px;
+    color: #343A40;
+}
+
+.form-subtitle {
+    text-align: center;
+    margin-bottom: 32px;
+    color: #6C757D;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #343A40;
+    }
+
+.form-group-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.form-group-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+    .form-group-checkbox label {
+        margin-bottom: 0;
+        color: #6C757D;
+        font-size: 14px;
+    }
+
+.link-secondary {
+    color: #6C757D;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+    .link-secondary:hover {
+        text-decoration: underline;
+    }
+
+.form-footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 14px;
+}
+
+    .form-footer a {
+        color: #003366;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+        .form-footer a:hover {
+            text-decoration: underline;
+        }
+
+/* Gør action-knappen 100% bred */
+.form-card .btn {
+    width: 100%;
+    padding: 14px;
+}

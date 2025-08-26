@@ -41,10 +41,11 @@
 /* Secondary Style - Outlined */
 .btn-secondary {
     background-color: transparent;
-    color: #003366;
-    border-color: #003366;
+    color: white; /* Rettet fra mørkeblå til hvid */
+    border-color: white; /* Rettet fra mørkeblå til hvid */
 }
 
     .btn-secondary:hover {
-        background-color: #E3F2FD; /* Clear Sky Blue */
+        background-color: white;
+        color: #003366; /* Mørkeblå tekst ved hover for god kontrast */
     }
