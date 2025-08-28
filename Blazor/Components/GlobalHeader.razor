@@ -13,8 +13,11 @@
         </nav>
         <div class="header-right">
             <AuthorizeView>
-                <Authorized>
-                    <span class="welcome-message">Hej, @context.User.Identity?.Name</span>
+                <Authorized>                
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="GoToAccount">
+                        Min Konto
+                    </ActionButton>
+
                     <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="LogoutClicked">
                         Log ud
                     </ActionButton>
@@ -33,6 +36,11 @@
     private void LoginClicked()
     {
         Navigation.NavigateTo("/login");
+    }
+
+    private void GoToAccount()
+    {
+        Navigation.NavigateTo("/account");
     }
 
     private async Task LogoutClicked()

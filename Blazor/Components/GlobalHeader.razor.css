@@ -23,6 +23,8 @@
 .header-right {
     display: flex;
     justify-content: flex-end;
+    align-items: center; /* Sørger for at tekst og knapper er centreret vertikalt */
+    gap: 16px; /* Tilføjer mellemrum mellem knapperne */
 }
 
 .header-nav {
@@ -45,3 +47,8 @@
         .header-nav a:hover {
             border-bottom-color: #B89A64; /* Sunrise Gold */
         }
+
+.welcome-message {
+    color: white;
+    margin-right: 8px; /* Lidt mindre afstand nu */
+}

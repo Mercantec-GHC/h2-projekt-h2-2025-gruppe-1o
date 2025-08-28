@@ -1,0 +1,50 @@
+﻿@page "/booking/confirm"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.WebUtilities
+@inject NavigationManager Navigation
+
+<PageTitle>Bekræft Booking</PageTitle>
+
+<div class="page-section">
+    <h2 class="section-title">Bekræft din booking</h2>
+
+    @if (_isLoading)
+    {
+        <p>Indlæser booking-detaljer...</p>
+    }
+    else
+    {
+        <div class="confirmation-card">
+            <h3>Du er ved at booke:</h3>
+            <ul>
+                <li><strong>Værelsestype ID:</strong> @_roomTypeId</li>
+                <li><strong>Check-in:</strong> @_checkInDate.ToString("d. MMMM yyyy")</li>
+                <li><strong>Check-ud:</strong> @_checkOutDate.ToString("d. MMMM yyyy")</li>
+            </ul>
+            <ActionButton Type="ActionButton.ButtonType.Accent">
+                Gennemfør Booking
+            </ActionButton>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private int _roomTypeId;
+    private DateTime _checkInDate;
+    private DateTime _checkOutDate;
+
+    protected override void OnInitialized()
+    {
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+        int.TryParse(queryParams.TryGetValue("roomTypeId", out var roomTypeId) ? roomTypeId.ToString() : "", out _roomTypeId);
+        DateTime.TryParse(queryParams.TryGetValue("checkin", out var checkin) ? checkin.ToString() : "", out _checkInDate);
+        DateTime.TryParse(queryParams.TryGetValue("checkout", out var checkout) ? checkout.ToString() : "", out _checkOutDate);
+
+        // Senere vil vi her kalde API'et for at hente de fulde detaljer for værelsestypen.
+
+        _isLoading = false;
+    }
+}

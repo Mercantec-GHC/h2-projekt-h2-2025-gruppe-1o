@@ -99,6 +99,21 @@ namespace Blazor.Services
                 return new HealthCheckResponse { status = "Error", message = "Kunne ikke hente database-status (" + ex.Message + ")" };
             }
         }
+
+        // Metode til at hente den indloggede brugers bookinger
+        public async Task<List<BookingGetDto>?> GetMyBookingsAsync()
+        {
+            try
+            {
+                var result = await _httpClient.GetFromJsonAsync<List<BookingGetDto>>("api/Bookings/my-bookings");
+                return result ?? new List<BookingGetDto>();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af 'mine bookinger': {ex.Message}");
+                return new List<BookingGetDto>(); // Returner en tom liste ved fejl
+            }
+        }
     }
 
     // Modeller der bruges af servicen

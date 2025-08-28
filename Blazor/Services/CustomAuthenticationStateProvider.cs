@@ -2,17 +2,22 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
+using System.Net.Http; 
+using System.Net.Http.Headers; 
 
 namespace Blazor.Services
 {
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         private readonly IJSRuntime _jsRuntime;
+        private readonly HttpClient _httpClient; // Tilføj denne
         private ClaimsPrincipal _anonymous = new ClaimsPrincipal(new ClaimsIdentity());
 
-        public CustomAuthenticationStateProvider(IJSRuntime jsRuntime)
+        // Opdater konstruktøren til at modtage HttpClient
+        public CustomAuthenticationStateProvider(IJSRuntime jsRuntime, HttpClient httpClient)
         {
             _jsRuntime = jsRuntime;
+            _httpClient = httpClient; // Tilføj denne
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -22,8 +27,14 @@ namespace Blazor.Services
                 var token = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
                 if (string.IsNullOrEmpty(token))
                 {
+                    // Sørg for at fjerne headeren, hvis der ikke er noget token
+                    _httpClient.DefaultRequestHeaders.Authorization = null;
                     return new AuthenticationState(_anonymous);
                 }
+
+                // RETTELSE: Sæt Authorization headeren HVER gang appen indlæses og finder et token
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
+
                 var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuth"));
                 return new AuthenticationState(claimsPrincipal);
             }

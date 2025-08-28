@@ -1,0 +1,69 @@
+﻿@page "/account"
+@attribute [Authorize]
+@using DomainModels
+
+<PageTitle>Min Konto</PageTitle>
+
+<div class="page-section">
+    <h2 class="section-title">Min Konto</h2>
+    <p class="section-subtitle">Velkommen, @user?.Identity?.Name! Her kan du administrere dine oplysninger og bookinger.</p>
+
+    <div class="account-grid">
+        <div class="account-card">
+            <h3 class="card-title">Mine Bookinger</h3>
+            @if (_isLoading)
+            {
+                <p>Henter bookinger...</p>
+            }
+            else if (_myBookings != null && _myBookings.Any())
+            {
+                <ul class="booking-list">
+                    @foreach (var booking in _myBookings.OrderBy(b => b.CheckInDate))
+                    {
+                        <li>
+                            <span class="booking-room">@booking.RoomTypeName</span>
+                            <span class="booking-dates">@booking.CheckInDate.ToString("dd/MM/yyyy") - @booking.CheckOutDate.ToString("dd/MM/yyyy")</span>
+                            <span class="booking-status">@booking.Status</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Du har ingen bookinger endnu.</p>
+            }
+        </div>
+
+        <div class="account-card">
+            <h3 class="card-title">Mine Oplysninger</h3>
+            <p>Her vil dine personlige oplysninger blive vist.</p>
+        </div>
+
+        <div class="account-card">
+            <h3 class="card-title">Sikkerhed</h3>
+            <p>Her vil du kunne skifte din adgangskode.</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    [Inject]
+    private APIService ApiService { get; set; } = default!;
+
+    private ClaimsPrincipal? user;
+    private List<BookingGetDto> _myBookings = new();
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateTask;
+        user = authState.User;
+
+        // Hent brugerens bookinger fra API'et
+        _myBookings = await ApiService.GetMyBookingsAsync() ?? new List<BookingGetDto>();
+        _isLoading = false;
+    }
+}

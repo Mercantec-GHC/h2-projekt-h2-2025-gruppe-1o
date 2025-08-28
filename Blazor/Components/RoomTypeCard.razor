@@ -16,17 +16,14 @@
         <p class="room-price">Fra <strong>@Price.ToString("N0") kr.</strong> / nat</p>
 
         <div class="room-action">
-            <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="ViewRoom">
-                Se detaljer
+            <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleBookNowClick">
+                Book Nu
             </ActionButton>
         </div>
     </div>
 </div>
 
 @code {
-    [Inject]
-    private NavigationManager Navigation { get; set; } = default!;
-
     [Parameter, EditorRequired]
     public string Title { get; set; } = "Værelsestype";
 
@@ -45,11 +42,12 @@
     [Parameter]
     public int RoomTypeId { get; set; }
 
-    private void ViewRoom()
+    // NYT: Denne "event" bruges til at notificere forældre-komponenten.
+    [Parameter]
+    public EventCallback<int> OnBookNowClicked { get; set; }
+
+    private async Task HandleBookNowClick()
     {
-        if (RoomTypeId > 0)
-        {
-            Navigation.NavigateTo($"/room-details/{RoomTypeId}");
-        }
+        await OnBookNowClicked.InvokeAsync(RoomTypeId);
     }
 }

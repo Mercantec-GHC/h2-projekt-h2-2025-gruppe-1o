@@ -26,12 +26,14 @@
                 <div class="room-types-grid">
                     @foreach (var room in _availableRooms)
                     {
+                        // OPDATERET LINJE: Vi tilføjer OnBookNowClicked event-handleren.
                         <RoomTypeCard Title="@room.Name"
                                       Price="@room.BasePrice"
                                       Description="@room.Description"
                                       Features="@(new List<string> { $"{room.Capacity} gæster" })"
                                       ImageUrl="@GetImageUrlForRoom(room.Name)"
-                                      RoomTypeId="@room.Id" />
+                                      RoomTypeId="@room.Id"
+                                      OnBookNowClicked="StartBookingProcess" />
                     }
                 </div>
             }
@@ -65,6 +67,14 @@
         _availableRooms = await ApiService.GetAvailableRoomTypesAsync(_checkInDate, _checkOutDate, _guestCount) ?? new();
 
         _isLoading = false;
+    }
+
+    private void StartBookingProcess(int roomTypeId)
+    {
+        var checkInDateString = _checkInDate.ToString("yyyy-MM-dd");
+        var checkOutDateString = _checkOutDate.ToString("yyyy-MM-dd");
+
+        Navigation.NavigateTo($"/booking/confirm?roomTypeId={roomTypeId}&checkin={checkInDateString}&checkout={checkOutDateString}");
     }
 
     // Midlertidig hjælpe-metode til at tildele billeder baseret på værelsesnavn.
