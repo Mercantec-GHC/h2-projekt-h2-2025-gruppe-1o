@@ -1,0 +1,123 @@
+﻿@page "/rooms/{id:int}"
+@attribute [Authorize]
+@using DomainModels
+@using Blazor.Models
+@using Blazor.Components
+@using Microsoft.AspNetCore.WebUtilities
+@inject APIService ApiService
+@inject NavigationManager Navigation
+
+<PageTitle>@_roomType?.Name</PageTitle>
+
+@if (_isLoading)
+{
+    <p>Indlæser værelsesdetaljer...</p>
+}
+else if (_roomType != null)
+{
+    <div class="room-details-container">
+        <div class="room-gallery">
+            <img src="@GetImageUrlForRoom(_roomType.Name)" alt="@_roomType.Name" />
+        </div>
+        <div class="room-info">
+            <h1>@_roomType.Name</h1>
+            <p class="room-price">Fra <strong>@_roomType.BasePrice.ToString("N0") kr.</strong> / nat</p>
+            <p class="room-description">@_roomType.Description</p>
+
+            <hr />
+
+            @if (_hasPreselectedDates)
+            {
+                <div class="booking-confirm-box">
+                    <h3 class="form-title">Gennemfør din booking</h3>
+                    <p><strong>Periode:</strong> @_searchQuery.CheckInDate?.ToString("d. MMM") - @_searchQuery.CheckOutDate?.ToString("d. MMM yyyy")</p>
+                    <p><strong>Antal gæster:</strong> @_searchQuery.GuestCount</p>
+                    <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleConfirmBooking">Book Nu</ActionButton>
+                </div>
+            }
+            else
+            {
+                <BookingSearchForm SearchQueryModel="_searchQuery" />
+            }
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger mt-3">@_errorMessage</div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <p>Værelsestypen kunne ikke findes.</p>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private RoomTypeDetailDto? _roomType;
+    private SearchQuery _searchQuery = new();
+    private bool _isLoading = true;
+    private bool _hasPreselectedDates = false;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roomType = await ApiService.GetRoomTypeByIdAsync(Id);
+
+        var uri = new Uri(Navigation.Uri);
+        var queryParams = QueryHelpers.ParseQuery(uri.Query);
+
+        // Tjek om URL'en indeholder datoer
+        if (queryParams.TryGetValue("checkin", out var checkinStr) &&
+            queryParams.TryGetValue("checkout", out var checkoutStr) &&
+            queryParams.TryGetValue("guests", out var guestsStr))
+        {
+            // Hvis ja, opdater vores model og sæt flaget
+            DateTime.TryParse(checkinStr, out var checkin);
+            DateTime.TryParse(checkoutStr, out var checkout);
+            int.TryParse(guestsStr, out var guests);
+
+            _searchQuery.CheckInDate = checkin;
+            _searchQuery.CheckOutDate = checkout;
+            _searchQuery.GuestCount = guests;
+            _hasPreselectedDates = true;
+        }
+
+        _isLoading = false;
+    }
+
+    private async Task HandleConfirmBooking()
+    {
+        _errorMessage = null;
+        var bookingDetails = new BookingCreateDto
+        {
+            RoomTypeId = Id,
+            CheckInDate = _searchQuery.CheckInDate.Value,
+            CheckOutDate = _searchQuery.CheckOutDate.Value
+        };
+
+        var success = await ApiService.CreateBookingAsync(bookingDetails);
+
+        if (success)
+        {
+            Navigation.NavigateTo("/account");
+        }
+        else
+        {
+            _errorMessage = "Bookingen kunne ikke gennemføres. Værelset er muligvis blevet optaget i mellemtiden.";
+        }
+    }
+
+    private string GetImageUrlForRoom(string roomName)
+    {
+        return roomName switch
+        {
+            "Standard Værelse" => "/images/room-standard.png",
+            "Deluxe Suite" => "/images/room-deluxe.png",
+            "Presidential Suite" => "/images/room-presidential.png",
+            _ => "/images/room-default.png"
+        };
+    }
+}

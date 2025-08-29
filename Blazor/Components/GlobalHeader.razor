@@ -1,0 +1,51 @@
+﻿@inject APIService ApiService
+@inject NavigationManager Navigation
+
+<header class="global-header">
+    <div class="header-content">
+        <div class="header-left">
+            <FlyhighLogo />
+        </div>
+        <nav class="header-nav">
+            <a href="/rooms">Værelser</a>
+            <a href="/facilities">Faciliteter</a>
+            <a href="/about">Om Os</a>
+        </nav>
+        <div class="header-right">
+            <AuthorizeView>
+                <Authorized>                
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="GoToAccount">
+                        Min Konto
+                    </ActionButton>
+
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="LogoutClicked">
+                        Log ud
+                    </ActionButton>
+                </Authorized>
+                <NotAuthorized>
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="LoginClicked">
+                        Login
+                    </ActionButton>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</header>
+
+@code {
+    private void LoginClicked()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private void GoToAccount()
+    {
+        Navigation.NavigateTo("/account");
+    }
+
+    private async Task LogoutClicked()
+    {
+        await ApiService.LogoutAsync();
+        Navigation.NavigateTo("/"); // Send brugeren til forsiden efter logout
+    }
+}

@@ -1,0 +1,32 @@
+﻿
+<div class="date-picker-wrapper">
+    <label for="@_inputId">@Label</label>
+    <input id="@_inputId" type="date" class="form-control" @bind="CurrentValue" @bind:event="oninput" />
+</div>
+
+@code {
+    private readonly string _inputId = $"date-{Guid.NewGuid()}";
+
+    [Parameter]
+    public string Label { get; set; } = "Vælg dato";
+
+    [Parameter]
+    public DateTime? Value { get; set; }
+
+    [Parameter]
+    public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    // Denne property sikrer, at vi opdaterer forælderen, hver gang værdien ændres.
+    private DateTime? CurrentValue
+    {
+        get => Value;
+        set
+        {
+            if (Value != value)
+            {
+                Value = value;
+                ValueChanged.InvokeAsync(value);
+            }
+        }
+    }
+}

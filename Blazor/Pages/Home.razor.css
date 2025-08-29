@@ -1,0 +1,63 @@
+﻿.hero-section {
+    position: relative;
+    height: 60vh;
+    background: linear-gradient(135deg, #003366, #B89A64);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: white;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 2;
+}
+
+.hero-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 48px;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+.hero-subtitle {
+    font-size: 24px;
+    font-weight: 300;
+    margin-top: 8px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.search-section {
+    display: flex;
+    justify-content: center;
+    margin-top: -80px;
+    position: relative;
+    z-index: 3;
+    padding: 0 16px;
+}
+
+.section-subtitle {
+    font-family: 'Lato', sans-serif;
+    font-size: 18px;
+    color: #6C757D;
+    margin-top: -40px;
+    margin-bottom: 48px;
+}
+
+.room-types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    gap: 32px;
+}

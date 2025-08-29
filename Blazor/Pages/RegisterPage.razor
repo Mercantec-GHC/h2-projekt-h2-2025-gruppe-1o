@@ -1,0 +1,76 @@
+﻿@page "/register"
+@using DomainModels
+
+<PageTitle>Opret Konto</PageTitle>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-logo">F</div>
+        <h2 class="form-title">Flyhigh Hotel</h2>
+        <p class="form-subtitle">Opret din konto</p>
+
+        <EditForm Model="_registerModel" OnValidSubmit="HandleRegistration">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="form-group">
+                <label for="username">Brugernavn</label>
+                <InputText id="username" class="form-control" @bind-Value="_registerModel.Username" />
+            </div>
+
+            <div class="form-group">
+                <label for="email">E-mail adresse</label>
+                <InputText id="email" class="form-control" @bind-Value="_registerModel.Email" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Adgangskode</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="_registerModel.Password" />
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Bekræft adgangskode</label>
+                <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="_registerModel.ConfirmPassword" />
+            </div>
+
+            <div class="form-group-checkbox">
+                <InputCheckbox id="terms" @bind-Value="_acceptTerms" />
+                <label for="terms">Jeg accepterer vilkår og betingelser</label>
+            </div>
+
+            <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">
+                Opret konto
+            </ActionButton>
+        </EditForm>
+        <div class="form-footer">
+            Har du allerede en konto? <a href="/login">Log ind her</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private APIService ApiService { get; set; } = default!; 
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private RegisterDto _registerModel = new();
+    private bool _acceptTerms = false;
+    private string? _errorMessage;
+
+    private async Task HandleRegistration()
+    {
+        // ... (din eksisterende logik for _acceptTerms) ...
+
+        var registrationSuccessful = await ApiService.RegisterAsync(_registerModel); 
+
+        if (registrationSuccessful)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        else
+        {
+            _errorMessage = "Der opstod en fejl under oprettelsen. Måske er emailen allerede i brug?";
+        }
+    }
+}

@@ -97,10 +97,10 @@ try
     {
         options.AddPolicy("AllowSpecificOrigins", corsBuilder =>
         {
-            corsBuilder.WithOrigins("http://localhost:5085", "http://localhost:8052", "https://h2.mercantec.tech")
-                   .AllowAnyMethod()
-                   .AllowAnyHeader()
-                   .WithExposedHeaders("Content-Disposition");
+            // Tilføj dine localhost-adresser her
+            corsBuilder.WithOrigins("http://localhost:5085", "https://localhost:7285", "https://h2.mercantec.tech")
+                       .AllowAnyMethod()
+                       .AllowAnyHeader();
         });
     });
 
@@ -108,16 +108,16 @@ try
 
     // ---- Middleware Pipeline ----
 
-    // KORREKT FEJLHÅNDTERING: Viser detaljerede fejl i Development, og en generisk side i Production.
+
     if (app.Environment.IsDevelopment())
     {
-        app.UseDeveloperExceptionPage(); // <--- DENNE VISER DEN RIGTIGE FEJL
+        app.UseDeveloperExceptionPage(); 
         app.UseSwagger();
         app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
     }
     else
     {
-        app.UseExceptionHandler("/error"); // <--- Denne bruges kun i produktion
+        app.UseExceptionHandler("/error"); 
         app.UseHsts();
     }
 

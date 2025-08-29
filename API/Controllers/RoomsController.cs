@@ -84,6 +84,34 @@ namespace API.Controllers
         }
 
         /// <summary>
+        /// Henter detaljer for en specifik værelsestype baseret på ID.
+        /// </summary>
+        [HttpGet("types/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<RoomTypeDetailDto>> GetRoomTypeById(int id)
+        {
+            var roomType = await _context.RoomTypes.FindAsync(id);
+
+            if (roomType == null)
+            {
+                _logger.LogWarning("Værelsestype med ID {RoomTypeId} blev ikke fundet.", id);
+                return NotFound();
+            }
+
+            var dto = new RoomTypeDetailDto
+            {
+                Id = roomType.Id,
+                Name = roomType.Name,
+                Description = roomType.Description,
+                BasePrice = roomType.BasePrice,
+                Capacity = roomType.Capacity
+            };
+
+            return Ok(dto);
+        }
+
+        /// <summary>
         /// Finder ledige værelsestyper baseret på ankomst, afrejse og antal gæster.
         /// </summary>
         /// <remarks>
@@ -106,32 +134,35 @@ namespace API.Controllers
         {
             _logger.LogInformation("Søger efter ledige værelser fra {CheckIn} til {CheckOut} for {GuestCount} gæster.", checkInDate, checkOutDate, numberOfGuests);
 
-            if (checkOutDate <= checkInDate)
+            // Konverter indkommende datoer til rene datoer uden tid for at undgå tidszone-problemer.
+            var checkIn = DateOnly.FromDateTime(checkInDate);
+            var checkOut = DateOnly.FromDateTime(checkOutDate);
+
+            if (checkOut <= checkIn)
             {
-                _logger.LogWarning("Søgning efter ledighed afvist: Check-ud dato er før eller samme dag som check-in.");
                 return BadRequest("Check-ud dato skal være efter check-in dato.");
             }
 
+            // Find antallet af bookinger for hver værelsestype, der overlapper med søgeperioden.
             var bookedCounts = await _context.Bookings
-                .Where(b => b.CheckInDate < checkOutDate && b.CheckOutDate > checkInDate && b.Status != "Cancelled")
+                .Where(b => b.Status != "Cancelled" &&
+                            DateOnly.FromDateTime(b.CheckInDate) < checkOut &&
+                            DateOnly.FromDateTime(b.CheckOutDate) > checkIn)
                 .GroupBy(b => b.RoomTypeId)
-                .Select(g => new { RoomTypeId = g.Key, Count = g.Count() })
-                .ToDictionaryAsync(x => x.RoomTypeId, x => x.Count);
-
-            var roomTypeInfos = await _context.RoomTypes
-                .Where(rt => rt.Capacity >= numberOfGuests)
-                .Select(rt => new
-                {
-                    rt.Id,
-                    rt.Name,
-                    rt.Description,
-                    rt.BasePrice,
-                    rt.Capacity,
-                    TotalCount = rt.Rooms.Count()
+                .Select(g => new {
+                    RoomTypeId = g.Key,
+                    BookedCount = g.Count()
                 })
+                .ToDictionaryAsync(x => x.RoomTypeId, x => x.BookedCount);
+
+            // Find alle værelsestyper, der har kapacitet nok.
+            var roomTypes = await _context.RoomTypes
+                .Include(rt => rt.Rooms)
+                .Where(rt => rt.Capacity >= numberOfGuests)
                 .ToListAsync();
 
-            var result = roomTypeInfos
+            // Sammenlign de to lister og beregn ledighed.
+            var availableRoomTypes = roomTypes
                 .Select(rt => new RoomTypeGetDto
                 {
                     Id = rt.Id,
@@ -139,13 +170,13 @@ namespace API.Controllers
                     Description = rt.Description,
                     BasePrice = rt.BasePrice,
                     Capacity = rt.Capacity,
-                    AvailableCount = rt.TotalCount - bookedCounts.GetValueOrDefault(rt.Id, 0)
+                    AvailableCount = rt.Rooms.Count - bookedCounts.GetValueOrDefault(rt.Id, 0)
                 })
                 .Where(dto => dto.AvailableCount > 0)
                 .ToList();
 
-            _logger.LogInformation("Søgning efter ledighed returnerede {ResultCount} værelsestyper.", result.Count);
-            return Ok(result);
+            _logger.LogInformation("Søgning efter ledighed returnerede {ResultCount} værelsestyper.", availableRoomTypes.Count);
+            return Ok(availableRoomTypes);
         }
     }
 }

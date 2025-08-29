@@ -1,46 +1,56 @@
 ﻿@page "/"
+@using Blazor.Components
+@using Blazor.Models
+@inject NavigationManager Navigation
 
-@using System.Net.Http
+<PageTitle>Velkommen til Flyhigh Hotel</PageTitle>
 
-<h1 class="mb-4">Status Dashboard</h1>
-
-<div class="row">
-    <div class="col-md-6 mb-4">
-        <StatusCard 
-            Title="API Status"
-            IconClass="bi bi-heart-pulse text-success"
-            BorderClass="border-success"
-            HealthCheck="@healthCheck" />
-    </div>
-    <div class="col-md-6 mb-4">
-        <StatusCard 
-            Title="Database Status"
-            IconClass="bi bi-database text-warning"
-            BorderClass="border-warning"
-            HealthCheck="@dbHealthCheck" />
+<div class="hero-section">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1 class="hero-title">Velkommen til Flyhigh Hotel</h1>
+        <p class="hero-subtitle">Book dit luksusophold over skyerne</p>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-12">
-
-    </div>
+<div class="search-section">
+    <BookingSearchForm />
 </div>
 
-<div class="row">
-    <div class="col-12">
-        <Counter />
+<div class="page-section">
+    <h2 class="section-title">Vores Værelsestyper</h2>
+    <p class="section-subtitle">Oplev luksus og komfort i vores nøje udvalgte værelser</p>
+    <div class="room-types-grid">
+        <RoomTypeCard Title="Standard Værelse"
+                      Price="800"
+                      Description="Komfortabelt værelse med alle basisfaciliteter for et behageligt ophold."
+                      Features="@(new List<string> { "2 gæster", "Gratis WiFi", "Smart TV" })"
+                      ImageUrl="/images/room-standard.png"
+                      RoomTypeId="1"
+                      OnButtonClicked="ViewRoomDetails" />
+
+        <RoomTypeCard Title="Deluxe Suite"
+                      Price="2200"
+                      Description="Rummelig suite med panoramaudsigt og premium faciliteter for det ultimative ophold."
+                      Features="@(new List<string> { "4 gæster", "Balkon", "Mini bar" })"
+                      ImageUrl="/images/room-deluxe.png"
+                      RoomTypeId="2"
+                      OnButtonClicked="ViewRoomDetails" />
+
+        <RoomTypeCard Title="Presidential Suite"
+                      Price="5000"
+                      Description="Den ultimative luksusoplevelse med eksklusiv service og faciliteter i verdensklasse."
+                      Features="@(new List<string> { "8 gæster", "Privat spa", "Butler-service" })"
+                      ImageUrl="/images/room-presidential.png"
+                      RoomTypeId="3"
+                      OnButtonClicked="ViewRoomDetails" />
     </div>
 </div>
 
 @code {
-    HealthCheckResponse? healthCheck;
-    HealthCheckResponse? dbHealthCheck;
-
-
-    protected override async Task OnInitializedAsync()
+    // DENNE METODE LYTTER NU PÅ KNAP-KLIK FRA ROOMTYPECARD
+    private void ViewRoomDetails(int roomTypeId)
     {
-        healthCheck = await ApiService.GetHealthCheckAsync();
-        dbHealthCheck = await ApiService.GetDBHealthCheckAsync();
+        Navigation.NavigateTo($"/rooms/{roomTypeId}");
     }
 }

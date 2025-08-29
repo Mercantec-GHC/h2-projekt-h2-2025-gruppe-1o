@@ -1,0 +1,41 @@
+﻿@page "/status"
+@using DomainModels
+@using Blazor.Components
+
+<PageTitle>System Status</PageTitle>
+
+<h1 class="mb-4">Status Dashboard</h1>
+
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <StatusCard Title="API Status"
+                    IconClass="bi bi-heart-pulse text-success"
+                    BorderClass="border-success"
+                    HealthCheck="@healthCheck" />
+    </div>
+    <div class="col-md-6 mb-4">
+        <StatusCard Title="Database Status"
+                    IconClass="bi bi-database text-warning"
+                    BorderClass="border-warning"
+                    HealthCheck="@dbHealthCheck" />
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <Counter />
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private APIService ApiService { get; set; } = default!;
+    HealthCheckResponse? healthCheck;
+    HealthCheckResponse? dbHealthCheck;
+
+    protected override async Task OnInitializedAsync()
+    {
+        healthCheck = await ApiService.GetHealthCheckAsync();
+        dbHealthCheck = await ApiService.GetDBHealthCheckAsync();
+    }
+}

@@ -1,0 +1,32 @@
+﻿@using Blazor.Models
+
+<div class="booking-form-card">
+    <h2 class="form-title">Find dit perfekte værelse</h2>
+    <EditForm Model="SearchQueryModel" OnValidSubmit="HandleSearch">
+        <DataAnnotationsValidator />
+        <div class="form-inputs">
+            <DatePickerInput @bind-Value="SearchQueryModel.CheckInDate" Label="Ankomst" />
+            <DatePickerInput @bind-Value="SearchQueryModel.CheckOutDate" Label="Afrejse" />
+            <GuestCounterInput @bind-Value="SearchQueryModel.GuestCount" Label="Antal gæster" />
+        </div>
+        <ActionButton Type="ActionButton.ButtonType.Accent" IsSubmit="true">
+            Søg efter værelser
+        </ActionButton>
+    </EditForm>
+</div>
+
+@code {
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    // NYT: Modtager nu sin data-model udefra via en parameter.
+    [Parameter, EditorRequired]
+    public SearchQuery SearchQueryModel { get; set; } = new();
+
+    private void HandleSearch()
+    {
+        // Bruger nu den modtagne model til at bygge URL'en.
+        var url = $"/search-results?checkin={SearchQueryModel.CheckInDate:yyyy-MM-dd}&checkout={SearchQueryModel.CheckOutDate:yyyy-MM-dd}&guests={SearchQueryModel.GuestCount}";
+        Navigation.NavigateTo(url);
+    }
+}

@@ -1,0 +1,31 @@
+﻿
+<div class="guest-counter-wrapper">
+    <label for="@_inputId">@Label</label>
+    <input id="@_inputId" type="number" min="1" class="form-control" @bind="CurrentValue" @bind:event="oninput" />
+</div>
+
+@code {
+    private readonly string _inputId = $"number-{Guid.NewGuid()}";
+
+    [Parameter]
+    public string Label { get; set; } = "Antal";
+
+    [Parameter]
+    public int Value { get; set; }
+
+    [Parameter]
+    public EventCallback<int> ValueChanged { get; set; }
+
+    private int CurrentValue
+    {
+        get => Value;
+        set
+        {
+            if (Value != value)
+            {
+                Value = value;
+                ValueChanged.InvokeAsync(value);
+            }
+        }
+    }
+}
