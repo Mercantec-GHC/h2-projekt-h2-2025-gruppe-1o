@@ -35,6 +35,21 @@ namespace Blazor.Services
             }
         }
 
+        // Metode til at oprette en ny booking
+        public async Task<bool> CreateBookingAsync(BookingCreateDto bookingDetails)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/Bookings", bookingDetails);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"Fejl ved oprettelse af booking: {errorContent}");
+                return false;
+            }
+
+            return true;
+        }
+
         // Metode til at hente ledige værelser
         public async Task<List<RoomTypeGetDto>?> GetAvailableRoomTypesAsync(DateTime checkIn, DateTime checkOut, int guestCount)
         {

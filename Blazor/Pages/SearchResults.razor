@@ -33,7 +33,7 @@
                                       Features="@(new List<string> { $"{room.Capacity} gæster" })"
                                       ImageUrl="@GetImageUrlForRoom(room.Name)"
                                       RoomTypeId="@room.Id"
-                                      OnBookNowClicked="StartBookingProcess" />
+                                      OnButtonClicked="ViewRoomDetails" />
                     }
                 </div>
             }
@@ -58,35 +58,31 @@
         var uri = new Uri(Navigation.Uri);
         var queryParams = QueryHelpers.ParseQuery(uri.Query);
 
-        // Aflæs og parse parametre
         DateTime.TryParse(queryParams.TryGetValue("checkin", out var checkin) ? checkin.ToString() : "", out _checkInDate);
         DateTime.TryParse(queryParams.TryGetValue("checkout", out var checkout) ? checkout.ToString() : "", out _checkOutDate);
         int.TryParse(queryParams.TryGetValue("guests", out var guests) ? guests.ToString() : "", out _guestCount);
 
-        // Kald API'et for at hente de faktiske data
         _availableRooms = await ApiService.GetAvailableRoomTypesAsync(_checkInDate, _checkOutDate, _guestCount) ?? new();
-
         _isLoading = false;
     }
 
-    private void StartBookingProcess(int roomTypeId)
+    private void ViewRoomDetails(int roomTypeId)
     {
+        // Vi tilføjer nu de kendte datoer og gæsteantal som query-parametre
         var checkInDateString = _checkInDate.ToString("yyyy-MM-dd");
         var checkOutDateString = _checkOutDate.ToString("yyyy-MM-dd");
 
-        Navigation.NavigateTo($"/booking/confirm?roomTypeId={roomTypeId}&checkin={checkInDateString}&checkout={checkOutDateString}");
+        Navigation.NavigateTo($"/rooms/{roomTypeId}?checkin={checkInDateString}&checkout={checkOutDateString}&guests={_guestCount}");
     }
 
-    // Midlertidig hjælpe-metode til at tildele billeder baseret på værelsesnavn.
-    // Senere bør ImageUrl komme direkte fra API'et.
     private string GetImageUrlForRoom(string roomName)
     {
-        return roomName.ToLower() switch
+        return roomName switch
         {
-            "standard værelse" => "/images/room-standard.png",
-            "deluxe suite" => "/images/room-deluxe.png",
-            "presidential suite" => "/images/room-presidential.png",
-            _ => "/images/room-default.png" 
+            "Standard Værelse" => "/images/room-standard.png",
+            "Deluxe Suite" => "/images/room-deluxe.png",
+            "Presidential Suite" => "/images/room-presidential.png",
+            _ => "/images/room-default.png"
         };
     }
 }
