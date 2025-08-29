@@ -1,0 +1,32 @@
+﻿.room-details-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    max-width: 1400px;
+    margin: 48px auto;
+    padding: 0 32px;
+}
+
+.room-gallery img {
+    width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.room-info h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 36px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.room-info .room-price {
+    font-size: 20px;
+    color: #6C757D;
+    margin-bottom: 24px;
+}
+
+.room-info .room-description {
+    font-size: 16px;
+    line-height: 1.7;
+}

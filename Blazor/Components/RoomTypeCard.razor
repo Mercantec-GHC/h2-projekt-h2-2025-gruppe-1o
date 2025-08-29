@@ -4,20 +4,17 @@
     <img class="room-image" src="@ImageUrl" alt="@Title" />
     <div class="room-content">
         <h3 class="room-title">@Title</h3>
-
         <div class="features">
             @foreach (var feature in Features)
             {
                 <span class="feature-tag">@feature</span>
             }
         </div>
-
         <p class="room-description">@Description</p>
         <p class="room-price">Fra <strong>@Price.ToString("N0") kr.</strong> / nat</p>
-
         <div class="room-action">
-            <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleBookNowClick">
-                Book Nu
+            <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleButtonClick">
+                Se Værelse
             </ActionButton>
         </div>
     </div>
@@ -26,28 +23,23 @@
 @code {
     [Parameter, EditorRequired]
     public string Title { get; set; } = "Værelsestype";
-
     [Parameter, EditorRequired]
     public decimal Price { get; set; }
-
     [Parameter, EditorRequired]
     public string ImageUrl { get; set; } = "";
-
     [Parameter]
     public string Description { get; set; } = "";
-
     [Parameter]
     public List<string> Features { get; set; } = new();
-
     [Parameter]
     public int RoomTypeId { get; set; }
 
-    // NYT: Denne "event" bruges til at notificere forældre-komponenten.
+    // VI UDSENDER NU EN EVENT I STEDET FOR AT NAVIGERE SELV
     [Parameter]
-    public EventCallback<int> OnBookNowClicked { get; set; }
+    public EventCallback<int> OnButtonClicked { get; set; }
 
-    private async Task HandleBookNowClick()
+    private async Task HandleButtonClick()
     {
-        await OnBookNowClicked.InvokeAsync(RoomTypeId);
+        await OnButtonClicked.InvokeAsync(RoomTypeId);
     }
 }

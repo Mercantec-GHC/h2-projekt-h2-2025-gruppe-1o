@@ -84,6 +84,34 @@ namespace API.Controllers
         }
 
         /// <summary>
+        /// Henter detaljer for en specifik værelsestype baseret på ID.
+        /// </summary>
+        [HttpGet("types/{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<RoomTypeDetailDto>> GetRoomTypeById(int id)
+        {
+            var roomType = await _context.RoomTypes.FindAsync(id);
+
+            if (roomType == null)
+            {
+                _logger.LogWarning("Værelsestype med ID {RoomTypeId} blev ikke fundet.", id);
+                return NotFound();
+            }
+
+            var dto = new RoomTypeDetailDto
+            {
+                Id = roomType.Id,
+                Name = roomType.Name,
+                Description = roomType.Description,
+                BasePrice = roomType.BasePrice,
+                Capacity = roomType.Capacity
+            };
+
+            return Ok(dto);
+        }
+
+        /// <summary>
         /// Finder ledige værelsestyper baseret på ankomst, afrejse og antal gæster.
         /// </summary>
         /// <remarks>

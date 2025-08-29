@@ -1,0 +1,49 @@
+﻿@page "/rooms/{id:int}"
+@using DomainModels
+@using Blazor.Models
+@using Blazor.Components
+@inject APIService ApiService
+
+<PageTitle>@_roomType?.Name</PageTitle>
+
+@if (_roomType == null)
+{
+    <p>Indlæser værelsesdetaljer...</p>
+}
+else
+{
+    <div class="room-details-container">
+        <div class="room-gallery">
+            <img src="@GetImageUrlForRoom(_roomType.Name)" alt="@_roomType.Name" />
+        </div>
+        <div class="room-info">
+            <h1>@_roomType.Name</h1>
+            <p class="room-price">Fra <strong>@_roomType.BasePrice.ToString("N0") kr.</strong> / nat</p>
+            <p class="room-description">@_roomType.Description</p>
+
+            <hr />
+
+            <BookingSearchForm SearchQueryModel="_searchQuery" />
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private RoomTypeDetailDto? _roomType;
+    private SearchQuery _searchQuery = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roomType = await ApiService.GetRoomTypeByIdAsync(Id);
+    }
+
+    // Denne metode kan genbruges fra SearchResults.razor
+    private string GetImageUrlForRoom(string roomName)
+    {
+        var formattedName = roomName.ToLower().Replace("æ", "ae").Replace("ø", "oe").Replace("å", "aa").Replace(" ", "-");
+        return $"/images/room-{formattedName}.png";
+    }
+}

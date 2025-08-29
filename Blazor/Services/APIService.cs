@@ -22,6 +22,19 @@ namespace Blazor.Services
             _jsRuntime = jsRuntime;
         }
 
+        public async Task<RoomTypeDetailDto?> GetRoomTypeByIdAsync(int id)
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/Rooms/types/{id}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af værelsestype {id}: {ex.Message}");
+                return null;
+            }
+        }
+
         // Metode til at hente ledige værelser
         public async Task<List<RoomTypeGetDto>?> GetAvailableRoomTypesAsync(DateTime checkIn, DateTime checkOut, int guestCount)
         {

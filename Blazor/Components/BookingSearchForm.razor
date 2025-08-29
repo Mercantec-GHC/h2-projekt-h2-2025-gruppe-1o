@@ -1,11 +1,13 @@
-﻿<div class="booking-form-card">
+﻿@using Blazor.Models
+
+<div class="booking-form-card">
     <h2 class="form-title">Find dit perfekte værelse</h2>
-    <EditForm Model="_searchQuery" OnValidSubmit="HandleSearch">
+    <EditForm Model="SearchQueryModel" OnValidSubmit="HandleSearch">
         <DataAnnotationsValidator />
         <div class="form-inputs">
-            <DatePickerInput Label="Ankomst" @bind-Value="_searchQuery.CheckInDate" />
-            <DatePickerInput Label="Afrejse" @bind-Value="_searchQuery.CheckOutDate" />
-            <GuestCounterInput Label="Antal gæster" @bind-Value="_searchQuery.GuestCount" />
+            <DatePickerInput @bind-Value="SearchQueryModel.CheckInDate" Label="Ankomst" />
+            <DatePickerInput @bind-Value="SearchQueryModel.CheckOutDate" Label="Afrejse" />
+            <GuestCounterInput @bind-Value="SearchQueryModel.GuestCount" Label="Antal gæster" />
         </div>
         <ActionButton Type="ActionButton.ButtonType.Accent" IsSubmit="true">
             Søg efter værelser
@@ -17,18 +19,14 @@
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
-    private SearchQuery _searchQuery { get; set; } = new();
+    // NYT: Modtager nu sin data-model udefra via en parameter.
+    [Parameter, EditorRequired]
+    public SearchQuery SearchQueryModel { get; set; } = new();
 
     private void HandleSearch()
     {
-        var url = $"/search-results?checkin={_searchQuery.CheckInDate.Value:yyyy-MM-dd}&checkout={_searchQuery.CheckOutDate.Value:yyyy-MM-dd}&guests={_searchQuery.GuestCount}";
+        // Bruger nu den modtagne model til at bygge URL'en.
+        var url = $"/search-results?checkin={SearchQueryModel.CheckInDate:yyyy-MM-dd}&checkout={SearchQueryModel.CheckOutDate:yyyy-MM-dd}&guests={SearchQueryModel.GuestCount}";
         Navigation.NavigateTo(url);
-    }
-
-    private class SearchQuery
-    {
-        public DateTime? CheckInDate { get; set; } = DateTime.Today;
-        public DateTime? CheckOutDate { get; set; } = DateTime.Today.AddDays(1);
-        public int GuestCount { get; set; } = 2;
     }
 }

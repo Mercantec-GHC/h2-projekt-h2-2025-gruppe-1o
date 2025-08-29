@@ -1,5 +1,7 @@
 ﻿@page "/"
 @using Blazor.Components
+@using Blazor.Models
+@inject NavigationManager Navigation
 
 <PageTitle>Velkommen til Flyhigh Hotel</PageTitle>
 
@@ -16,25 +18,39 @@
 </div>
 
 <div class="page-section">
-    <h2 class="section-title"></h2>
-    <p class="section-subtitle"></p>
+    <h2 class="section-title">Vores Værelsestyper</h2>
+    <p class="section-subtitle">Oplev luksus og komfort i vores nøje udvalgte værelser</p>
     <div class="room-types-grid">
         <RoomTypeCard Title="Standard Værelse"
                       Price="800"
                       Description="Komfortabelt værelse med alle basisfaciliteter for et behageligt ophold."
                       Features="@(new List<string> { "2 gæster", "Gratis WiFi", "Smart TV" })"
-                      ImageUrl="/images/room-standard.png" RoomTypeId="1" />
+                      ImageUrl="/images/room-standard.png"
+                      RoomTypeId="1"
+                      OnButtonClicked="ViewRoomDetails" />
 
         <RoomTypeCard Title="Deluxe Suite"
                       Price="2200"
                       Description="Rummelig suite med panoramaudsigt og premium faciliteter for det ultimative ophold."
                       Features="@(new List<string> { "4 gæster", "Balkon", "Mini bar" })"
-                      ImageUrl="/images/room-deluxe.png" RoomTypeId="2" />
+                      ImageUrl="/images/room-deluxe.png"
+                      RoomTypeId="2"
+                      OnButtonClicked="ViewRoomDetails" />
 
         <RoomTypeCard Title="Presidential Suite"
                       Price="5000"
                       Description="Den ultimative luksusoplevelse med eksklusiv service og faciliteter i verdensklasse."
                       Features="@(new List<string> { "8 gæster", "Privat spa", "Butler-service" })"
-                      ImageUrl="/images/room-presidential.png" RoomTypeId="3" />
+                      ImageUrl="/images/room-presidential.png"
+                      RoomTypeId="3"
+                      OnButtonClicked="ViewRoomDetails" />
     </div>
 </div>
+
+@code {
+    // DENNE METODE LYTTER NU PÅ KNAP-KLIK FRA ROOMTYPECARD
+    private void ViewRoomDetails(int roomTypeId)
+    {
+        Navigation.NavigateTo($"/rooms/{roomTypeId}");
+    }
+}
