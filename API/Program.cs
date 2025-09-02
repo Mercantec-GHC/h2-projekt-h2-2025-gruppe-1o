@@ -101,7 +101,7 @@ else
 {
     // BRUG EN STRIKS CORS-POLITIK FOR PRODUKTION
     app.UseCors(policy => policy
-        .WithOrigins("https://h2.mercantec.tech") // Kun jeres live frontend-adresse
+        .WithOrigins("https://h2.mercantec.tech")
         .AllowAnyMethod()
         .AllowAnyHeader());
 
