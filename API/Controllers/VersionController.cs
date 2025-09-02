@@ -1,18 +1,20 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection;
 
 namespace API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [AllowAnonymous] // Gør den offentligt tilgængelig for nem test
+    [AllowAnonymous]
     public class VersionController : ControllerBase
     {
         [HttpGet]
         public IActionResult GetVersion()
         {
-            // Dette er vores test-markør
-            return Ok(new { Version = "1.0.1", Besked = "Deployment virker!" });
+            // Henter automatisk versionen fra din API.dll fil
+            var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0.0";
+            return Ok(new { Version = version, Status = "API er online" });
         }
     }
 }
