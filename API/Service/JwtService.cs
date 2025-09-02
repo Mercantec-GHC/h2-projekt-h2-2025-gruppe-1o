@@ -32,10 +32,9 @@ namespace API.Services
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.FirstName) // Bruger nu FirstName til visning
+                new Claim(ClaimTypes.Name, user.FirstName)
             };
 
-            // RETTELSE: Tjekker nu også, at rollenavnet ikke er tomt eller null.
             if (user.Role != null && !string.IsNullOrEmpty(user.Role.Name))
             {
                 claims.Add(new Claim(ClaimTypes.Role, user.Role.Name));

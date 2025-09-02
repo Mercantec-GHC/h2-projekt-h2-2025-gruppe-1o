@@ -78,7 +78,8 @@ builder.Services.AddSwaggerGen(c =>
     }});
 });
 
-builder.Services.AddCors(); // Tilføj CORS-servicen
+// Tilføj CORS-servicen
+builder.Services.AddCors();
 
 var app = builder.Build();
 
@@ -89,27 +90,27 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
+
+    // BRUG EN ÅBEN CORS-POLITIK FOR UDVIKLING
+    app.UseCors(policy => policy
+        .AllowAnyOrigin()
+        .AllowAnyMethod()
+        .AllowAnyHeader());
 }
 else
 {
+    // BRUG EN STRIKS CORS-POLITIK FOR PRODUKTION
+    app.UseCors(policy => policy
+        .WithOrigins("https://h2.mercantec.tech") // Kun jeres live frontend-adresse
+        .AllowAnyMethod()
+        .AllowAnyHeader());
+
     app.UseHsts();
 }
 
-// RETTELSE: Vi bruger én samlet, fleksibel CORS-politik
-app.UseCors(policy => policy
-    .SetIsOriginAllowed(origin => {
-        if (string.IsNullOrEmpty(origin)) return false;
-        // Tillad altid dit live frontend-domæne
-        if (origin.Equals("https://h2.mercantec.tech")) return true;
-        // Tillad alle localhost-domæner til udvikling, uanset port
-        if (origin.StartsWith("https://localhost") || origin.StartsWith("http://localhost")) return true;
-        return false;
-    })
-    .AllowAnyMethod()
-    .AllowAnyHeader());
-
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
