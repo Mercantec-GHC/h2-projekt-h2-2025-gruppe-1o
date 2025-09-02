@@ -78,36 +78,38 @@ builder.Services.AddSwaggerGen(c =>
     }});
 });
 
-// --- RETTELSEN ER HER ---
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowSpecificOrigins", corsBuilder =>
-    {
-        // Tilføjet den nye port 53071 til listen
-        corsBuilder.WithOrigins("http://localhost:5085", "https://localhost:7285", "https://h2.mercantec.tech", "https://localhost:53071")
-            .AllowAnyMethod()
-            .AllowAnyHeader();
-    });
-});
+// Tilføj CORS-servicen
+builder.Services.AddCors();
 
 var app = builder.Build();
+
+// --- Konfigurer Middleware Pipeline ---
 
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
+
+    // BRUG EN ÅBEN CORS-POLITIK FOR UDVIKLING
+    app.UseCors(policy => policy
+        .AllowAnyOrigin()
+        .AllowAnyMethod()
+        .AllowAnyHeader());
 }
 else
 {
+    // BRUG EN STRIKS CORS-POLITIK FOR PRODUKTION
+    app.UseCors(policy => policy
+        .WithOrigins("https://h2.mercantec.tech") // Kun jeres live frontend-adresse
+        .AllowAnyMethod()
+        .AllowAnyHeader());
+
     app.UseHsts();
 }
 
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
-
-app.UseCors("AllowSpecificOrigins");
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
