@@ -13,20 +13,15 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        // --- RETTELSE: Hardkodet API URL ---
-
-        // 1. Definer den specifikke API-adresse, vi altid vil bruge.
+        // Hardkodet API-adresse
         var apiBaseAddress = new Uri("https://flyhigh-api.mercantec.tech/");
 
-        // 2. Registrer en ENKELT HttpClient, som bruger den hardkodede API-adresse.
+        // Opsætning af en enkelt HttpClient, som alle services deler
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });
 
-        // 3. Registrer dine services. De vil automatisk få den HttpClient, vi oprettede ovenfor.
         builder.Services.AddScoped<APIService>();
         builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
         builder.Services.AddAuthorizationCore();
-
-        // --- SLUT PÅ RETTELSE ---
 
         await builder.Build().RunAsync();
     }
