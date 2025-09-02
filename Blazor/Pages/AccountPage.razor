@@ -37,7 +37,6 @@
 
         <div class="account-card">
             <h3 class="card-title">Mine Oplysninger</h3>
-
             @if (_isLoading)
             {
                 <p>Henter oplysninger...</p>
@@ -58,6 +57,10 @@
                         <label>Email</label>
                         <InputText class="form-control" @bind-Value="_userUpdateDto.Email" />
                     </div>
+                    <div class="form-group">
+                        <label>Telefon nr.</label>
+                        <InputText class="form-control" @bind-Value="_userUpdateDto.PhoneNumber" />
+                    </div>
                     <div class="button-group">
                         <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Gem Ændringer</ActionButton>
                         <button type="button" class="btn btn-secondary" @onclick="ToggleEditMode">Annuller</button>
@@ -70,14 +73,40 @@
                     <p><strong>Fornavn:</strong> @_userDetailDto.FirstName</p>
                     <p><strong>Efternavn:</strong> @_userDetailDto.LastName</p>
                     <p><strong>Email:</strong> @_userDetailDto.Email</p>
-                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="ToggleEditMode">Rediger</ActionButton>
+                    <p><strong>Telefon nr.:</strong> @_userDetailDto.PhoneNumber</p>
+
+                    <ActionButton Type="ActionButton.ButtonType.Primary" @onclick="ToggleEditMode">Rediger</ActionButton>
                 </div>
             }
         </div>
 
         <div class="account-card">
             <h3 class="card-title">Sikkerhed</h3>
-            <p>Her vil du kunne skifte din adgangskode.</p>
+            <EditForm Model="_changePasswordDto" OnValidSubmit="HandleChangePassword">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" />
+
+                @if (!string.IsNullOrEmpty(_passwordChangeMessage))
+                {
+                    <div class="alert @(_passwordChangeSuccess ? "alert-success" : "alert-danger")" role="alert">
+                        @_passwordChangeMessage
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label>Nuværende adgangskode</label>
+                    <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.CurrentPassword" />
+                </div>
+                <div class="form-group">
+                    <label>Ny adgangskode</label>
+                    <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.NewPassword" />
+                </div>
+                <div class="form-group">
+                    <label>Bekræft ny adgangskode</label>
+                    <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.ConfirmNewPassword" />
+                </div>
+                <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Skift Adgangskode</ActionButton>
+            </EditForm>
         </div>
     </div>
 </div>
@@ -93,9 +122,16 @@
     private List<BookingGetDto> _myBookings = new();
     private bool _isLoading = true;
 
+    // Til "Mine Oplysninger"
     private bool _isEditingInfo = false;
     private UserDetailDto? _userDetailDto;
     private UserUpdateDto _userUpdateDto = new();
+
+    // Til "Sikkerhed"
+    private ChangePasswordDto _changePasswordDto = new();
+    private string? _passwordChangeMessage;
+    private bool _passwordChangeSuccess = false;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -111,15 +147,14 @@
 
         if (_userDetailDto != null)
         {
-            // Opdateret til at bruge FirstName og LastName
             _userUpdateDto = new UserUpdateDto
             {
                 FirstName = _userDetailDto.FirstName,
                 LastName = _userDetailDto.LastName,
-                Email = _userDetailDto.Email
+                Email = _userDetailDto.Email,
+                PhoneNumber = _userDetailDto.PhoneNumber
             };
         }
-
         _isLoading = false;
     }
 
@@ -127,12 +162,12 @@
     {
         if (_userDetailDto != null)
         {
-            // Nulstil til de oprindelige værdier ved annullering
             _userUpdateDto = new UserUpdateDto
             {
                 FirstName = _userDetailDto.FirstName,
                 LastName = _userDetailDto.LastName,
-                Email = _userDetailDto.Email
+                Email = _userDetailDto.Email,
+                PhoneNumber = _userDetailDto.PhoneNumber
             };
         }
         _isEditingInfo = !_isEditingInfo;
@@ -148,17 +183,33 @@
             var success = await ApiService.UpdateMyDetailsAsync(userId, _userUpdateDto);
             if (success)
             {
-                // Opdater de viste detaljer efter en succesfuld gemning
                 _userDetailDto.FirstName = _userUpdateDto.FirstName;
                 _userDetailDto.LastName = _userUpdateDto.LastName;
                 _userDetailDto.Email = _userUpdateDto.Email;
+                _userDetailDto.PhoneNumber = _userUpdateDto.PhoneNumber ?? string.Empty;
                 _isEditingInfo = false;
             }
             else
             {
-                // Her kan vi senere vise en fejlbesked i UI'et
-                Console.WriteLine("Opdatering af brugeroplysninger fejlede.");
+                // Implementer fejlhåndtering her
             }
+        }
+    }
+
+    private async Task HandleChangePassword()
+    {
+        _passwordChangeMessage = null;
+        var (success, errorMessage) = await ApiService.ChangePasswordAsync(_changePasswordDto);
+
+        _passwordChangeSuccess = success;
+        if (success)
+        {
+            _passwordChangeMessage = "Din adgangskode er blevet ændret.";
+            _changePasswordDto = new(); // Nulstil formularen
+        }
+        else
+        {
+            _passwordChangeMessage = errorMessage;
         }
     }
 }

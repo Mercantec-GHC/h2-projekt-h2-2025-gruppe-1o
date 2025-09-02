@@ -42,7 +42,8 @@ namespace API.Controllers
                 Id = user.Id,
                 Email = user.Email,
                 FirstName = user.FirstName,
-                LastName = user.LastName
+                LastName = user.LastName,
+                PhoneNumber = user.PhoneNumber
             });
         }
 
@@ -50,21 +51,73 @@ namespace API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(string id, [FromBody] UserUpdateDto userDto)
         {
-            var userToUpdate = await _context.Users.FindAsync(id);
-            if (userToUpdate == null) return NotFound();
-
             var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userToUpdate.Id != currentUserId && !User.IsInRole("Admin")) return Forbid();
+            _logger.LogInformation("Bruger med ID {CurrentUserId} forsøger at opdatere bruger med ID {TargetId}", currentUserId, id);
 
+            var userToUpdate = await _context.Users.FindAsync(id);
+            if (userToUpdate == null)
+            {
+                _logger.LogWarning("Opdatering fejlede: Bruger med ID {TargetId} blev ikke fundet.", id);
+                return NotFound();
+            }
+
+            // Autorisationstjek: Er den indloggede bruger den samme som den, der skal opdateres?
+            if (userToUpdate.Id != currentUserId && !User.IsInRole("Admin"))
+            {
+                _logger.LogWarning("FORBIDDEN: Bruger {CurrentUserId} har ikke tilladelse til at opdatere bruger {TargetId}.", currentUserId, id);
+                return Forbid();
+            }
+
+            _logger.LogInformation("Bruger {CurrentUserId} har tilladelse. Opdaterer felter...", currentUserId);
             userToUpdate.FirstName = userDto.FirstName;
             userToUpdate.LastName = userDto.LastName;
             userToUpdate.Email = userDto.Email;
+            userToUpdate.PhoneNumber = userDto.PhoneNumber ?? string.Empty;
             userToUpdate.UpdatedAt = DateTime.UtcNow;
 
-            await _context.SaveChangesAsync();
-            return NoContent();
+            try
+            {
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Bruger {TargetId} blev opdateret succesfuldt i databasen.", id);
+                return NoContent();
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, "DATABASE FEJL: Kunne ikke gemme ændringer for bruger {TargetId}.", id);
+                return StatusCode(500, "Der opstod en fejl under lagring til databasen.");
+            }
         }
 
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound("Bruger ikke fundet.");
+            }
+
+            if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.HashedPassword))
+            {
+                return BadRequest("Den nuværende adgangskode er ikke korrekt.");
+            }
+
+            string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            user.HashedPassword = newHashedPassword;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Adgangskode blev opdateret succesfuldt." });
+        }
+
+        // ... Resten af metoderne (Register, Login osv.) er uændrede ...
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
@@ -98,12 +151,10 @@ namespace API.Controllers
         public async Task<IActionResult> Login(LoginDto dto)
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == dto.Email);
-
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword))
             {
                 return Unauthorized("Forkert email eller adgangskode");
             }
-
 
             user.LastLogin = DateTime.UtcNow;
             await _context.SaveChangesAsync();

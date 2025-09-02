@@ -131,6 +131,24 @@ namespace Blazor.Services
             }
             catch { return new HealthCheckResponse { status = "Error", message = "Simuleret DB-check fejlede." }; }
         }
+
+        public async Task<(bool Success, string ErrorMessage)> ChangePasswordAsync(ChangePasswordDto dto)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/Users/change-password", dto);
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, string.Empty);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            // Forsøg at deserialisere en standard fejlbesked fra API'et
+            var errorObject = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(errorContent);
+            var errorMessage = errorObject.TryGetProperty("title", out var title) ? title.GetString() : "Der opstod en ukendt fejl.";
+
+            return (false, errorMessage ?? "Der opstod en ukendt fejl.");
+        }
+
+
     }
 
     public class LoginResult

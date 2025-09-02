@@ -13,17 +13,17 @@
         </nav>
         <div class="header-right">
             <AuthorizeView>
-                <Authorized>                
-                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="GoToAccount">
+                <Authorized>
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="GoToAccount">
                         Min Konto
                     </ActionButton>
 
-                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="LogoutClicked">
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="LogoutClicked">
                         Log ud
                     </ActionButton>
                 </Authorized>
                 <NotAuthorized>
-                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="LoginClicked">
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="LoginClicked">
                         Login
                     </ActionButton>
                 </NotAuthorized>
