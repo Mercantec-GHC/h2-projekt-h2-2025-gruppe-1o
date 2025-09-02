@@ -78,39 +78,33 @@ builder.Services.AddSwaggerGen(c =>
     }});
 });
 
-// Tilføj CORS-servicen
 builder.Services.AddCors();
 
 var app = builder.Build();
-
-// --- Konfigurer Middleware Pipeline ---
 
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
-
-    // BRUG EN ÅBEN CORS-POLITIK FOR UDVIKLING
-    app.UseCors(policy => policy
-        .AllowAnyOrigin()
-        .AllowAnyMethod()
-        .AllowAnyHeader());
 }
 else
 {
-    // BRUG EN STRIKS CORS-POLITIK FOR PRODUKTION
-    app.UseCors(policy => policy
-        .WithOrigins("https://h2.mercantec.tech")
-        .AllowAnyMethod()
-        .AllowAnyHeader());
-
     app.UseHsts();
 }
 
+app.UseCors(policy => policy
+    .SetIsOriginAllowed(origin => {
+        if (string.IsNullOrEmpty(origin)) return false;
+        if (origin.Equals("https://h2.mercantec.tech")) return true;
+        if (origin.StartsWith("https://localhost") || origin.StartsWith("http://localhost")) return true;
+        return false;
+    })
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

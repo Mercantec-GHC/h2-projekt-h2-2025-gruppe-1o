@@ -13,7 +13,7 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        // Hardkodet API-adresse
+        // Peger permanent på dit live API
         var apiBaseAddress = new Uri("https://flyhigh-api.mercantec.tech/");
 
         // Opsætning af en enkelt HttpClient, som alle services deler
