@@ -56,3 +56,27 @@
     color: #003366;
     font-size: 12px;
 }
+
+.info-display p {
+    margin-bottom: 1rem;
+}
+
+    .info-display p strong {
+        color: #343A40;
+    }
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+    .form-group label {
+        display: block;
+        margin-bottom: .5rem;
+        font-weight: 500;
+    }
+
+.button-group {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+}

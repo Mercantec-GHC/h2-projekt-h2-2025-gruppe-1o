@@ -1,4 +1,4 @@
-﻿// Models/SearchQuery.cs
+﻿
 namespace Blazor.Models
 {
     public class SearchQuery

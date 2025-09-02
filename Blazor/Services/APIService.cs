@@ -1,11 +1,10 @@
 ﻿using DomainModels;
+using DomainModels.DTOs;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System;
-using System.Collections.Generic;
 
 namespace Blazor.Services
 {
@@ -22,42 +21,13 @@ namespace Blazor.Services
             _jsRuntime = jsRuntime;
         }
 
-        public async Task<RoomTypeDetailDto?> GetRoomTypeByIdAsync(int id)
-        {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/Rooms/types/{id}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af værelsestype {id}: {ex.Message}");
-                return null;
-            }
-        }
-
-        // Metode til at oprette en ny booking
-        public async Task<bool> CreateBookingAsync(BookingCreateDto bookingDetails)
-        {
-            var response = await _httpClient.PostAsJsonAsync("api/Bookings", bookingDetails);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                Console.WriteLine($"Fejl ved oprettelse af booking: {errorContent}");
-                return false;
-            }
-
-            return true;
-        }
-
-        // Metode til at hente ledige værelser
+        // --- Booking & Room Metoder ---
         public async Task<List<RoomTypeGetDto>?> GetAvailableRoomTypesAsync(DateTime checkIn, DateTime checkOut, int guestCount)
         {
             var url = $"api/rooms/availability?checkInDate={checkIn:yyyy-MM-dd}&checkOutDate={checkOut:yyyy-MM-dd}&numberOfGuests={guestCount}";
             try
             {
-                var result = await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>(url);
-                return result ?? new List<RoomTypeGetDto>();
+                return await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>(url);
             }
             catch (Exception ex)
             {
@@ -66,18 +36,60 @@ namespace Blazor.Services
             }
         }
 
-        // Metode til at registrere en ny bruger
+        public async Task<RoomTypeDetailDto?> GetRoomTypeByIdAsync(int id)
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/rooms/types/{id}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af værelsestype {id}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<bool> CreateBookingAsync(BookingCreateDto bookingDetails)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/Bookings", bookingDetails);
+            return response.IsSuccessStatusCode;
+        }
+
+        // --- Bruger-specifikke Metoder ---
+        public async Task<List<BookingGetDto>?> GetMyBookingsAsync()
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<BookingGetDto>>("api/Bookings/my-bookings");
+            }
+            catch { return new List<BookingGetDto>(); }
+        }
+
+        public async Task<UserDetailDto?> GetMyDetailsAsync()
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<UserDetailDto>("api/Users/me");
+            }
+            catch { return null; }
+        }
+
+        public async Task<bool> UpdateMyDetailsAsync(string userId, UserUpdateDto userDetails)
+        {
+            var response = await _httpClient.PutAsJsonAsync($"api/Users/{userId}", userDetails);
+            return response.IsSuccessStatusCode;
+        }
+
+        // --- Autentificerings-metoder ---
         public async Task<bool> RegisterAsync(RegisterDto registerModel)
         {
             var response = await _httpClient.PostAsJsonAsync("api/Users/register", registerModel);
             return response.IsSuccessStatusCode;
         }
 
-        // Metode til at logge en bruger ind
         public async Task<string?> LoginAsync(LoginDto loginModel)
         {
             var response = await _httpClient.PostAsJsonAsync("api/Users/login", loginModel);
-
             if (!response.IsSuccessStatusCode) return null;
 
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -88,12 +100,11 @@ namespace Blazor.Services
 
             await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", token);
             ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(token);
-            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("bearer", token);
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
 
             return token;
         }
 
-        // Metode til at logge en bruger ud
         public async Task LogoutAsync()
         {
             await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", "authToken");
@@ -101,50 +112,27 @@ namespace Blazor.Services
             _httpClient.DefaultRequestHeaders.Authorization = null;
         }
 
-        // Sundhedstjek-metoder
+        // --- Status Metoder ---
         public async Task<HealthCheckResponse?> GetHealthCheckAsync()
         {
             try
             {
-                return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/status/healthcheck");
+                return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/Status/healthcheck");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Fejl ved HealthCheck: " + ex.Message);
-                return new HealthCheckResponse { status = "Error", message = "Kunne ikke hente API-status (" + ex.Message + ")" };
-            }
+            catch { return new HealthCheckResponse { status = "Error", message = "Kunne ikke forbinde til API." }; }
         }
 
         public async Task<HealthCheckResponse?> GetDBHealthCheckAsync()
         {
+            // NOTE: Lige nu kalder vi det samme endpoint. I fremtiden kunne dette pege på et dedikeret DB-healthcheck endpoint.
             try
             {
-                return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/status/dbhealthcheck");
+                return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/Status/healthcheck");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Fejl ved DBHealthCheck: " + ex.Message);
-                return new HealthCheckResponse { status = "Error", message = "Kunne ikke hente database-status (" + ex.Message + ")" };
-            }
-        }
-
-        // Metode til at hente den indloggede brugers bookinger
-        public async Task<List<BookingGetDto>?> GetMyBookingsAsync()
-        {
-            try
-            {
-                var result = await _httpClient.GetFromJsonAsync<List<BookingGetDto>>("api/Bookings/my-bookings");
-                return result ?? new List<BookingGetDto>();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af 'mine bookinger': {ex.Message}");
-                return new List<BookingGetDto>(); // Returner en tom liste ved fejl
-            }
+            catch { return new HealthCheckResponse { status = "Error", message = "Simuleret DB-check fejlede." }; }
         }
     }
 
-    // Modeller der bruges af servicen
     public class LoginResult
     {
         public string? Token { get; set; }

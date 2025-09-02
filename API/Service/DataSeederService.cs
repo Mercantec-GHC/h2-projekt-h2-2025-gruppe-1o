@@ -40,19 +40,14 @@ namespace API.Services
             var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
             if (userRole == null)
             {
-                string errorMessage = "Kan ikke seede data: Standardrollen 'User' findes ikke. Sørg for at databasen er migreret korrekt.";
+                string errorMessage = "Kan ikke seede data: Standardrollen 'User' findes ikke.";
                 _logger.LogCritical(errorMessage);
                 throw new InvalidOperationException(errorMessage);
             }
 
             _logger.LogInformation("Starter seeding af data...");
 
-            // Rooms
-            if (await _context.Rooms.AnyAsync())
-            {
-                _logger.LogInformation("Databasen indeholder allerede værelser. Skipper værelses-seeding.");
-            }
-            else
+            if (!await _context.Rooms.AnyAsync())
             {
                 var roomTypesForSeeding = await _context.RoomTypes.ToListAsync();
                 var rooms = GenerateRooms(roomTypesForSeeding);
@@ -61,13 +56,11 @@ namespace API.Services
                 _logger.LogInformation("Gemt {Count} nye værelser i databasen.", rooms.Count);
             }
 
-            // Users
             var users = GenerateUsers(userCount, userRole.Id);
             await _context.Users.AddRangeAsync(users);
             await _context.SaveChangesAsync();
             _logger.LogInformation("Genereret og gemt {Count} brugere.", users.Count);
 
-            // Bookings
             var roomTypes = await _context.RoomTypes.Include(rt => rt.Rooms).ToListAsync();
             var userIds = users.Select(u => u.Id).ToList();
             var bookings = GenerateBookings(bookingCount, userIds, roomTypes);
@@ -76,7 +69,6 @@ namespace API.Services
             _logger.LogInformation("Genereret og gemt {Count} bookinger.", bookings.Count);
         }
 
-        // === USERS ===
         private List<User> GenerateUsers(int count, string userRoleId)
         {
             var userFaker = new Faker<User>()
@@ -87,7 +79,9 @@ namespace API.Services
                     {
                         Id = Guid.NewGuid().ToString(),
                         Email = f.Internet.Email(person.FirstName, person.LastName).ToLower(),
-                        Username = f.Internet.UserName(person.FirstName, person.LastName),
+                        FirstName = person.FirstName,
+                        LastName = person.LastName,
+                        PhoneNumber = f.Phone.PhoneNumber(),
                         PasswordBackdoor = "Password123!",
                         HashedPassword = FullBCrypt.HashPassword("Password123!"),
                         RoleId = userRoleId,
@@ -96,11 +90,9 @@ namespace API.Services
                         UpdatedAt = DateTime.UtcNow
                     };
                 });
-
             return userFaker.Generate(count);
         }
 
-        // === ROOMS ===
         private List<Room> GenerateRooms(List<RoomType> roomTypes)
         {
             var rooms = new List<Room>();
@@ -110,12 +102,11 @@ namespace API.Services
             {
                 int amount = rt.Name switch
                 {
-                    "Single" => 200,
-                    "Double" => 150,
-                    "Suite" => 50,
-                    _ => 20 // fallback, hvis der er andre typer
+                    "Standard Værelse" => 200,
+                    "Deluxe Suite" => 150,
+                    "Presidential Suite" => 50,
+                    _ => 20
                 };
-
                 for (int i = 0; i < amount; i++)
                 {
                     rooms.Add(new Room
@@ -126,12 +117,9 @@ namespace API.Services
                     });
                 }
             }
-
-            _logger.LogInformation("Genereret {Count} værelser til seeding.", rooms.Count);
             return rooms;
         }
 
-        // === BOOKINGS ===
         private List<Booking> GenerateBookings(int count, List<string> userIds, List<RoomType> roomTypes)
         {
             var occupancy = new Dictionary<int, Dictionary<DateOnly, int>>();
@@ -144,12 +132,10 @@ namespace API.Services
             var faker = new Faker();
             int createdBookings = 0;
 
-            // Brug en while-løkke for at sikre, at vi opretter det ønskede antal bookinger,
-            // selvom nogle forsøg fejler pga. manglende ledighed.
             while (createdBookings < count && userIds.Any())
             {
                 var roomType = faker.PickRandom(roomTypes);
-                if (!roomType.Rooms.Any()) continue; 
+                if (!roomType.Rooms.Any()) continue;
 
                 var nights = faker.Random.Int(1, 7);
                 var checkInDate = faker.Date.Future(1).Date;
@@ -185,14 +171,13 @@ namespace API.Services
                         UserId = faker.PickRandom(userIds),
                         RoomTypeId = roomType.Id,
                         RoomId = null,
-                        CheckInDate = checkInDate.ToUniversalTime(), 
-                        CheckOutDate = checkOutDate.ToUniversalTime(), 
+                        CheckInDate = checkInDate.ToUniversalTime(),
+                        CheckOutDate = checkOutDate.ToUniversalTime(),
                         TotalPrice = roomType.BasePrice * nights,
                         Status = "Confirmed",
-                        CreatedAt = faker.Date.Past(1, checkInDate).ToUniversalTime(), 
+                        CreatedAt = faker.Date.Past(1, checkInDate).ToUniversalTime(),
                         UpdatedAt = DateTime.UtcNow
                     };
-
                     bookings.Add(newBooking);
                     createdBookings++;
                 }

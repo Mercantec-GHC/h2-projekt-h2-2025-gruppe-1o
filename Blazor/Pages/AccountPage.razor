@@ -1,6 +1,7 @@
 ﻿@page "/account"
 @attribute [Authorize]
-@using DomainModels
+@using DomainModels.DTOs
+@using System.Security.Claims
 
 <PageTitle>Min Konto</PageTitle>
 
@@ -36,7 +37,42 @@
 
         <div class="account-card">
             <h3 class="card-title">Mine Oplysninger</h3>
-            <p>Her vil dine personlige oplysninger blive vist.</p>
+
+            @if (_isLoading)
+            {
+                <p>Henter oplysninger...</p>
+            }
+            else if (_isEditingInfo)
+            {
+                <EditForm Model="_userUpdateDto" OnValidSubmit="HandleUpdateInfo">
+                    <DataAnnotationsValidator />
+                    <div class="form-group">
+                        <label>Fornavn</label>
+                        <InputText class="form-control" @bind-Value="_userUpdateDto.FirstName" />
+                    </div>
+                    <div class="form-group">
+                        <label>Efternavn</label>
+                        <InputText class="form-control" @bind-Value="_userUpdateDto.LastName" />
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <InputText class="form-control" @bind-Value="_userUpdateDto.Email" />
+                    </div>
+                    <div class="button-group">
+                        <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Gem Ændringer</ActionButton>
+                        <button type="button" class="btn btn-secondary" @onclick="ToggleEditMode">Annuller</button>
+                    </div>
+                </EditForm>
+            }
+            else if (_userDetailDto != null)
+            {
+                <div class="info-display">
+                    <p><strong>Fornavn:</strong> @_userDetailDto.FirstName</p>
+                    <p><strong>Efternavn:</strong> @_userDetailDto.LastName</p>
+                    <p><strong>Email:</strong> @_userDetailDto.Email</p>
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="ToggleEditMode">Rediger</ActionButton>
+                </div>
+            }
         </div>
 
         <div class="account-card">
@@ -57,13 +93,72 @@
     private List<BookingGetDto> _myBookings = new();
     private bool _isLoading = true;
 
+    private bool _isEditingInfo = false;
+    private UserDetailDto? _userDetailDto;
+    private UserUpdateDto _userUpdateDto = new();
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateTask;
         user = authState.User;
 
-        // Hent brugerens bookinger fra API'et
-        _myBookings = await ApiService.GetMyBookingsAsync() ?? new List<BookingGetDto>();
+        var bookingsTask = ApiService.GetMyBookingsAsync();
+        var userDetailsTask = ApiService.GetMyDetailsAsync();
+        await Task.WhenAll(bookingsTask, userDetailsTask);
+
+        _myBookings = bookingsTask.Result ?? new();
+        _userDetailDto = userDetailsTask.Result;
+
+        if (_userDetailDto != null)
+        {
+            // Opdateret til at bruge FirstName og LastName
+            _userUpdateDto = new UserUpdateDto
+            {
+                FirstName = _userDetailDto.FirstName,
+                LastName = _userDetailDto.LastName,
+                Email = _userDetailDto.Email
+            };
+        }
+
         _isLoading = false;
+    }
+
+    private void ToggleEditMode()
+    {
+        if (_userDetailDto != null)
+        {
+            // Nulstil til de oprindelige værdier ved annullering
+            _userUpdateDto = new UserUpdateDto
+            {
+                FirstName = _userDetailDto.FirstName,
+                LastName = _userDetailDto.LastName,
+                Email = _userDetailDto.Email
+            };
+        }
+        _isEditingInfo = !_isEditingInfo;
+    }
+
+    private async Task HandleUpdateInfo()
+    {
+        if (user != null && _userDetailDto != null)
+        {
+            var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId == null) return;
+
+            var success = await ApiService.UpdateMyDetailsAsync(userId, _userUpdateDto);
+            if (success)
+            {
+                // Opdater de viste detaljer efter en succesfuld gemning
+                _userDetailDto.FirstName = _userUpdateDto.FirstName;
+                _userDetailDto.LastName = _userUpdateDto.LastName;
+                _userDetailDto.Email = _userUpdateDto.Email;
+                _isEditingInfo = false;
+            }
+            else
+            {
+                // Her kan vi senere vise en fejlbesked i UI'et
+                Console.WriteLine("Opdatering af brugeroplysninger fejlede.");
+            }
+        }
     }
 }

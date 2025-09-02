@@ -2,20 +2,11 @@
 
 namespace DomainModels
 {
-    public class Service
+    public class Service : Common
     {
-        [Key]
-        public int Id { get; set; }
-
-        [Required]
-        [MaxLength(100)]
+        public int Id { get; set; } 
         public string Name { get; set; } = string.Empty;
-
-        [Required]
         public decimal Price { get; set; }
-
-        [Required]
-        [MaxLength(20)]
-        public string BillingType { get; set; } // "PerBooking" eller "PerNight"
+        public string BillingType { get; set; } = string.Empty; // Tilføj = string.Empty;
     }
 }

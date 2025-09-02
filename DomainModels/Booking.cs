@@ -55,8 +55,8 @@ namespace DomainModels
         public decimal TotalPrice { get; set; }
         public string Status { get; set; } = string.Empty;
         public string RoomTypeName { get; set; } = string.Empty;
-        public string RoomNumber { get; set; } = string.Empty; // Vil være "Not Assigned" før check-in
-        public string UserEmail { get; set; } = string.Empty;
+        public string RoomNumber { get; set; } = string.Empty;
+        public string UserFullName { get; set; } = string.Empty; 
         public DateTime CreatedAt { get; set; }
     }
 
