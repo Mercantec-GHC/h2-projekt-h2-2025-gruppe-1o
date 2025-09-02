@@ -13,19 +13,20 @@ public class Program
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
 
-        // 1. Definer API endpoint (her kan du senere bruge appsettings.json, hvis du vil)
-        var apiEndpoint = "https://flyhigh-api.mercantec.tech/";
+        // --- RETTELSE: Hardkodet API URL ---
 
-        // 2. Registrer en standard HttpClient som Scoped. Alle services, der beder om en HttpClient, får nu DEN SAMME.
-        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiEndpoint) });
+        // 1. Definer den specifikke API-adresse, vi altid vil bruge.
+        var apiBaseAddress = new Uri("https://flyhigh-api.mercantec.tech/");
 
-        // 3. Registrer APIService og AuthenticationStateProvider som Scoped.
-        //    De vil begge modtage den HttpClient, vi registrerede ovenfor.
+        // 2. Registrer en ENKELT HttpClient, som bruger den hardkodede API-adresse.
+        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });
+
+        // 3. Registrer dine services. De vil automatisk få den HttpClient, vi oprettede ovenfor.
         builder.Services.AddScoped<APIService>();
         builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
-
-        // 4. Tilføj Authorization Core services
         builder.Services.AddAuthorizationCore();
+
+        // --- SLUT PÅ RETTELSE ---
 
         await builder.Build().RunAsync();
     }

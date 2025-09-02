@@ -8,133 +8,108 @@ using Serilog;
 using System.Reflection;
 using System.Text;
 
-// Opsæt en bootstrap-logger for at fange fejl under selve applikationens opstart
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .CreateBootstrapLogger();
+var builder = WebApplication.CreateBuilder(args);
 
-try
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration));
+
+IConfiguration Configuration = builder.Configuration;
+string connectionString = Configuration.GetConnectionString("DefaultConnection")!;
+
+builder.Services.AddDbContext<AppDBContext>(options =>
+    options.UseNpgsql(connectionString));
+
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<LoginAttemptService>();
+builder.Services.AddScoped<JwtService>();
+builder.Services.AddScoped<DataSeederService>();
+builder.Services.AddScoped<API.Repositories.IBookingRepository, API.Repositories.BookingRepository>();
+
+var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
+var jwtIssuer = Configuration["Jwt:Issuer"] ?? "H2-2025-API";
+var jwtAudience = Configuration["Jwt:Audience"] ?? "H2-2025-Client";
+
+builder.Services.AddAuthentication(options =>
 {
-    var builder = WebApplication.CreateBuilder(args);
-
-    // Erstat standard-loggeren med Serilog
-    builder.Host.UseSerilog((context, configuration) =>
-        configuration.ReadFrom.Configuration(context.Configuration));
-
-    builder.Services.AddProblemDetails();
-
-    IConfiguration Configuration = builder.Configuration;
-    string connectionString = Configuration.GetConnectionString("DefaultConnection")
-        ?? Environment.GetEnvironmentVariable("DefaultConnection");
-
-    builder.Services.AddDbContext<AppDBContext>(options =>
-        options.UseNpgsql(connectionString));
-
-    // Service registrering
-    builder.Services.AddMemoryCache();
-    builder.Services.AddSingleton<LoginAttemptService>();
-    builder.Services.AddScoped<JwtService>();
-    builder.Services.AddScoped<DataSeederService>();
-    builder.Services.AddScoped<API.Repositories.IBookingRepository, API.Repositories.BookingRepository>();
-
-    // JWT Authentication
-    var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
-    var jwtIssuer = Configuration["Jwt:Issuer"] ?? "H2-2025-API";
-    var jwtAudience = Configuration["Jwt:Audience"] ?? "H2-2025-Client";
-
-    builder.Services.AddAuthentication(options =>
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtSecretKey)),
+        ValidateIssuer = true,
+        ValidIssuer = jwtIssuer,
+        ValidateAudience = true,
+        ValidAudience = jwtAudience,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
+builder.Services.AddControllers();
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Flyhigh Hotel API", Version = "v1" });
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
     {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtSecretKey)),
-            ValidateIssuer = true,
-            ValidIssuer = jwtIssuer,
-            ValidateAudience = true,
-            ValidAudience = jwtAudience,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
-    });
-
-    builder.Services.AddAuthorization();
-    builder.Services.AddControllers();
-
-    // Swagger/OpenAPI
-    builder.Services.AddSwaggerGen(c =>
-    {
-        c.SwaggerDoc("v1", new OpenApiInfo { Title = "H2 Hotel Booking API", Version = "v1" });
-        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-        if (File.Exists(xmlPath))
-        {
-            c.IncludeXmlComments(xmlPath);
-        }
-        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Description = "JWT Authorization. Skriv 'Bearer' [space] og token.",
-            Name = "Authorization",
-            In = ParameterLocation.Header,
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
-        });
-        c.AddSecurityRequirement(new OpenApiSecurityRequirement {
-        {
-            new OpenApiSecurityScheme {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            new string[] {}
-        }});
-    });
-
-    // CORS
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("AllowSpecificOrigins", corsBuilder =>
-        {
-            // Tilføj dine localhost-adresser her
-            corsBuilder.WithOrigins("http://localhost:5085", "https://localhost:7285", "https://h2.mercantec.tech")
-                       .AllowAnyMethod()
-                       .AllowAnyHeader();
-        });
-    });
-
-    var app = builder.Build();
-
-    // ---- Middleware Pipeline ----
-
-
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseDeveloperExceptionPage(); 
-        app.UseSwagger();
-        app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
+        c.IncludeXmlComments(xmlPath);
     }
-    else
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        app.UseExceptionHandler("/error"); 
-        app.UseHsts();
-    }
+        Description = "JWT Authorization. Skriv 'Bearer' [space] og token.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement {
+    {
+        new OpenApiSecurityScheme {
+            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+        },
+        new string[] {}
+    }});
+});
 
-    app.UseHttpsRedirection();
-    app.UseSerilogRequestLogging();
-    app.UseCors("AllowSpecificOrigins");
-    app.UseAuthentication();
-    app.UseAuthorization();
-    app.MapControllers();
+// --- RETTELSEN ER HER ---
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigins", corsBuilder =>
+    {
+        // Tilføjet den nye port 53071 til listen
+        corsBuilder.WithOrigins("http://localhost:5085", "https://localhost:7285", "https://h2.mercantec.tech", "https://localhost:53071")
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 
-    app.Run();
-}
-catch (Exception ex)
+var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
 {
-    Log.Fatal(ex, "Applikationen kunne ikke starte.");
+    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI(options => options.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1"));
 }
-finally
+else
 {
-    Log.CloseAndFlush();
+    app.UseHsts();
 }
+
+app.UseHttpsRedirection();
+app.UseSerilogRequestLogging();
+
+app.UseCors("AllowSpecificOrigins");
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
