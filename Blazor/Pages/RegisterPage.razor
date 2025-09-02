@@ -13,7 +13,12 @@
 
         <EditForm Model="_registerModel" OnValidSubmit="HandleRegistration">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+            <ValidationSummary class="text-danger" />
 
             <div class="form-group">
                 <label for="firstName">Fornavn</label>
@@ -26,6 +31,10 @@
             <div class="form-group">
                 <label for="email">E-mail adresse</label>
                 <InputText id="email" class="form-control" @bind-Value="_registerModel.Email" />
+            </div>
+            <div class="form-group">
+                <label for="phoneNumber">Telefon nr.</label>
+                <InputText id="phoneNumber" class="form-control" @bind-Value="_registerModel.PhoneNumber" />
             </div>
             <div class="form-group">
                 <label for="password">Adgangskode</label>
