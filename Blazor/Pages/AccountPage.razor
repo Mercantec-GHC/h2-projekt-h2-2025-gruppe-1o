@@ -9,6 +9,17 @@
     <h2 class="section-title">Min Konto</h2>
     <p class="section-subtitle">Velkommen, @user?.Identity?.Name! Her kan du administrere dine oplysninger og bookinger.</p>
 
+    <!-- Debug Section - Remove after testing -->
+    <div style="background: #ffffcc; border: 2px solid #ff0000; padding: 15px; margin: 20px 0;">
+        <h3 style="color: red;">DEBUG TOOLS (Remove after testing)</h3>
+        <button class="btn btn-primary" @onclick="TestDebugClaims">Test Debug Claims</button>
+        <button class="btn btn-primary" @onclick="TestGetMe">Test Get Me</button>
+        @if (!string.IsNullOrEmpty(_debugOutput))
+        {
+            <pre style="background: #f0f0f0; padding: 10px; margin-top: 10px;">@_debugOutput</pre>
+        }
+    </div>
+
     <div class="account-grid">
         <div class="account-card">
             <h3 class="card-title">Mine Bookinger</h3>
@@ -80,7 +91,7 @@
                     <p><strong>Efternavn:</strong> @_userDetailDto.LastName</p>
                     <p><strong>Email:</strong> @_userDetailDto.Email</p>
                     <p><strong>Telefon nr.:</strong> @_userDetailDto.PhoneNumber</p>
-                    <ActionButton Type="ActionButton.ButtonType.Primary" @onclick="ToggleEditMode">Rediger</ActionButton>
+                    <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="ToggleEditMode">Rediger</ActionButton>
                 </div>
             }
         </div>
@@ -136,6 +147,9 @@
     private ChangePasswordDto _changePasswordDto = new();
     private string? _passwordChangeMessage;
     private bool _passwordChangeSuccess = false;
+
+    // Debug fields - remove after testing
+    private string _debugOutput = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -197,7 +211,6 @@
             _userDetailDto.Email = _userUpdateDto.Email;
             _userDetailDto.PhoneNumber = _userUpdateDto.PhoneNumber ?? string.Empty;
 
-
             _isEditingInfo = false;
         }
         else
@@ -223,5 +236,39 @@
         {
             _passwordChangeMessage = $"Fejl: {errorMessage}";
         }
+    }
+
+    // Debug methods - remove after testing
+    private async Task TestDebugClaims()
+    {
+        Console.WriteLine("[TEST] Starting Debug Claims test");
+        _debugOutput = "Testing Debug Claims...";
+        StateHasChanged();
+
+        var result = await ApiService.DebugClaimsAsync();
+        _debugOutput = result ?? "No response received";
+        StateHasChanged();
+
+        Console.WriteLine($"[TEST] Debug Claims Result: {result}");
+    }
+
+    private async Task TestGetMe()
+    {
+        Console.WriteLine("[TEST] Starting Get Me test");
+        _debugOutput = "Testing Get Me endpoint...";
+        StateHasChanged();
+
+        var result = await ApiService.GetMyDetailsAsync();
+        if (result != null)
+        {
+            _debugOutput = $"Success! User: {result.FirstName} {result.LastName}, Email: {result.Email}";
+        }
+        else
+        {
+            _debugOutput = "Get Me returned null";
+        }
+        StateHasChanged();
+
+        Console.WriteLine($"[TEST] Get Me Result: {result != null}");
     }
 }

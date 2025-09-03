@@ -46,6 +46,21 @@ namespace API.Controllers
         }
 
         [Authorize]
+        [HttpGet("debug-claims")]
+        public IActionResult DebugClaims()
+        {
+            var claims = User.Claims.Select(c => new { c.Type, c.Value }).ToList();
+            return Ok(new
+            {
+                IsAuthenticated = User.Identity?.IsAuthenticated,
+                Name = User.Identity?.Name,
+                Claims = claims,
+                NameIdentifier = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                Email = User.FindFirst(ClaimTypes.Email)?.Value
+            });
+        }
+
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUser(string id, [FromBody] UserUpdateDto userDto)
         {

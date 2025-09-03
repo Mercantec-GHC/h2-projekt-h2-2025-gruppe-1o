@@ -31,7 +31,7 @@ namespace Blazor.Services
                 }
 
                 // DENNE LINJE ER AFGØRENDE: Den sætter token på ALLE fremtidige kald.
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuth"));
                 return new AuthenticationState(claimsPrincipal);

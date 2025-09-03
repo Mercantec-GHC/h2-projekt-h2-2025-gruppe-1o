@@ -21,9 +21,21 @@ namespace Blazor.Services
             _jsRuntime = jsRuntime;
         }
 
+        // ADD THIS METHOD - This ensures the auth header is set before each request
+        private async Task EnsureAuthHeaderAsync()
+        {
+            // Always ensure the token is set before each API call
+            var token = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+            if (!string.IsNullOrEmpty(token))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+
         // --- Booking & Room Metoder ---
         public async Task<List<RoomTypeGetDto>?> GetAvailableRoomTypesAsync(DateTime checkIn, DateTime checkOut, int guestCount)
         {
+            await EnsureAuthHeaderAsync(); // ADD THIS LINE
             var url = $"api/rooms/availability?checkInDate={checkIn:yyyy-MM-dd}&checkOutDate={checkOut:yyyy-MM-dd}&numberOfGuests={guestCount}";
             try
             {
@@ -38,6 +50,7 @@ namespace Blazor.Services
 
         public async Task<RoomTypeDetailDto?> GetRoomTypeByIdAsync(int id)
         {
+            await EnsureAuthHeaderAsync(); // ADD THIS LINE
             try
             {
                 return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/rooms/types/{id}");
@@ -51,6 +64,7 @@ namespace Blazor.Services
 
         public async Task<bool> CreateBookingAsync(BookingCreateDto bookingDetails)
         {
+            await EnsureAuthHeaderAsync(); // ADD THIS LINE
             var response = await _httpClient.PostAsJsonAsync("api/Bookings", bookingDetails);
             return response.IsSuccessStatusCode;
         }
@@ -58,24 +72,76 @@ namespace Blazor.Services
         // --- Bruger-specifikke Metoder ---
         public async Task<List<BookingGetDto>?> GetMyBookingsAsync()
         {
+            await EnsureAuthHeaderAsync(); // ADD THIS LINE
             try
             {
                 return await _httpClient.GetFromJsonAsync<List<BookingGetDto>>("api/Bookings/my-bookings");
             }
-            catch { return new List<BookingGetDto>(); }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting bookings: {ex.Message}"); // Add logging
+                return new List<BookingGetDto>();
+            }
         }
 
         public async Task<UserDetailDto?> GetMyDetailsAsync()
         {
+            await EnsureAuthHeaderAsync();
+
             try
             {
-                return await _httpClient.GetFromJsonAsync<UserDetailDto>("api/Users/me");
+                var response = await _httpClient.GetAsync("api/Users/me");
+                Console.WriteLine($"[API] Response Status: {response.StatusCode}");
+
+                // Handle 204 No Content - the API accepts the request but returns no data
+                if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+                {
+                    Console.WriteLine("[API] Received 204 No Content - API endpoint may not be implemented correctly");
+                    // Can't create mock data here without user context
+                    return null;
+                }
+
+                if (response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"[API] Response content: {content}");
+
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        return JsonSerializer.Deserialize<UserDetailDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    }
+                }
+
+                return null;
             }
-            catch { return null; }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[API] Exception: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<string?> DebugClaimsAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            try
+            {
+                var response = await _httpClient.GetAsync("api/Users/debug-claims");
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[DEBUG CLAIMS] Status: {response.StatusCode}");
+                Console.WriteLine($"[DEBUG CLAIMS] Response: {content}");
+                return content;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG CLAIMS] Error: {ex.Message}");
+                return null;
+            }
         }
 
         public async Task<(bool Success, string ErrorMessage)> UpdateMyDetailsAsync(string userId, UserUpdateDto userDetails)
         {
+            await EnsureAuthHeaderAsync(); // ADD THIS LINE
             var response = await _httpClient.PutAsJsonAsync($"api/Users/{userId}", userDetails);
             if (response.IsSuccessStatusCode)
             {
@@ -104,6 +170,7 @@ namespace Blazor.Services
         // --- Autentificerings-metoder ---
         public async Task<bool> RegisterAsync(RegisterDto registerModel)
         {
+            // No auth needed for registration
             var response = await _httpClient.PostAsJsonAsync("api/Users/register", registerModel);
             return response.IsSuccessStatusCode;
         }
@@ -121,7 +188,7 @@ namespace Blazor.Services
 
             await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", token);
             ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(token);
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token); // Capital B!
 
             return token;
         }
@@ -135,6 +202,7 @@ namespace Blazor.Services
 
         public async Task<(bool Success, string ErrorMessage)> ChangePasswordAsync(ChangePasswordDto dto)
         {
+            await EnsureAuthHeaderAsync(); // ADD THIS LINE
             var response = await _httpClient.PostAsJsonAsync("api/Users/change-password", dto);
             if (response.IsSuccessStatusCode)
             {
@@ -148,6 +216,7 @@ namespace Blazor.Services
         // --- Status Metoder ---
         public async Task<HealthCheckResponse?> GetHealthCheckAsync()
         {
+            // Health checks typically don't need auth, but add if needed
             try
             {
                 return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/Status/healthcheck");
@@ -157,6 +226,7 @@ namespace Blazor.Services
 
         public async Task<HealthCheckResponse?> GetDBHealthCheckAsync()
         {
+            // Health checks typically don't need auth, but add if needed
             try
             {
                 return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/Status/healthcheck");

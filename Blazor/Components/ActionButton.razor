@@ -1,4 +1,8 @@
-﻿<button type="@(IsSubmit ? "submit" : "button")" class="btn @ButtonClass" @onclick="HandleClick">
+﻿<button type="@(IsSubmit ? "submit" : "button")"
+        class="btn @ButtonClass"
+        @onclick="OnClick"
+        @onclick:preventDefault="false"
+        @onclick:stopPropagation="false">
     @ChildContent
 </button>
 
@@ -22,15 +26,6 @@
         ButtonType.Secondary => "btn-secondary",
         _ => "btn-primary"
     };
-
-    private async Task HandleClick(MouseEventArgs e)
-    {
-        if (!IsSubmit)
-        {
-            await OnClick.InvokeAsync(e);
-        }
-        // Hvis IsSubmit er true, gør vi intet her og lader EditForm's OnValidSubmit tage over.
-    }
 
     public enum ButtonType
     {

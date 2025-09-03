@@ -18,11 +18,17 @@ public class Program
 
         // Opsætning af en enkelt HttpClient, som alle services deler
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });
-
         builder.Services.AddScoped<APIService>();
         builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
         builder.Services.AddAuthorizationCore();
 
-        await builder.Build().RunAsync();
+        var host = builder.Build();
+
+        // Initialize authentication state on startup
+        // This ensures the auth header is set if a token exists in sessionStorage
+        var authStateProvider = host.Services.GetRequiredService<AuthenticationStateProvider>();
+        await authStateProvider.GetAuthenticationStateAsync();
+
+        await host.RunAsync();
     }
 }
