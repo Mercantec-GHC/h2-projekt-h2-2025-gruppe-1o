@@ -74,10 +74,31 @@ namespace Blazor.Services
             catch { return null; }
         }
 
-        public async Task<bool> UpdateMyDetailsAsync(string userId, UserUpdateDto userDetails)
+        public async Task<(bool Success, string ErrorMessage)> UpdateMyDetailsAsync(string userId, UserUpdateDto userDetails)
         {
             var response = await _httpClient.PutAsJsonAsync($"api/Users/{userId}", userDetails);
-            return response.IsSuccessStatusCode;
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, string.Empty);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            if (!string.IsNullOrEmpty(errorContent))
+            {
+                try
+                {
+                    var errorObject = JsonSerializer.Deserialize<JsonElement>(errorContent);
+                    if (errorObject.TryGetProperty("title", out var title))
+                    {
+                        return (false, title.GetString() ?? "Der opstod en ukendt fejl.");
+                    }
+                }
+                catch
+                {
+                    return (false, errorContent);
+                }
+            }
+            return (false, "Der opstod en ukendt fejl under opdatering.");
         }
 
         // --- Autentificerings-metoder ---
@@ -112,6 +133,18 @@ namespace Blazor.Services
             _httpClient.DefaultRequestHeaders.Authorization = null;
         }
 
+        public async Task<(bool Success, string ErrorMessage)> ChangePasswordAsync(ChangePasswordDto dto)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/Users/change-password", dto);
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, string.Empty);
+            }
+
+            var errorContent = await response.Content.ReadAsStringAsync();
+            return (false, errorContent ?? "Der opstod en ukendt fejl.");
+        }
+
         // --- Status Metoder ---
         public async Task<HealthCheckResponse?> GetHealthCheckAsync()
         {
@@ -124,31 +157,12 @@ namespace Blazor.Services
 
         public async Task<HealthCheckResponse?> GetDBHealthCheckAsync()
         {
-            // NOTE: Lige nu kalder vi det samme endpoint. I fremtiden kunne dette pege på et dedikeret DB-healthcheck endpoint.
             try
             {
                 return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/Status/healthcheck");
             }
             catch { return new HealthCheckResponse { status = "Error", message = "Simuleret DB-check fejlede." }; }
         }
-
-        public async Task<(bool Success, string ErrorMessage)> ChangePasswordAsync(ChangePasswordDto dto)
-        {
-            var response = await _httpClient.PostAsJsonAsync("api/Users/change-password", dto);
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, string.Empty);
-            }
-
-            var errorContent = await response.Content.ReadAsStringAsync();
-            // Forsøg at deserialisere en standard fejlbesked fra API'et
-            var errorObject = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(errorContent);
-            var errorMessage = errorObject.TryGetProperty("title", out var title) ? title.GetString() : "Der opstod en ukendt fejl.";
-
-            return (false, errorMessage ?? "Der opstod en ukendt fejl.");
-        }
-
-
     }
 
     public class LoginResult

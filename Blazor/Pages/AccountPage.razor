@@ -45,6 +45,14 @@
             {
                 <EditForm Model="_userUpdateDto" OnValidSubmit="HandleUpdateInfo">
                     <DataAnnotationsValidator />
+
+                    @if (!string.IsNullOrEmpty(_updateInfoErrorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @_updateInfoErrorMessage
+                        </div>
+                    }
+
                     <div class="form-group">
                         <label>Fornavn</label>
                         <InputText class="form-control" @bind-Value="_userUpdateDto.FirstName" />
@@ -74,7 +82,6 @@
                     <p><strong>Efternavn:</strong> @_userDetailDto.LastName</p>
                     <p><strong>Email:</strong> @_userDetailDto.Email</p>
                     <p><strong>Telefon nr.:</strong> @_userDetailDto.PhoneNumber</p>
-
                     <ActionButton Type="ActionButton.ButtonType.Primary" @onclick="ToggleEditMode">Rediger</ActionButton>
                 </div>
             }
@@ -126,12 +133,12 @@
     private bool _isEditingInfo = false;
     private UserDetailDto? _userDetailDto;
     private UserUpdateDto _userUpdateDto = new();
+    private string? _updateInfoErrorMessage;
 
     // Til "Sikkerhed"
     private ChangePasswordDto _changePasswordDto = new();
     private string? _passwordChangeMessage;
     private bool _passwordChangeSuccess = false;
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -160,6 +167,7 @@
 
     private void ToggleEditMode()
     {
+        _updateInfoErrorMessage = null; // Nulstil fejlbesked, når man skifter tilstand
         if (_userDetailDto != null)
         {
             _userUpdateDto = new UserUpdateDto
@@ -175,12 +183,13 @@
 
     private async Task HandleUpdateInfo()
     {
+        _updateInfoErrorMessage = null;
         if (user != null && _userDetailDto != null)
         {
             var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId == null) return;
 
-            var success = await ApiService.UpdateMyDetailsAsync(userId, _userUpdateDto);
+            var (success, errorMessage) = await ApiService.UpdateMyDetailsAsync(userId, _userUpdateDto);
             if (success)
             {
                 _userDetailDto.FirstName = _userUpdateDto.FirstName;
@@ -191,7 +200,7 @@
             }
             else
             {
-                // Implementer fejlhåndtering her
+                _updateInfoErrorMessage = errorMessage;
             }
         }
     }
@@ -205,7 +214,7 @@
         if (success)
         {
             _passwordChangeMessage = "Din adgangskode er blevet ændret.";
-            _changePasswordDto = new(); // Nulstil formularen
+            _changePasswordDto = new();
         }
         else
         {

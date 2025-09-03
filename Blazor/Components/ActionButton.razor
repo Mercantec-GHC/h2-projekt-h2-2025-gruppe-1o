@@ -1,4 +1,4 @@
-﻿<button type="@(IsSubmit ? "submit" : "button")" class="btn @ButtonClass" @attributes="AdditionalAttributes">
+﻿<button type="@(IsSubmit ? "submit" : "button")" class="btn @ButtonClass" @onclick="HandleClick">
     @ChildContent
 </button>
 
@@ -16,16 +16,16 @@
     public RenderFragment? ChildContent { get; set; }
 
     /// <summary>
+    /// Metoden, der skal kaldes, når der klikkes på knappen (bruges kun, hvis IsSubmit er false).
+    /// </summary>
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>
     /// Angiver, om knappen skal fungere som en 'submit'-knap i en formular.
     /// </summary>
     [Parameter]
     public bool IsSubmit { get; set; }
-
-    /// <summary>
-    /// Samler alle ekstra attributter (som f.eks. @onclick) og sender dem videre til button-elementet.
-    /// </summary>
-    [Parameter(CaptureUnmatchedValues = true)]
-    public Dictionary<string, object> AdditionalAttributes { get; set; } = new();
 
     private string ButtonClass => Type switch
     {
@@ -34,6 +34,19 @@
         ButtonType.Secondary => "btn-secondary",
         _ => "btn-primary"
     };
+
+    /// <summary>
+    /// Intern metode der sikrer, at OnClick kun kaldes, når knappen ikke er en submit-knap.
+    /// </summary>
+    private async Task HandleClick(MouseEventArgs e)
+    {
+        if (!IsSubmit)
+        {
+            await OnClick.InvokeAsync(e);
+        }
+        // Hvis knappen ER en submit-knap, gør vi ingenting her.
+        // Vi lader EditForm's OnValidSubmit håndtere logikken.
+    }
 
     public enum ButtonType
     {
