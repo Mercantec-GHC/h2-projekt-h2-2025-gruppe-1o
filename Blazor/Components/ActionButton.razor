@@ -3,27 +3,15 @@
 </button>
 
 @code {
-    /// <summary>
-    /// Definerer knappens visuelle stil.
-    /// </summary>
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Primary;
 
-    /// <summary>
-    /// Teksten eller HTML-indholdet, der vises inde i knappen.
-    /// </summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    /// <summary>
-    /// Metoden, der skal kaldes, når der klikkes på knappen (bruges kun, hvis IsSubmit er false).
-    /// </summary>
     [Parameter]
     public EventCallback<MouseEventArgs> OnClick { get; set; }
 
-    /// <summary>
-    /// Angiver, om knappen skal fungere som en 'submit'-knap i en formular.
-    /// </summary>
     [Parameter]
     public bool IsSubmit { get; set; }
 
@@ -35,17 +23,13 @@
         _ => "btn-primary"
     };
 
-    /// <summary>
-    /// Intern metode der sikrer, at OnClick kun kaldes, når knappen ikke er en submit-knap.
-    /// </summary>
     private async Task HandleClick(MouseEventArgs e)
     {
         if (!IsSubmit)
         {
             await OnClick.InvokeAsync(e);
         }
-        // Hvis knappen ER en submit-knap, gør vi ingenting her.
-        // Vi lader EditForm's OnValidSubmit håndtere logikken.
+        // Hvis IsSubmit er true, gør vi intet her og lader EditForm's OnValidSubmit tage over.
     }
 
     public enum ButtonType
