@@ -64,17 +64,34 @@ namespace Blazor.Services
 
             if (keyValuePairs != null)
             {
-                keyValuePairs.TryGetValue(ClaimTypes.NameIdentifier, out var userId);
-                if (userId != null)
+                // -- RETTELSE BEGYNDER HER --
+
+                // Kig efter de korte navne, som rent faktisk er i tokenet
+                keyValuePairs.TryGetValue("nameid", out object? nameId);
+                if (nameId != null)
                 {
-                    claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.ToString()!));
+                    claims.Add(new Claim(ClaimTypes.NameIdentifier, nameId.ToString()!));
                 }
 
-                keyValuePairs.TryGetValue(ClaimTypes.Name, out var name);
-                if (name != null)
+                keyValuePairs.TryGetValue("unique_name", out object? uniqueName);
+                if (uniqueName != null)
                 {
-                    claims.Add(new Claim(ClaimTypes.Name, name.ToString()!));
+                    claims.Add(new Claim(ClaimTypes.Name, uniqueName.ToString()!));
                 }
+
+                keyValuePairs.TryGetValue("email", out object? email);
+                if (email != null)
+                {
+                    claims.Add(new Claim(ClaimTypes.Email, email.ToString()!));
+                }
+
+                keyValuePairs.TryGetValue("role", out object? role);
+                if (role != null)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role.ToString()!));
+                }
+
+                // -- RETTELSE SLUTTER HER --
             }
             return claims;
         }

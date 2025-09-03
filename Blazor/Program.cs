@@ -1,3 +1,6 @@
+// ▼▼▼ FØRSTE ÆNDRING: Tilføj denne using-statement i toppen ▼▼▼
+using System.IdentityModel.Tokens.Jwt;
+
 using Blazor.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
@@ -12,6 +15,12 @@ public class Program
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
+
+        // ▼▼▼ ANDEN ÆNDRING: Indsæt denne linje lige her ▼▼▼
+        // Denne linje er den vigtigste. Den forhindrer .NET i at "oversætte" 
+        // de korte claim-navne (som "nameid") til de lange, formelle URL-navne.
+        JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
+
 
         // Peger permanent på dit live API
         var apiBaseAddress = new Uri("https://flyhigh-api.mercantec.tech/");
