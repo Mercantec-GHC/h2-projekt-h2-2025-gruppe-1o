@@ -64,16 +64,37 @@ namespace Blazor.Services
 
             if (keyValuePairs != null)
             {
-                keyValuePairs.TryGetValue(ClaimTypes.NameIdentifier, out var userId);
+                // Debug: Print alle claims
+                Console.WriteLine("JWT Claims found:");
+                foreach (var kvp in keyValuePairs)
+                {
+                    Console.WriteLine($"  {kvp.Key}: {kvp.Value}");
+                }
+
+                // Standard JWT claim names (not ClaimTypes constants)
+                keyValuePairs.TryGetValue("nameid", out var userId); // JWT subject claim (nameid)
                 if (userId != null)
                 {
                     claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.ToString()!));
+                    Console.WriteLine($"Added NameIdentifier claim: {userId}");
                 }
 
-                keyValuePairs.TryGetValue(ClaimTypes.Name, out var name);
+                keyValuePairs.TryGetValue("unique_name", out var name);
                 if (name != null)
                 {
                     claims.Add(new Claim(ClaimTypes.Name, name.ToString()!));
+                }
+
+                keyValuePairs.TryGetValue("email", out var email);
+                if (email != null)
+                {
+                    claims.Add(new Claim(ClaimTypes.Email, email.ToString()!));
+                }
+
+                keyValuePairs.TryGetValue("role", out var role);
+                if (role != null)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role.ToString()!));
                 }
             }
             return claims;

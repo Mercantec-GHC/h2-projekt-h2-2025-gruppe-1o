@@ -57,20 +57,27 @@
                     <div class="form-group">
                         <label>Fornavn</label>
                         <InputText class="form-control" @bind-Value="_userUpdateDto.FirstName" />
+                        <ValidationMessage For="@(() => _userUpdateDto.FirstName)" class="text-danger" />
                     </div>
                     <div class="form-group">
                         <label>Efternavn</label>
                         <InputText class="form-control" @bind-Value="_userUpdateDto.LastName" />
+                        <ValidationMessage For="@(() => _userUpdateDto.LastName)" class="text-danger" />
                     </div>
                     <div class="form-group">
                         <label>Email</label>
                         <InputText class="form-control" @bind-Value="_userUpdateDto.Email" />
+                        <ValidationMessage For="@(() => _userUpdateDto.Email)" class="text-danger" />
                     </div>
                     <div class="form-group">
                         <label>Telefon nr.</label>
                         <InputText class="form-control" @bind-Value="_userUpdateDto.PhoneNumber" />
+                        <ValidationMessage For="@(() => _userUpdateDto.PhoneNumber)" class="text-danger" />
                     </div>
-                    <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Ændre Oplysninger</ActionButton>
+                    <div class="form-actions">
+                        <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Ændre Oplysninger</ActionButton>
+                        <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="ToggleEditMode">Annuller</ActionButton>
+                    </div>
                 </EditForm>
             }
             else if (_userDetailDto != null)
@@ -142,6 +149,13 @@
         var authState = await AuthenticationStateTask;
         user = authState.User;
 
+        // Debug: Print alle claims
+        Console.WriteLine("User claims in AccountPage:");
+        foreach (var claim in user.Claims)
+        {
+            Console.WriteLine($"  {claim.Type}: {claim.Value}");
+        }
+
         var bookingsTask = ApiService.GetMyBookingsAsync();
         var userDetailsTask = ApiService.GetMyDetailsAsync();
         await Task.WhenAll(bookingsTask, userDetailsTask);
@@ -181,26 +195,47 @@
     private async Task HandleUpdateInfo()
     {
         _updateInfoMessage = null;
-        if (user == null || _userDetailDto == null) return;
+        if (user == null || _userDetailDto == null) 
+        {
+            _updateInfoMessage = "Fejl: Brugerdata ikke fundet.";
+            _updateInfoSuccess = false;
+            return;
+        }
 
         var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (userId == null) return;
-
-        var (success, errorMessage) = await ApiService.UpdateMyDetailsAsync(userId, _userUpdateDto);
-        _updateInfoSuccess = success;
-
-        if (success)
+        if (userId == null) 
         {
-            _updateInfoMessage = "Dine oplysninger er blevet opdateret.";
-            _userDetailDto.FirstName = _userUpdateDto.FirstName;
-            _userDetailDto.LastName = _userUpdateDto.LastName;
-            _userDetailDto.Email = _userUpdateDto.Email;
-            _userDetailDto.PhoneNumber = _userUpdateDto.PhoneNumber ?? string.Empty;
-            _isEditingInfo = false;
+            _updateInfoMessage = "Fejl: Bruger-ID ikke fundet.";
+            _updateInfoSuccess = false;
+            return;
         }
-        else
+
+        try
         {
-            _updateInfoMessage = $"Fejl: {errorMessage}";
+            Console.WriteLine($"Opdaterer bruger {userId} med data: {System.Text.Json.JsonSerializer.Serialize(_userUpdateDto)}");
+            var (success, errorMessage) = await ApiService.UpdateMyDetailsAsync(userId, _userUpdateDto);
+            _updateInfoSuccess = success;
+
+            if (success)
+            {
+                _updateInfoMessage = "Dine oplysninger er blevet opdateret.";
+                _userDetailDto.FirstName = _userUpdateDto.FirstName;
+                _userDetailDto.LastName = _userUpdateDto.LastName;
+                _userDetailDto.Email = _userUpdateDto.Email;
+                _userDetailDto.PhoneNumber = _userUpdateDto.PhoneNumber ?? string.Empty;
+                _isEditingInfo = false;
+            }
+            else
+            {
+                _updateInfoMessage = $"Fejl: {errorMessage}";
+                Console.WriteLine($"API fejl: {errorMessage}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _updateInfoMessage = $"Uventet fejl: {ex.Message}";
+            _updateInfoSuccess = false;
+            Console.WriteLine($"Exception i HandleUpdateInfo: {ex}");
         }
     }
 

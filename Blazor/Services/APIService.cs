@@ -76,29 +76,48 @@ namespace Blazor.Services
 
         public async Task<(bool Success, string ErrorMessage)> UpdateMyDetailsAsync(string userId, UserUpdateDto userDetails)
         {
-            var response = await _httpClient.PutAsJsonAsync($"api/Users/{userId}", userDetails);
-            if (response.IsSuccessStatusCode)
+            try
             {
-                return (true, string.Empty);
-            }
-
-            var errorContent = await response.Content.ReadAsStringAsync();
-            if (!string.IsNullOrEmpty(errorContent))
-            {
-                try
+                Console.WriteLine($"API Service: Opdaterer bruger {userId}");
+                Console.WriteLine($"API Service: Data: {JsonSerializer.Serialize(userDetails)}");
+                
+                var response = await _httpClient.PutAsJsonAsync($"api/Users/{userId}", userDetails);
+                Console.WriteLine($"API Service: Response status: {response.StatusCode}");
+                
+                if (response.IsSuccessStatusCode)
                 {
-                    var errorObject = JsonSerializer.Deserialize<JsonElement>(errorContent);
-                    if (errorObject.TryGetProperty("title", out var title))
+                    return (true, string.Empty);
+                }
+
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"API Service: Error content: {errorContent}");
+                
+                if (!string.IsNullOrEmpty(errorContent))
+                {
+                    try
                     {
-                        return (false, title.GetString() ?? "Der opstod en ukendt fejl.");
+                        var errorObject = JsonSerializer.Deserialize<JsonElement>(errorContent);
+                        if (errorObject.TryGetProperty("title", out var title))
+                        {
+                            return (false, title.GetString() ?? "Der opstod en ukendt fejl.");
+                        }
+                        if (errorObject.TryGetProperty("message", out var message))
+                        {
+                            return (false, message.GetString() ?? "Der opstod en ukendt fejl.");
+                        }
+                    }
+                    catch
+                    {
+                        return (false, errorContent);
                     }
                 }
-                catch
-                {
-                    return (false, errorContent);
-                }
+                return (false, $"HTTP {response.StatusCode}: Der opstod en ukendt fejl under opdatering.");
             }
-            return (false, "Der opstod en ukendt fejl under opdatering.");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"API Service Exception: {ex}");
+                return (false, $"Netværksfejl: {ex.Message}");
+            }
         }
 
         // --- Autentificerings-metoder ---
