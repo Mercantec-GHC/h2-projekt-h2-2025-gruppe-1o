@@ -136,6 +136,12 @@ namespace API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
+            // Hele den oprindelige logik skal fjernes eller udkommenteres midlertidigt for denne test.
+
+            // Indsæt KUN denne linje:
+            return BadRequest("Deployment virker! Cachen er blevet brudt.");
+
+            /* --- Gammel kode, der skal udkommenteres eller slettes ---
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email == dto.Email);
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword))
             {
@@ -151,6 +157,7 @@ namespace API.Controllers
                 token,
                 user = new { id = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName, role = user.Role?.Name ?? "User" }
             });
+            */
         }
     }
 }
