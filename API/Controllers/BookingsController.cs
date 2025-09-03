@@ -109,5 +109,25 @@ namespace API.Controllers
             // Assuming you have a GetBookingById method or similar
             return CreatedAtAction(nameof(GetMyBookings), new { id = resultDto.Id }, resultDto);
         }
+
+
+        [HttpGet]
+        [Authorize(Roles = "Receptionist, Manager")]
+        public async Task<ActionResult<IEnumerable<BookingSummaryDto>>> GetAllBookings([FromQuery] string? guestName, [FromQuery] DateTime? date)
+        {
+            var bookings = await _bookingRepository.GetAllAsync(null, guestName, date);
+
+            var resultDto = bookings.Select(b => new BookingSummaryDto
+            {
+                Id = b.Id,
+                GuestFullName = $"{b.User.FirstName} {b.User.LastName}",
+                RoomTypeName = b.RoomType.Name,
+                CheckInDate = b.CheckInDate,
+                CheckOutDate = b.CheckOutDate,
+                Status = b.Status
+            }).ToList();
+
+            return Ok(resultDto);
+        }
     }
 }

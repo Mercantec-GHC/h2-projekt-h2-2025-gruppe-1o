@@ -233,7 +233,35 @@ namespace Blazor.Services
             }
             catch { return new HealthCheckResponse { status = "Error", message = "Simuleret DB-check fejlede." }; }
         }
+
+
+        public async Task<List<BookingSummaryDto>?> GetBookingsForAdminAsync(string? guestName = null, DateTime? date = null)
+        {
+            var queryParams = new Dictionary<string, string?>();
+            if (!string.IsNullOrEmpty(guestName))
+            {
+                queryParams["guestName"] = guestName;
+            }
+            if (date.HasValue)
+            {
+                queryParams["date"] = date.Value.ToString("yyyy-MM-dd");
+            }
+
+            var url = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("api/Bookings", queryParams);
+
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<BookingSummaryDto>>(url);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af admin-bookinger: {ex.Message}");
+                return new List<BookingSummaryDto>();
+            }
+        }
     }
+
+
 
     public class LoginResult
     {

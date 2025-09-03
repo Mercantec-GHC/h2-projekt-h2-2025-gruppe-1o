@@ -14,6 +14,13 @@
         <div class="header-right">
             <AuthorizeView>
                 <Authorized>
+                    @if (context.User.IsInRole("Receptionist") || context.User.IsInRole("Manager"))
+                    {
+                        <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick='() => Navigation.NavigateTo("/admin/bookings")'>
+                            Booking Management
+                        </ActionButton>
+                    }
+
                     <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="GoToAccount">
                         Min Konto
                     </ActionButton>
@@ -46,6 +53,6 @@
     private async Task LogoutClicked()
     {
         await ApiService.LogoutAsync();
-        Navigation.NavigateTo("/"); // Send brugeren til forsiden efter logout
+        Navigation.NavigateTo("/");
     }
 }
