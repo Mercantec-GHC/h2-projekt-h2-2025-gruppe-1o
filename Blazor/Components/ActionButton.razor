@@ -1,7 +1,8 @@
-﻿<button type="@(IsSubmit ? "submit" : "button")" class="btn @ButtonClass" @onclick="HandleClick">
+﻿<button type="@(IsSubmit ? "submit" : "button")"
+        class="btn @ButtonClass"
+        @onclick="@(IsSubmit ? null : HandleClick)">
     @ChildContent
 </button>
-
 @code {
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Primary;
