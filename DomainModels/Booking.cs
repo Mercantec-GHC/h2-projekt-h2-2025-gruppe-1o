@@ -4,9 +4,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace DomainModels
 {
-    /// <summary>
-    /// Repræsenterer en booking af en værelsestype foretaget af en bruger.
-    /// </summary>
     public class Booking : Common
     {
         [Required]
@@ -29,23 +26,12 @@ namespace DomainModels
         public int RoomTypeId { get; set; }
         public virtual RoomType? RoomType { get; set; }
 
-        public int? RoomId { get; set; } // Nullable, sættes ved check-in
+        public int? RoomId { get; set; }
         public virtual Room? Room { get; set; }
 
-        public virtual ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();
+        public virtual ICollection<Service> Services { get; set; } = new List<Service>();
     }
 
-    /// <summary>
-    /// Sammenkoblingstabel for mange-til-mange mellem Booking og Service.
-    /// </summary>
-    public class BookingService
-    {
-        public string BookingId { get; set; } = string.Empty;
-        public virtual Booking? Booking { get; set; }
-
-        public int ServiceId { get; set; }
-        public virtual Service? Service { get; set; }
-    }
 
     public class BookingGetDto
     {

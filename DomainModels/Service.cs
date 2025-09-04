@@ -1,12 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace DomainModels
 {
-    public class Service : Common
+    public class Service
     {
-        public int Id { get; set; } 
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [MaxLength(100)]
         public string Name { get; set; } = string.Empty;
+
+        [Required]
         public decimal Price { get; set; }
-        public string BillingType { get; set; } = string.Empty; // Tilføj = string.Empty;
+
+        [Required]
+        [MaxLength(20)]
+        public string BillingType { get; set; }
+
+        public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     }
 }
