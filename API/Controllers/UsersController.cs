@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using BCrypt.Net; // DENNE LINJE MANGLER I DIN FIL
+// Vi behøver ikke et specifikt using-statement her, da vi kalder den fulde sti
 
 namespace API.Controllers
 {
@@ -76,7 +76,7 @@ namespace API.Controllers
                 return BadRequest("En bruger med denne email findes allerede.");
             }
 
-            string hashedPassword = BCrypt.HashPassword(dto.Password);
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.Password);
             var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
             if (userRole == null) throw new InvalidOperationException("Systemkonfigurationsfejl: Standard brugerrolle 'User' mangler.");
 
@@ -106,12 +106,12 @@ namespace API.Controllers
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return NotFound("Bruger ikke fundet.");
 
-            if (!BCrypt.Verify(dto.CurrentPassword, user.HashedPassword))
+            if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.HashedPassword))
             {
                 return BadRequest("Den nuværende adgangskode er ikke korrekt.");
             }
 
-            string newHashedPassword = BCrypt.HashPassword(dto.NewPassword);
+            string newHashedPassword = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             user.HashedPassword = newHashedPassword;
 
             await _context.SaveChangesAsync();
@@ -125,7 +125,7 @@ namespace API.Controllers
         {
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
 
-            if (user == null || !BCrypt.Verify(dto.Password, user.HashedPassword))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword))
             {
                 return Unauthorized("Forkert email eller adgangskode");
             }
