@@ -259,6 +259,20 @@ namespace Blazor.Services
                 return new List<BookingSummaryDto>();
             }
         }
+
+        public async Task<DailyStatsDto?> GetDashboardStatsAsync()
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<DailyStatsDto>("api/Dashboard/stats");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af dashboard-statistik: {ex.Message}");
+                return new DailyStatsDto(); // Returner tom statistik ved fejl
+            }
+        }
+
     }
 
 
