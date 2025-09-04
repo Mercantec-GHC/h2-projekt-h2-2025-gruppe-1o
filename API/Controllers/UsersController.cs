@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using BCrypt.Net; // DENNE LINJE RETTER FEJLEN
+using BCrypt.Net;
 
 namespace API.Controllers
 {
