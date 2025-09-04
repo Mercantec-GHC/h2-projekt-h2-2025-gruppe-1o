@@ -62,7 +62,7 @@ namespace API.Services
                 _logger.LogInformation("Ingen nye brugere blev tilføjet.");
             }
 
-            var roomTypes = await _context.RoomTypes.Include(rt => rt.Rooms).ToListAsync();
+            var roomTypes = await _context.RoomTypes.ToListAsync();
             var userIds = await _context.Users.Where(u => u.RoleId == userRole.Id).Select(u => u.Id).ToListAsync();
 
             if (userIds.Any())
@@ -89,13 +89,12 @@ namespace API.Services
                 string firstName = faker.Name.FirstName();
                 string lastName = faker.Name.LastName();
 
-                // Bliv ved med at generere en ny email, indtil vi finder en, der er unik.
                 do
                 {
                     email = faker.Internet.Email(firstName, lastName).ToLower();
                 } while (existingEmails.Contains(email));
 
-                existingEmails.Add(email); // Føj den nye, unikke email til listen for at undgå dubletter i denne kørsel.
+                existingEmails.Add(email);
 
                 var newUser = new User
                 {
@@ -103,7 +102,8 @@ namespace API.Services
                     Email = email,
                     FirstName = firstName,
                     LastName = lastName,
-                    PhoneNumber = faker.Phone.PhoneNumber(),
+                    // RETTELSE: Genererer et simpelt 8-cifret nummer, der altid passer.
+                    PhoneNumber = faker.Phone.PhoneNumber("########"),
                     PasswordBackdoor = "Password123!",
                     HashedPassword = FullBCrypt.HashPassword("Password123!"),
                     RoleId = userRoleId,
