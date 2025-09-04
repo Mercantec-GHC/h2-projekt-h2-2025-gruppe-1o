@@ -14,8 +14,6 @@ namespace API.Data
         public DbSet<Booking> Bookings { get; set; } = null!;
         public DbSet<Service> Services { get; set; } = null!;
 
-        // Bemærk: DbSet for BookingService er fjernet, da EF Core nu håndterer det.
-
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var entries = ChangeTracker
@@ -66,7 +64,6 @@ namespace API.Data
                 entity.HasOne(b => b.RoomType).WithMany().HasForeignKey(b => b.RoomTypeId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(b => b.Room).WithMany(r => r.Bookings).HasForeignKey(b => b.RoomId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
 
-                // Ny, automatisk måde at definere mange-til-mange-relationen på
                 entity.HasMany(b => b.Services)
                       .WithMany(s => s.Bookings)
                       .UsingEntity("BookingServices");
@@ -92,47 +89,48 @@ namespace API.Data
             modelBuilder.Entity<Role>().HasData(roles);
 
             var passwordHash = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W"; // Hash for "Password123!"
-            var now = DateTime.UtcNow;
+            // RETTELSE: Brug en fast, statisk dato i stedet for DateTime.UtcNow
+            var fixedDate = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Utc);
 
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    Id = "f2b72c57-632b-4a88-a476-2a1c72787e9c",
                     FirstName = "Manager",
                     LastName = "Admin",
                     Email = "manager@hotel.dk",
                     RoleId = "4",
                     HashedPassword = passwordHash,
                     PasswordBackdoor = "Password123!",
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    LastLogin = now
+                    CreatedAt = fixedDate,
+                    UpdatedAt = fixedDate,
+                    LastLogin = fixedDate
                 },
                 new User
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    Id = "a1b38c7f-9a2d-4e8f-8f3a-3c1b7e5d2a9f",
                     FirstName = "Receptionist",
                     LastName = "Test",
                     Email = "receptionist@hotel.dk",
                     RoleId = "3",
                     HashedPassword = passwordHash,
                     PasswordBackdoor = "Password123!",
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    LastLogin = now
+                    CreatedAt = fixedDate,
+                    UpdatedAt = fixedDate,
+                    LastLogin = fixedDate
                 },
                 new User
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    Id = "c5d8a9b2-3e4f-4a1b-9d8c-7b6a5d4c3b2a",
                     FirstName = "Rengøring",
                     LastName = "Test",
                     Email = "rengøring@hotel.dk",
                     RoleId = "2",
                     HashedPassword = passwordHash,
                     PasswordBackdoor = "Password123!",
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                    LastLogin = now
+                    CreatedAt = fixedDate,
+                    UpdatedAt = fixedDate,
+                    LastLogin = fixedDate
                 }
             );
 
