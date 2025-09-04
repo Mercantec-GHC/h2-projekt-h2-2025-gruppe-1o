@@ -85,32 +85,44 @@ namespace API.Data
             // Seed Roller
             var roles = new[]
             {
-             new Role { Id = "1", Name = "User", Description = "Standard bruger" },
-             new Role { Id = "2", Name = "Housekeeping", Description = "Rengøringspersonale" },
-             new Role { Id = "3", Name = "Receptionist", Description = "Receptionspersonale" },
-             new Role { Id = "4", Name = "Manager", Description = "Hotel Manager" }
-        };
+                new Role { Id = "1", Name = "User", Description = "Standard bruger" },
+                new Role { Id = "2", Name = "Housekeeping", Description = "Rengøringspersonale" },
+                new Role { Id = "3", Name = "Receptionist", Description = "Receptionspersonale" },
+                new Role { Id = "4", Name = "Manager", Description = "Hotel Manager" }
+            };
             modelBuilder.Entity<Role>().HasData(roles);
 
+            // Seed Faste Brugere
+            var managerId = Guid.NewGuid().ToString();
+            var receptionistId = Guid.NewGuid().ToString();
+            var housekeepingId = Guid.NewGuid().ToString();
+
+            // Samme hashede password for "Password123!" for alle test-brugere
+            var passwordHash = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W";
+
+            modelBuilder.Entity<User>().HasData(
+                new User { Id = managerId, FirstName = "Manager", LastName = "Admin", Email = "manager@hotel.dk", RoleId = "4", HashedPassword = passwordHash, PasswordBackdoor = "Password123!" },
+                new User { Id = receptionistId, FirstName = "Receptionist", LastName = "Test", Email = "receptionist@hotel.dk", RoleId = "3", HashedPassword = passwordHash, PasswordBackdoor = "Password123!" },
+                new User { Id = housekeepingId, FirstName = "Rengøring", LastName = "Test", Email = "rengøring@hotel.dk", RoleId = "2", HashedPassword = passwordHash, PasswordBackdoor = "Password123!" }
+            );
 
             // Seed Værelsestyper
             var roomTypes = new[]
             {
-             new RoomType { Id = 1, Name = "Single Room", Description = "Hyggeligt enkeltværelse med alt hvad du behøver.", BasePrice = 800m, Capacity = 1 },
-             new RoomType { Id = 2, Name = "Double Room", Description = "Rummeligt dobbeltværelse med plads til to.", BasePrice = 1200m, Capacity = 2 },
-             new RoomType { Id = 3, Name = "Suite", Description = "Luksuriøs suite med separat opholdsområde og fantastisk udsigt.", BasePrice = 2500m, Capacity = 4 }
+                new RoomType { Id = 1, Name = "Single Room", Description = "Hyggeligt enkeltværelse med alt hvad du behøver.", BasePrice = 800m, Capacity = 1 },
+                new RoomType { Id = 2, Name = "Double Room", Description = "Rummeligt dobbeltværelse med plads til to.", BasePrice = 1200m, Capacity = 2 },
+                new RoomType { Id = 3, Name = "Suite", Description = "Luksuriøs suite med separat opholdsområde og fantastisk udsigt.", BasePrice = 2500m, Capacity = 4 }
             };
             modelBuilder.Entity<RoomType>().HasData(roomTypes);
 
             // Seed Services
             var services = new[]
             {
-             new Service { Id = 1, Name = "Breakfast", Price = 150m, BillingType = "PerNight" },
-             new Service { Id = 2, Name = "Spa Access", Price = 250m, BillingType = "PerBooking" },
-             new Service { Id = 3, Name = "Champagne on arrival", Price = 400m, BillingType = "PerBooking" }
+                new Service { Id = 1, Name = "Breakfast", Price = 150m, BillingType = "PerNight" },
+                new Service { Id = 2, Name = "Spa Access", Price = 250m, BillingType = "PerBooking" },
+                new Service { Id = 3, Name = "Champagne on arrival", Price = 400m, BillingType = "PerBooking" }
             };
             modelBuilder.Entity<Service>().HasData(services);
-
         }
     }
 }

@@ -15,17 +15,17 @@
                 <div class="col-md-5">
                     <label class="form-label fw-semibold">Søg i bookinger</label>
                     <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Booking ID, gæstenavn..." @bind="_searchTerm" />
+                        <input type="text" class="form-control" placeholder="Booking ID, gæstenavn..." @bind="_searchTerm" @oninput="ApplyFilters" />
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label fw-semibold">Fra dato</label>
-                    <InputDate class="form-control" @bind-Value="_dateFilter" />
+                    <label class="form-label fw-semibold">Vis dato</label>
+                    <InputDate class="form-control" @bind-Value="_dateFilter" @bind-Value:after="ApplyFilters" />
                 </div>
                 <div class="col-md-2">
                     <label class="form-label fw-semibold">Status</label>
-                    <select class="form-select" @bind="_statusFilter">
+                    <select class="form-select" @bind="_statusFilter" @bind:after="ApplyFilters">
                         <option value="">Alle status</option>
                         <option value="Confirmed">Bekræftet</option>
                         <option value="CheckedIn">Checket Ind</option>
@@ -34,7 +34,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <button class="btn btn-primary w-100" @onclick="ApplyFilters">Søg</button>
+                    <button class="btn btn-secondary w-100" @onclick="ClearFilters">Nulstil</button>
                 </div>
             </div>
         </div>
@@ -48,7 +48,7 @@
             <button class="nav-link @(_activeTab == "departures" ? "active" : "")" @onclick='() => SetActiveTab("departures")'>Dagens Afrejser (@_departures.Count)</button>
         </li>
         <li class="nav-item">
-            <button class="nav-link @(_activeTab == "all" ? "active" : "")" @onclick='() => SetActiveTab("all")'>Alle Bookinger</button>
+            <button class="nav-link @(_activeTab == "all" ? "active" : "")" @onclick='() => SetActiveTab("all")'>Alle Bookinger (@_allBookings.Count)</button>
         </li>
     </ul>
 
@@ -68,20 +68,20 @@
                         <th>Check-in</th>
                         <th>Check-ud</th>
                         <th>Status</th>
-                        <th>Handlinger</th>
+                        <th class="text-end">Handlinger</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var booking in GetFilteredBookings())
+                    @foreach (var booking in GetVisibleBookings())
                     {
                         <tr>
-                            <td>#@booking.Id.Substring(0, 6)</td>
+                            <td>#@booking.Id.Substring(0, 6).ToUpper()</td>
                             <td>@booking.GuestFullName</td>
                             <td>@booking.RoomTypeName</td>
                             <td>@booking.CheckInDate.ToString("dd/MM/yyyy")</td>
                             <td>@booking.CheckOutDate.ToString("dd/MM/yyyy")</td>
                             <td><span class="badge @GetStatusClass(booking.Status)">@booking.Status</span></td>
-                            <td>
+                            <td class="text-end">
                                 <button class="btn btn-sm btn-icon"><i class="bi bi-eye-fill"></i></button>
                                 <button class="btn btn-sm btn-icon"><i class="bi bi-pencil-fill"></i></button>
                             </td>
@@ -144,18 +144,21 @@
     private bool _isLoading = true;
     private string _activeTab = "arrivals";
 
-    // Data lists
     private List<BookingSummaryDto> _allBookings = new();
     private List<BookingSummaryDto> _arrivals = new();
     private List<BookingSummaryDto> _departures = new();
     private DailyStatsDto? _stats;
 
-    // Filters
-    private string? _searchTerm;
+    private string _searchTerm = "";
     private DateTime? _dateFilter;
-    private string? _statusFilter;
+    private string _statusFilter = "";
 
     protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
     {
         _isLoading = true;
 
@@ -167,55 +170,63 @@
         _allBookings = await allBookingsTask ?? new();
         _stats = await statsTask;
 
-        FilterLists();
+        FilterLocalLists();
         _isLoading = false;
     }
 
-    private void FilterLists()
+    private void SetActiveTab(string tabName) => _activeTab = tabName;
+
+    private List<BookingSummaryDto> GetVisibleBookings()
+    {
+        var sourceList = _activeTab switch
+        {
+            "arrivals" => _arrivals,
+            "departures" => _departures,
+            _ => _allBookings
+        };
+
+        // Anvend live-filtre
+        var filtered = sourceList.AsEnumerable();
+        if (!string.IsNullOrEmpty(_searchTerm))
+        {
+            filtered = filtered.Where(b => b.GuestFullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) || b.Id.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
+        }
+        if (!string.IsNullOrEmpty(_statusFilter))
+        {
+            filtered = filtered.Where(b => b.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
+        }
+        if (_dateFilter.HasValue)
+        {
+            filtered = filtered.Where(b => b.CheckInDate.Date <= _dateFilter.Value.Date && b.CheckOutDate.Date > _dateFilter.Value.Date);
+        }
+
+        return filtered.ToList();
+    }
+
+    private void FilterLocalLists()
     {
         var today = DateTime.UtcNow.Date;
         _arrivals = _allBookings.Where(b => b.CheckInDate.Date == today).ToList();
         _departures = _allBookings.Where(b => b.CheckOutDate.Date == today).ToList();
     }
 
-    private List<BookingSummaryDto> GetFilteredBookings()
+    private async Task ApplyFilters() => await Task.CompletedTask; // Nødvendig for at tvinge re-rendering
+
+    private async Task ClearFilters()
     {
-        return _activeTab switch
-        {
-            "arrivals" => _arrivals,
-            "departures" => _departures,
-            _ => _allBookings
-        };
+        _searchTerm = "";
+        _dateFilter = null;
+        _statusFilter = "";
+        await ApplyFilters();
     }
 
-    private void SetActiveTab(string tabName)
+    private string GetStatusClass(string status) => status.ToLower() switch
     {
-        _activeTab = tabName;
-    }
-
-    private async Task ApplyFilters()
-    {
-        _isLoading = true;
-        _allBookings = await ApiService.GetBookingsForAdminAsync(_searchTerm, _dateFilter) ?? new();
-
-        // Supplerende client-side filtrering på status, da API ikke understøtter det endnu
-        if (!string.IsNullOrEmpty(_statusFilter))
-        {
-            _allBookings = _allBookings.Where(b => b.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-
-        FilterLists();
-        _isLoading = false;
-    }
-
-    private string GetStatusClass(string status)
-    {
-        return status.ToLower() switch
-        {
-            "bekræftet" or "confirmed" => "bg-success text-white",
-            "afventer" or "pending" => "bg-warning text-dark",
-            "annulleret" or "cancelled" => "bg-danger text-white",
-            _ => "bg-secondary text-white"
-        };
-    }
+        "bekræftet" or "confirmed" => "bg-success",
+        "afventer" or "pending" => "bg-warning text-dark",
+        "annulleret" or "cancelled" => "bg-danger",
+        "checkedin" => "bg-info",
+        "checkedout" => "bg-secondary",
+        _ => "bg-dark"
+    };
 }
