@@ -1,0 +1,31 @@
+﻿@inject NavigationManager Navigation
+
+<header class="staff-header">
+    <div class="staff-header-content">
+        <div class="staff-header-left">
+            <a href="/admin/bookings" class="staff-logo">
+                <div class="staff-logo-icon">F</div>
+                <span>Flyhigh</span>
+            </a>
+        </div>
+        <nav class="staff-header-nav">
+            <NavLink href="/admin/bookings" class="staff-nav-link">Dashboard</NavLink>
+            <NavLink href="/admin/housekeeping" class="staff-nav-link">Housekeeping</NavLink>
+            <NavLink href="/admin/administration" class="staff-nav-link">Administration</NavLink>
+        </nav>
+        <div class="staff-header-right">
+            <button class="btn btn-outline-light" @onclick="LogoutClicked">Log ud</button>
+        </div>
+    </div>
+</header>
+
+@code {
+    [Inject]
+    private APIService ApiService { get; set; } = default!;
+
+    private async Task LogoutClicked()
+    {
+        await ApiService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+}
