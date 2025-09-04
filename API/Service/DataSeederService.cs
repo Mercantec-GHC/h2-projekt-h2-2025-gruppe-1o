@@ -66,7 +66,7 @@ namespace API.Services
                         LastName = person.LastName,
                         PhoneNumber = f.Phone.PhoneNumber("########"),
                         PasswordBackdoor = "Password123!",
-                        HashedPassword = BCrypt.HashPassword("Password123!"),
+                        HashedPassword = BCrypt.Net.BCrypt.HashPassword("Password123!"),
                         RoleId = userRoleId,
                         LastLogin = f.Date.Recent(60).ToUniversalTime(),
                         CreatedAt = f.Date.Past(1).ToUniversalTime(),
