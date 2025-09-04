@@ -64,7 +64,7 @@ namespace Blazor.Services
 
             if (keyValuePairs != null)
             {
-                // -- RETTELSE BEGYNDER HER --
+                
 
                 // Kig efter de korte navne, som rent faktisk er i tokenet
                 keyValuePairs.TryGetValue("nameid", out object? nameId);
@@ -91,7 +91,7 @@ namespace Blazor.Services
                     claims.Add(new Claim(ClaimTypes.Role, role.ToString()!));
                 }
 
-                // -- RETTELSE SLUTTER HER --
+                
             }
             return claims;
         }

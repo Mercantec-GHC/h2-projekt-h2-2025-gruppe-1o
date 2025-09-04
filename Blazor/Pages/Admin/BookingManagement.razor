@@ -6,88 +6,95 @@
 
 <div class="page-section">
     <h2 class="section-title">Booking Management</h2>
-    <p class="section-subtitle">Oversigt over alle bookinger i systemet.</p>
+    <p class="section-subtitle">Oversigt over alle bookinger og gæsteaktivitet.</p>
 
-    <div class="card bg-light mb-4">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-5">
-                    <label class="form-label">Søg på gæstenavn</label>
-                    <InputText class="form-control" @bind-Value="_guestNameFilter" />
-                </div>
-                <div class="col-md-5">
-                    <label class="form-label">Vis bookinger for dato</label>
-                    <InputDate class="form-control" @bind-Value="_dateFilter" />
-                </div>
-                <div class="col-md-2">
-                    <button class="btn btn-primary w-100" @onclick="SearchBookings">Søg</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    @if (_isLoading)
+    @if (_stats == null)
     {
-        <p><em>Henter bookinger...</em></p>
-    }
-    else if (_bookings != null && _bookings.Any())
-    {
-        <table class="table table-striped table-hover">
-            <thead>
-                <tr>
-                    <th>Gæst</th>
-                    <th>Værelsestype</th>
-                    <th>Check-in</th>
-                    <th>Check-ud</th>
-                    <th>Status</th>
-                    <th>Handlinger</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var booking in _bookings)
-                {
-                    <tr>
-                        <td>@booking.GuestFullName</td>
-                        <td>@booking.RoomTypeName</td>
-                        <td>@booking.CheckInDate.ToString("dd MMM yyyy")</td>
-                        <td>@booking.CheckOutDate.ToString("dd MMM yyyy")</td>
-                        <td><span class="badge bg-primary">@booking.Status</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary">Detaljer</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <p><em>Henter statistik...</em></p>
     }
     else
     {
-        <p>Der blev ikke fundet nogle bookinger med de valgte kriterier.</p>
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Ankomster</h5>
+                        <p class="card-text fs-2 fw-bold">@_stats.ArrivalsCount</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Afrejser</h5>
+                        <p class="card-text fs-2 fw-bold">@_stats.DeparturesCount</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Belægning</h5>
+                        <p class="card-text fs-2 fw-bold">@_stats.OccupancyPercentage %</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Omsætning</h5>
+                        <p class="card-text fs-2 fw-bold">@_stats.TodaysRevenue.ToString("N0") kr.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     }
+
+    <div class="card">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <button class="nav-link @(_activeTab == "arrivals" ? "active" : "")" @onclick='() => SetActiveTab("arrivals")'>Dagens Ankomster</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @(_activeTab == "departures" ? "active" : "")" @onclick='() => SetActiveTab("departures")'>Dagens Afrejser</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link @(_activeTab == "all" ? "active" : "")" @onclick='() => SetActiveTab("all")'>Alle Bookinger</button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            @if (_isLoading)
+            {
+                <p><em>Henter bookinger...</em></p>
+            }
+            else
+            {
+                <p>Viser nu: @_activeTab</p>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
     private bool _isLoading = true;
-    private List<BookingSummaryDto> _bookings = new();
+    private string _activeTab = "arrivals"; // Startfaneblad
 
-    // Filtre
-    private string? _guestNameFilter;
-    private DateTime? _dateFilter;
+    private DailyStatsDto? _stats;
+    private List<BookingSummaryDto> _allBookings = new();
+    // TODO: Opret lister til ankomster og afrejser
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadBookings();
-    }
-
-    private async Task SearchBookings()
-    {
-        await LoadBookings();
-    }
-
-    private async Task LoadBookings()
-    {
-        _isLoading = true;
-        _bookings = await ApiService.GetBookingsForAdminAsync(_guestNameFilter, _dateFilter) ?? new();
+        _stats = await ApiService.GetDashboardStatsAsync();
+        _allBookings = await ApiService.GetBookingsForAdminAsync() ?? new();
         _isLoading = false;
+    }
+
+    private void SetActiveTab(string tabName)
+    {
+        _activeTab = tabName;
+        // Her vil vi senere filtrere listerne i stedet for at hente data igen
     }
 }
