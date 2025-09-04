@@ -2,7 +2,7 @@
 using Bogus;
 using DomainModels;
 using Microsoft.EntityFrameworkCore;
-using BCrypt.Net; // DENNE LINJE MANGLER I DIN FIL
+// Vi behøver ikke et specifikt using-statement her, da vi kalder den fulde sti
 
 namespace API.Services
 {
@@ -66,7 +66,8 @@ namespace API.Services
                         LastName = person.LastName,
                         PhoneNumber = f.Phone.PhoneNumber("########"),
                         PasswordBackdoor = "Password123!",
-                        HashedPassword = BCrypt.HashPassword("Password123!"),
+                        // RETTELSE: Bruger det fulde, korrekte navn til metoden
+                        HashedPassword = BCrypt.Net.BCrypt.HashPassword("Password123!"),
                         RoleId = userRoleId,
                         LastLogin = f.Date.Recent(60).ToUniversalTime(),
                         CreatedAt = f.Date.Past(1).ToUniversalTime(),
