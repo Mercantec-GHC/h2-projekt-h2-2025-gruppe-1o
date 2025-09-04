@@ -20,16 +20,10 @@ namespace API.Services
         public async Task ClearDatabaseAsync()
         {
             var users = await _context.Users.Where(u => u.Role != null && u.Role.Name == "User").ToListAsync();
-            if (users.Any())
-            {
-                _context.Users.RemoveRange(users);
-            }
+            if (users.Any()) _context.Users.RemoveRange(users);
 
             var bookings = await _context.Bookings.ToListAsync();
-            if (bookings.Any())
-            {
-                _context.Bookings.RemoveRange(bookings);
-            }
+            if (bookings.Any()) _context.Bookings.RemoveRange(bookings);
 
             await _context.SaveChangesAsync();
             _logger.LogInformation("Slettet genererede Bookings og Users fra databasen.");
@@ -79,6 +73,7 @@ namespace API.Services
                     {
                         Id = Guid.NewGuid().ToString(),
                         Email = f.Internet.Email(person.FirstName, person.LastName).ToLower(),
+                        // RETTELSE: Bruger nu FirstName og LastName
                         FirstName = person.FirstName,
                         LastName = person.LastName,
                         PhoneNumber = f.Phone.PhoneNumber(),
