@@ -3,6 +3,7 @@ using System;
 using API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250904085719_RefactorBookingServiceRelationship")]
+    partial class RefactorBookingServiceRelationship
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -352,45 +355,45 @@ namespace API.Migrations
                     b.HasData(
                         new
                         {
-                            Id = "f2b72c57-632b-4a88-a476-2a1c72787e9c",
-                            CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Id = "efdc99eb-c414-4f6d-b589-1bc80ac947d5",
+                            CreatedAt = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486),
                             Email = "manager@hotel.dk",
                             FirstName = "Manager",
                             HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
-                            LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            LastLogin = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486),
                             LastName = "Admin",
                             PasswordBackdoor = "Password123!",
                             PhoneNumber = "",
                             RoleId = "4",
-                            UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc)
+                            UpdatedAt = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486)
                         },
                         new
                         {
-                            Id = "a1b38c7f-9a2d-4e8f-8f3a-3c1b7e5d2a9f",
-                            CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Id = "7060d476-83bc-4dfa-8882-e86298a69cdc",
+                            CreatedAt = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486),
                             Email = "receptionist@hotel.dk",
                             FirstName = "Receptionist",
                             HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
-                            LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            LastLogin = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486),
                             LastName = "Test",
                             PasswordBackdoor = "Password123!",
                             PhoneNumber = "",
                             RoleId = "3",
-                            UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc)
+                            UpdatedAt = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486)
                         },
                         new
                         {
-                            Id = "c5d8a9b2-3e4f-4a1b-9d8c-7b6a5d4c3b2a",
-                            CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            Id = "32b729e4-1bab-4b8e-ada0-bf94b1d44b89",
+                            CreatedAt = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486),
                             Email = "rengøring@hotel.dk",
                             FirstName = "Rengøring",
                             HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
-                            LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
+                            LastLogin = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486),
                             LastName = "Test",
                             PasswordBackdoor = "Password123!",
                             PhoneNumber = "",
                             RoleId = "2",
-                            UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc)
+                            UpdatedAt = new DateTime(2025, 9, 4, 8, 57, 19, 493, DateTimeKind.Utc).AddTicks(2486)
                         });
                 });
 

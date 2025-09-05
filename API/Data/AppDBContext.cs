@@ -13,7 +13,6 @@ namespace API.Data
         public DbSet<RoomType> RoomTypes { get; set; } = null!;
         public DbSet<Booking> Bookings { get; set; } = null!;
         public DbSet<Service> Services { get; set; } = null!;
-        public DbSet<BookingService> BookingServices { get; set; } = null!;
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -40,6 +39,7 @@ namespace API.Data
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<Role>(entity => entity.HasIndex(r => r.Name).IsUnique());
+
             modelBuilder.Entity<User>(entity =>
             {
                 entity.HasIndex(u => u.Email).IsUnique();
@@ -63,6 +63,10 @@ namespace API.Data
                 entity.HasOne(b => b.User).WithMany().HasForeignKey(b => b.UserId).OnDelete(DeleteBehavior.Cascade);
                 entity.HasOne(b => b.RoomType).WithMany().HasForeignKey(b => b.RoomTypeId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(b => b.Room).WithMany(r => r.Bookings).HasForeignKey(b => b.RoomId).IsRequired(false).OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasMany(b => b.Services)
+                      .WithMany(s => s.Bookings)
+                      .UsingEntity("BookingServices");
             });
 
             modelBuilder.Entity<Service>(entity =>
@@ -70,19 +74,11 @@ namespace API.Data
                 entity.Property(s => s.Price).HasColumnType("decimal(18,2)");
             });
 
-            modelBuilder.Entity<BookingService>(entity =>
-            {
-                entity.HasKey(bs => new { bs.BookingId, bs.ServiceId });
-                entity.HasOne(bs => bs.Booking).WithMany(b => b.BookingServices).HasForeignKey(bs => bs.BookingId);
-                entity.HasOne(bs => bs.Service).WithMany().HasForeignKey(bs => bs.ServiceId);
-            });
-
             SeedData(modelBuilder);
         }
 
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Seed Roller
             var roles = new[]
             {
                 new Role { Id = "1", Name = "User", Description = "Standard bruger" },
@@ -92,8 +88,52 @@ namespace API.Data
             };
             modelBuilder.Entity<Role>().HasData(roles);
 
+            var passwordHash = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W"; // Hash for "Password123!"
+            // RETTELSE: Brug en fast, statisk dato i stedet for DateTime.UtcNow
+            var fixedDate = new DateTime(2025, 1, 1, 12, 0, 0, DateTimeKind.Utc);
 
-            // Seed Værelsestyper
+            modelBuilder.Entity<User>().HasData(
+                new User
+                {
+                    Id = "f2b72c57-632b-4a88-a476-2a1c72787e9c",
+                    FirstName = "Manager",
+                    LastName = "Admin",
+                    Email = "manager@hotel.dk",
+                    RoleId = "4",
+                    HashedPassword = passwordHash,
+                    PasswordBackdoor = "Password123!",
+                    CreatedAt = fixedDate,
+                    UpdatedAt = fixedDate,
+                    LastLogin = fixedDate
+                },
+                new User
+                {
+                    Id = "a1b38c7f-9a2d-4e8f-8f3a-3c1b7e5d2a9f",
+                    FirstName = "Receptionist",
+                    LastName = "Test",
+                    Email = "receptionist@hotel.dk",
+                    RoleId = "3",
+                    HashedPassword = passwordHash,
+                    PasswordBackdoor = "Password123!",
+                    CreatedAt = fixedDate,
+                    UpdatedAt = fixedDate,
+                    LastLogin = fixedDate
+                },
+                new User
+                {
+                    Id = "c5d8a9b2-3e4f-4a1b-9d8c-7b6a5d4c3b2a",
+                    FirstName = "Rengøring",
+                    LastName = "Test",
+                    Email = "rengøring@hotel.dk",
+                    RoleId = "2",
+                    HashedPassword = passwordHash,
+                    PasswordBackdoor = "Password123!",
+                    CreatedAt = fixedDate,
+                    UpdatedAt = fixedDate,
+                    LastLogin = fixedDate
+                }
+            );
+
             var roomTypes = new[]
             {
                 new RoomType { Id = 1, Name = "Single Room", Description = "Hyggeligt enkeltværelse med alt hvad du behøver.", BasePrice = 800m, Capacity = 1 },
@@ -102,7 +142,6 @@ namespace API.Data
             };
             modelBuilder.Entity<RoomType>().HasData(roomTypes);
 
-            // Seed Services
             var services = new[]
             {
                 new Service { Id = 1, Name = "Breakfast", Price = 150m, BillingType = "PerNight" },
@@ -110,8 +149,6 @@ namespace API.Data
                 new Service { Id = 3, Name = "Champagne on arrival", Price = 400m, BillingType = "PerBooking" }
             };
             modelBuilder.Entity<Service>().HasData(services);
-
-            // BEMÆRK: Vi seeder IKKE de 400 værelser her længere. Det er nu DataSeederService's job.
         }
     }
 }

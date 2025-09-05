@@ -1,23 +1,19 @@
-﻿namespace DomainModels.Mapping;
+﻿using DomainModels.DTOs;
 
-/// <summary>
-/// En statisk hjælpeklasse til at mappe mellem forskellige bruger-objekter.
-/// </summary>
-public class UserMapping
+namespace DomainModels.Mapping
 {
-    /// <summary>
-    /// Konverterer et User-databaseobjekt til et UserGetDto, der er sikkert at sende til en klient.
-    /// </summary>
-    /// <param name="user">User-entiteten fra databasen.</param>
-    /// <returns>Et UserGetDto-objekt.</returns>
-    public static UserGetDto ToUserGetDto(User user)
+    public static class UserMapping
     {
-        return new UserGetDto
+        public static UserGetDto ToUserGetDto(User user)
         {
-            Id = user.Id,
-            Email = user.Email,
-            Username = user.Username,
-            Role = user.Role?.Name ?? string.Empty
-        };
+            return new UserGetDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Role = user.Role?.Name ?? "User"
+            };
+        }
     }
 }

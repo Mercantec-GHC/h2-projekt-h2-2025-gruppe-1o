@@ -7,7 +7,6 @@ namespace API.Repositories
     public class BookingRepository : IBookingRepository
     {
         private readonly AppDBContext _context;
-
         public BookingRepository(AppDBContext context)
         {
             _context = context;
@@ -20,7 +19,7 @@ namespace API.Repositories
             return newBooking;
         }
 
-        public async Task<IEnumerable<Booking>> GetAllAsync(string? userId = null, DateTime? fromDate = null)
+        public async Task<IEnumerable<Booking>> GetAllAsync(string? userId = null, string? guestName = null, DateTime? date = null)
         {
             var query = _context.Bookings
                 .Include(b => b.User)
@@ -34,10 +33,15 @@ namespace API.Repositories
                 query = query.Where(b => b.UserId == userId);
             }
 
-            if (fromDate.HasValue)
+            if (!string.IsNullOrEmpty(guestName))
             {
-                var fromDateUtc = fromDate.Value.ToUniversalTime();
-                query = query.Where(b => b.CheckOutDate.Date >= fromDateUtc.Date);
+                query = query.Where(b => (b.User.FirstName + " " + b.User.LastName).ToLower().Contains(guestName.ToLower()));
+            }
+
+            if (date.HasValue)
+            {
+                var searchDate = date.Value.Date;
+                query = query.Where(b => b.CheckInDate.Date <= searchDate && b.CheckOutDate.Date > searchDate);
             }
 
             return await query.ToListAsync();

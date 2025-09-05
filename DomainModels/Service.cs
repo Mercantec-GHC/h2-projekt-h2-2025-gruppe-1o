@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace DomainModels
 {
@@ -16,6 +17,8 @@ namespace DomainModels
 
         [Required]
         [MaxLength(20)]
-        public string BillingType { get; set; } // "PerBooking" eller "PerNight"
+        public string BillingType { get; set; }
+
+        public virtual ICollection<Booking> Bookings { get; set; } = new List<Booking>();
     }
 }

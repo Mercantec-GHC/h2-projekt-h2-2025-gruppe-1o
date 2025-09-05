@@ -229,3 +229,23 @@ code {
     width: 100%;
     padding: 14px;
 }
+
+
+
+.badge.bg-success {
+    background-color: #198754 !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+

@@ -1,31 +1,21 @@
-﻿
-
-<button type="@(IsSubmit ? "submit" : "button")" class="btn @ButtonClass" @onclick="OnClick">
+﻿<button type="@(IsSubmit ? "submit" : "button")"
+        class="btn @ButtonClass"
+        @onclick="OnClick"
+        @onclick:preventDefault="false"
+        @onclick:stopPropagation="false">
     @ChildContent
 </button>
 
 @code {
-    /// <summary>
-    /// Definerer knappens visuelle stil.
-    /// </summary>
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Primary;
 
-    /// <summary>
-    /// Teksten eller HTML-indholdet, der vises inde i knappen.
-    /// </summary>
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    /// <summary>
-    /// Metoden, der skal kaldes, når der klikkes på knappen.
-    /// </summary>
     [Parameter]
     public EventCallback<MouseEventArgs> OnClick { get; set; }
 
-    /// <summary>
-    /// Angiver, om knappen skal fungere som en 'submit'-knap i en formular.
-    /// </summary>
     [Parameter]
     public bool IsSubmit { get; set; }
 

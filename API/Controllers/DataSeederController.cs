@@ -44,10 +44,6 @@ namespace API.Controllers
         /// <param name="userCount">Antallet af brugere, der skal genereres. Standard er 50.</param>
         /// <param name="bookingCount">Det cirka antal bookinger, der skal genereres. Standard er 200.</param>
         /// <returns>En bekræftelsesmeddelelse om, at databasen er blevet seedet.</returns>
-        /// <response code="200">Data blev succesfuldt genereret og indsat i databasen.</response>
-        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
-        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle, eller hvis applikationen ikke kører i 'Development' mode.</response>
-        /// <response code="500">Hvis der opstod en intern fejl under seeding-processen.</response>
         [HttpPost("seed")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -77,14 +73,9 @@ namespace API.Controllers
         /// Sletter alle genererede brugere og bookinger fra databasen.
         /// </summary>
         /// <remarks>
-        /// Denne operation kan kun udføres i et **Development**-miljø.
-        /// Handlingen kan ikke fortrydes.
+        /// Denne operation kan kun udføres i et **Development**-miljø. Handlingen kan ikke fortrydes.
         /// </remarks>
         /// <returns>En bekræftelsesmeddelelse om, at data er blevet slettet.</returns>
-        /// <response code="200">Data blev succesfuldt slettet.</response>
-        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
-        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle, eller hvis applikationen ikke kører i 'Development' mode.</response>
-        /// <response code="500">Hvis der opstod en intern fejl under sletningsprocessen.</response>
         [HttpDelete("clear")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]
@@ -117,9 +108,6 @@ namespace API.Controllers
         /// Denne operation kan kun udføres i et **Development**-miljø.
         /// </remarks>
         /// <returns>Et objekt med antallet af brugere, bookinger, værelser, værelsestyper og roller.</returns>
-        /// <response code="200">Returnerer et statistikobjekt.</response>
-        /// <response code="401">Hvis brugeren ikke er autentificeret.</response>
-        /// <response code="403">Hvis brugeren ikke har den påkrævede rolle, eller hvis applikationen ikke kører i 'Development' mode.</response>
         [HttpGet("stats")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status401Unauthorized)]

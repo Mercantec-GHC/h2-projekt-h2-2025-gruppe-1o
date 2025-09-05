@@ -2,22 +2,21 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
-using System.Net.Http; 
-using System.Net.Http.Headers; 
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace Blazor.Services
 {
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         private readonly IJSRuntime _jsRuntime;
-        private readonly HttpClient _httpClient; // Tilføj denne
+        private readonly HttpClient _httpClient;
         private ClaimsPrincipal _anonymous = new ClaimsPrincipal(new ClaimsIdentity());
 
-        // Opdater konstruktøren til at modtage HttpClient
         public CustomAuthenticationStateProvider(IJSRuntime jsRuntime, HttpClient httpClient)
         {
             _jsRuntime = jsRuntime;
-            _httpClient = httpClient; // Tilføj denne
+            _httpClient = httpClient;
         }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -27,13 +26,12 @@ namespace Blazor.Services
                 var token = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
                 if (string.IsNullOrEmpty(token))
                 {
-                    // Sørg for at fjerne headeren, hvis der ikke er noget token
                     _httpClient.DefaultRequestHeaders.Authorization = null;
                     return new AuthenticationState(_anonymous);
                 }
 
-                // RETTELSE: Sæt Authorization headeren HVER gang appen indlæses og finder et token
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("bearer", token);
+                // DENNE LINJE ER AFGØRENDE: Den sætter token på ALLE fremtidige kald.
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuth"));
                 return new AuthenticationState(claimsPrincipal);
@@ -66,11 +64,34 @@ namespace Blazor.Services
 
             if (keyValuePairs != null)
             {
-                keyValuePairs.TryGetValue(ClaimTypes.Name, out var name);
-                if (name != null)
+                
+
+                // Kig efter de korte navne, som rent faktisk er i tokenet
+                keyValuePairs.TryGetValue("nameid", out object? nameId);
+                if (nameId != null)
                 {
-                    claims.Add(new Claim(ClaimTypes.Name, name.ToString()!));
+                    claims.Add(new Claim(ClaimTypes.NameIdentifier, nameId.ToString()!));
                 }
+
+                keyValuePairs.TryGetValue("unique_name", out object? uniqueName);
+                if (uniqueName != null)
+                {
+                    claims.Add(new Claim(ClaimTypes.Name, uniqueName.ToString()!));
+                }
+
+                keyValuePairs.TryGetValue("email", out object? email);
+                if (email != null)
+                {
+                    claims.Add(new Claim(ClaimTypes.Email, email.ToString()!));
+                }
+
+                keyValuePairs.TryGetValue("role", out object? role);
+                if (role != null)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role.ToString()!));
+                }
+
+                
             }
             return claims;
         }

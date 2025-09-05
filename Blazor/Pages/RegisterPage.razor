@@ -1,5 +1,7 @@
 ﻿@page "/register"
-@using DomainModels
+@using DomainModels.DTOs
+@inject APIService ApiService
+@inject NavigationManager Navigation
 
 <PageTitle>Opret Konto</PageTitle>
 
@@ -11,28 +13,37 @@
 
         <EditForm Model="_registerModel" OnValidSubmit="HandleRegistration">
             <DataAnnotationsValidator />
-            <ValidationSummary />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+            <ValidationSummary class="text-danger" />
 
             <div class="form-group">
-                <label for="username">Brugernavn</label>
-                <InputText id="username" class="form-control" @bind-Value="_registerModel.Username" />
+                <label for="firstName">Fornavn</label>
+                <InputText id="firstName" class="form-control" @bind-Value="_registerModel.FirstName" />
             </div>
-
+            <div class="form-group">
+                <label for="lastName">Efternavn</label>
+                <InputText id="lastName" class="form-control" @bind-Value="_registerModel.LastName" />
+            </div>
             <div class="form-group">
                 <label for="email">E-mail adresse</label>
                 <InputText id="email" class="form-control" @bind-Value="_registerModel.Email" />
             </div>
-
+            <div class="form-group">
+                <label for="phoneNumber">Telefon nr.</label>
+                <InputText id="phoneNumber" class="form-control" @bind-Value="_registerModel.PhoneNumber" />
+            </div>
             <div class="form-group">
                 <label for="password">Adgangskode</label>
                 <InputText id="password" type="password" class="form-control" @bind-Value="_registerModel.Password" />
             </div>
-
             <div class="form-group">
                 <label for="confirmPassword">Bekræft adgangskode</label>
                 <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="_registerModel.ConfirmPassword" />
             </div>
-
             <div class="form-group-checkbox">
                 <InputCheckbox id="terms" @bind-Value="_acceptTerms" />
                 <label for="terms">Jeg accepterer vilkår og betingelser</label>
@@ -49,28 +60,26 @@
 </div>
 
 @code {
-    [Inject]
-    private APIService ApiService { get; set; } = default!; 
-    [Inject]
-    private NavigationManager Navigation { get; set; } = default!;
-
     private RegisterDto _registerModel = new();
     private bool _acceptTerms = false;
     private string? _errorMessage;
 
     private async Task HandleRegistration()
     {
-        // ... (din eksisterende logik for _acceptTerms) ...
-
-        var registrationSuccessful = await ApiService.RegisterAsync(_registerModel); 
-
+        _errorMessage = null;
+        if (!_acceptTerms)
+        {
+            _errorMessage = "Du skal acceptere vilkår og betingelser.";
+            return;
+        }
+        var registrationSuccessful = await ApiService.RegisterAsync(_registerModel);
         if (registrationSuccessful)
         {
             Navigation.NavigateTo("/login");
         }
         else
         {
-            _errorMessage = "Der opstod en fejl under oprettelsen. Måske er emailen allerede i brug?";
+            _errorMessage = "Der opstod en fejl. Måske er emailen allerede i brug?";
         }
     }
 }

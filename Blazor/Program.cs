@@ -1,11 +1,8 @@
+using System.IdentityModel.Tokens.Jwt;
 using Blazor.Services;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Net.Http;
 
 namespace Blazor;
 
@@ -16,23 +13,26 @@ public class Program
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         builder.RootComponents.Add<App>("#app");
         builder.RootComponents.Add<HeadOutlet>("head::after");
-        
 
-        // Læs API endpoint fra miljøvariabler eller brug default
-        var envApiEndpoint = Environment.GetEnvironmentVariable("API_ENDPOINT");
-        Console.WriteLine($"API ENV Endpoint: {envApiEndpoint}");
-        var apiEndpoint = envApiEndpoint ?? "https://flyhigh-api.mercantec.tech/"; // VORES API URL
-        Console.WriteLine($"API Endpoint: {apiEndpoint}");
+        JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
-        // Registrer HttpClient til API service med konfigurerbar endpoint
-        builder.Services.AddAuthorizationCore();
+
+        // Peger permanent på dit live API
+        var apiBaseAddress = new Uri("https://flyhigh-api.mercantec.tech/");
+
+        // Opsætning af en enkelt HttpClient, som alle services deler
+        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });
+        builder.Services.AddScoped<APIService>();
         builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
-        builder.Services.AddHttpClient<APIService>(client =>
-        {
-            client.BaseAddress = new Uri(apiEndpoint);
-            Console.WriteLine($"APIService BaseAddress: {client.BaseAddress}");
-        });
+        builder.Services.AddAuthorizationCore();
 
-        await builder.Build().RunAsync();
+        var host = builder.Build();
+
+        // Initialize authentication state on startup
+        // This ensures the auth header is set if a token exists in sessionStorage
+        var authStateProvider = host.Services.GetRequiredService<AuthenticationStateProvider>();
+        await authStateProvider.GetAuthenticationStateAsync();
+
+        await host.RunAsync();
     }
 }

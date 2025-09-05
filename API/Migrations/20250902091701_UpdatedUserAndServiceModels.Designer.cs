@@ -3,6 +3,7 @@ using System;
 using API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250902091701_UpdatedUserAndServiceModels")]
+    partial class UpdatedUserAndServiceModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,21 +24,6 @@ namespace API.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("BookingServices", b =>
-                {
-                    b.Property<string>("BookingsId")
-                        .HasColumnType("text");
-
-                    b.Property<int>("ServicesId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("BookingsId", "ServicesId");
-
-                    b.HasIndex("ServicesId");
-
-                    b.ToTable("BookingServices");
-                });
 
             modelBuilder.Entity("DomainModels.Booking", b =>
                 {
@@ -85,6 +73,21 @@ namespace API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Bookings");
+                });
+
+            modelBuilder.Entity("DomainModels.BookingService", b =>
+                {
+                    b.Property<string>("BookingId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ServiceId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("BookingId", "ServiceId");
+
+                    b.HasIndex("ServiceId");
+
+                    b.ToTable("BookingServices");
                 });
 
             modelBuilder.Entity("DomainModels.Role", b =>
@@ -253,16 +256,24 @@ namespace API.Migrations
 
                     b.Property<string>("BillingType")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
+
+                    b.Property<string>("PasswordBackdoor")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -273,22 +284,31 @@ namespace API.Migrations
                         {
                             Id = 1,
                             BillingType = "PerNight",
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Breakfast",
-                            Price = 150m
+                            PasswordBackdoor = "",
+                            Price = 150m,
+                            UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
                             Id = 2,
                             BillingType = "PerBooking",
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Spa Access",
-                            Price = 250m
+                            PasswordBackdoor = "",
+                            Price = 250m,
+                            UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         },
                         new
                         {
                             Id = 3,
                             BillingType = "PerBooking",
+                            CreatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                             Name = "Champagne on arrival",
-                            Price = 400m
+                            PasswordBackdoor = "",
+                            Price = 400m,
+                            UpdatedAt = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified)
                         });
                 });
 
@@ -348,65 +368,6 @@ namespace API.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("Users");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = "f2b72c57-632b-4a88-a476-2a1c72787e9c",
-                            CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "manager@hotel.dk",
-                            FirstName = "Manager",
-                            HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
-                            LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Admin",
-                            PasswordBackdoor = "Password123!",
-                            PhoneNumber = "",
-                            RoleId = "4",
-                            UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = "a1b38c7f-9a2d-4e8f-8f3a-3c1b7e5d2a9f",
-                            CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "receptionist@hotel.dk",
-                            FirstName = "Receptionist",
-                            HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
-                            LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Test",
-                            PasswordBackdoor = "Password123!",
-                            PhoneNumber = "",
-                            RoleId = "3",
-                            UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = "c5d8a9b2-3e4f-4a1b-9d8c-7b6a5d4c3b2a",
-                            CreatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "rengøring@hotel.dk",
-                            FirstName = "Rengøring",
-                            HashedPassword = "$2a$11$jCvV3t1G2u2AL.26A72Gv.ECi1G93olRzSP4i3.eIh3Kx/p2yvD.W",
-                            LastLogin = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc),
-                            LastName = "Test",
-                            PasswordBackdoor = "Password123!",
-                            PhoneNumber = "",
-                            RoleId = "2",
-                            UpdatedAt = new DateTime(2025, 1, 1, 12, 0, 0, 0, DateTimeKind.Utc)
-                        });
-                });
-
-            modelBuilder.Entity("BookingServices", b =>
-                {
-                    b.HasOne("DomainModels.Booking", null)
-                        .WithMany()
-                        .HasForeignKey("BookingsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DomainModels.Service", null)
-                        .WithMany()
-                        .HasForeignKey("ServicesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("DomainModels.Booking", b =>
@@ -435,6 +396,25 @@ namespace API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DomainModels.BookingService", b =>
+                {
+                    b.HasOne("DomainModels.Booking", "Booking")
+                        .WithMany("BookingServices")
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DomainModels.Service", "Service")
+                        .WithMany()
+                        .HasForeignKey("ServiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
+
+                    b.Navigation("Service");
+                });
+
             modelBuilder.Entity("DomainModels.Room", b =>
                 {
                     b.HasOne("DomainModels.RoomType", "RoomType")
@@ -455,6 +435,11 @@ namespace API.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("DomainModels.Booking", b =>
+                {
+                    b.Navigation("BookingServices");
                 });
 
             modelBuilder.Entity("DomainModels.Role", b =>
