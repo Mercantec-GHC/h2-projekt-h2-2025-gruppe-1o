@@ -2,7 +2,7 @@
 using Bogus;
 using DomainModels;
 using Microsoft.EntityFrameworkCore;
-using BCrypt.Net; // DENNE LINJE RETTER FEJLEN
+
 
 namespace API.Services
 {
