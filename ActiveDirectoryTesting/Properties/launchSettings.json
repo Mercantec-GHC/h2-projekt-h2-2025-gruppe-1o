@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "ActiveDirectoryTesting": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
