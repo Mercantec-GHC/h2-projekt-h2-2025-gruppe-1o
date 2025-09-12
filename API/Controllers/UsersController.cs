@@ -316,6 +316,40 @@ namespace API.Controllers
                     }
                 });
             }
+
+
+        }
+
+        [AllowAnonymous]
+        [HttpGet("test-live-ad-connection")]
+        public IActionResult TestLiveAdConnection()
+        {
+            try
+            {
+                // Forsøger at oprette forbindelse med de konfigurationer, API'en kører med.
+                // Dette vil kaste en fejl, hvis serveren ikke kan nås.
+                using var context = new PrincipalContext(
+                    ContextType.Domain,
+                    _adService.Server, // Henter fra ADConfig (10.133.71.101)
+                    null,
+                    _adService.Username, // Henter fra ADConfig ("hans")
+                    "Password123!" // Password fra din ADConfig klasse
+                );
+
+                // Hvis vi når hertil uden en fejl, er forbindelsen OK.
+                return Ok(new { status = "Succes", message = $"API'en på {Request.Host} kan succesfuldt forbinde til AD-serveren på '{_adService.Server}'." });
+            }
+            catch (Exception ex)
+            {
+                // Dette vil fange netværksfejlen og returnere den præcise besked.
+                return StatusCode(500, new
+                {
+                    status = "Forbindelsesfejl",
+                    message = "API'en kunne IKKE få forbindelse til Active Directory-serveren.",
+                    errorMessage = ex.Message,
+                    innerExceptionMessage = ex.InnerException?.Message // Meget vigtig for netværksfejl
+                });
+            }
         }
     }
 }
