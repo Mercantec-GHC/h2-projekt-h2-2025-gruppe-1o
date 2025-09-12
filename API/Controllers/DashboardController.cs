@@ -8,7 +8,7 @@ namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(Roles = "Receptionist, Manager")]
+    // Vi fjerner Authorize herfra for at styre det på hver enkelt metode.
     public class DashboardController : ControllerBase
     {
         private readonly AppDBContext _context;
@@ -18,7 +18,11 @@ namespace API.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// Henter daglige statistikker. Er nu kun tilgængelig for Managere.
+        /// </summary>
         [HttpGet("stats")]
+        [Authorize(Roles = "Manager")] // <-- KUN brugere med "Manager"-rollen kan kalde dette.
         public async Task<ActionResult<DailyStatsDto>> GetDailyStats()
         {
             var today = DateTime.UtcNow.Date;
@@ -46,6 +50,26 @@ namespace API.Controllers
             };
 
             return Ok(stats);
+        }
+
+        //
+        // --- ▼▼▼ NY METODE TILFØJET HER ▼▼▼ ---
+        //
+
+        /// <summary>
+        /// Henter dagens rengøringsplan. For flere medarbejdertyper.
+        /// </summary>
+        [HttpGet("cleaning-schedule")]
+        [Authorize(Roles = "Manager,Receptionist,Staff")] // Roller adskilles med komma.
+        public IActionResult GetCleaningSchedule()
+        {
+            // Alle medarbejdere med en af disse roller kan se planen.
+            // Her ville du normalt hente data fra databasen.
+            return Ok(new
+            {
+                Date = DateTime.UtcNow.Date,
+                Schedule = "Rengøringsplan for i dag: Værelse 101, 203, 305..."
+            });
         }
     }
 }
