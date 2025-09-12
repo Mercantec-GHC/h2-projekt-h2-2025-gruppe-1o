@@ -5,6 +5,7 @@ using DomainModels.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.DirectoryServices.AccountManagement;
 using System.Security.Claims;
 
 namespace API.Controllers
@@ -240,6 +241,47 @@ namespace API.Controllers
                 token,
                 user = new { id = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName, role = user.Role?.Name ?? "User" }
             });
+        }
+
+        [AllowAnonymous]
+        [HttpPost("test-ad")] // Ændret fra HttpGet til HttpPost
+        public IActionResult TestAdConnection([FromBody] TestAdCredentialsDto dto)
+        {
+            _logger.LogInformation($"--- Starter AD Forbindelsestest for bruger: {dto.Username} ---");
+            try
+            {
+                // Vi bruger de oplysninger, du sender med, til at validere.
+                _logger.LogInformation($"Tester validering med '{dto.Username}'...");
+                bool isValid = _adService.ValidateUserCredentials(dto.Username, dto.Password);
+
+                if (isValid)
+                {
+                    _logger.LogInformation($"AD-validering for '{dto.Username}' var en succes!");
+                    return Ok(new { status = "Succes", message = $"Bruger '{dto.Username}' blev valideret succesfuldt mod Active Directory." });
+                }
+                else
+                {
+                    _logger.LogError($"AD-validering for '{dto.Username}' fejlede (forkert brugernavn/kodeord?).");
+                    // VIGTIGT: Returner 400 Bad Request, ikke 500, hvis det bare er forkerte credentials.
+                    return BadRequest(new { status = "Fejl", message = "Forbindelsen til AD var OK, men brugeroplysningerne var forkerte." });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Fanger fatale fejl som f.eks. netværksproblemer.
+                _logger.LogError(ex, "FATAL FEJL under AD-forbindelsestest.");
+                return StatusCode(500, new
+                {
+                    status = "Fatal Fejl",
+                    message = "Der skete en fejl under forsøget på at forbinde til Active Directory.",
+                    error = new
+                    {
+                        type = ex.GetType().ToString(),
+                        errorMessage = ex.Message,
+                        stackTrace = ex.StackTrace
+                    }
+                });
+            }
         }
     }
 }
