@@ -24,6 +24,9 @@ builder.Services.AddSingleton<LoginAttemptService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
 builder.Services.AddScoped<API.Repositories.IBookingRepository, API.Repositories.BookingRepository>();
+builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
+
+
 
 var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
 var jwtIssuer = Configuration["Jwt:Issuer"] ?? "H2-2025-API";
