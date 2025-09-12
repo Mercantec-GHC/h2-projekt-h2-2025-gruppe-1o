@@ -18,20 +18,13 @@ namespace API.Controllers
         private readonly JwtService _jwtService;
         private readonly ILogger<UsersController> _logger;
         private readonly LoginAttemptService _loginAttemptService;
-        private readonly ActiveDirectoryTesting.ActiveDirectoryService _adService; // TILFØJ DENNE
 
-        public UsersController(
-            AppDBContext context,
-            JwtService jwtService,
-            ILogger<UsersController> logger,
-            LoginAttemptService loginAttemptService,
-            ActiveDirectoryTesting.ActiveDirectoryService adService) // TILFØJ DENNE
+        public UsersController(AppDBContext context, JwtService jwtService, ILogger<UsersController> logger, LoginAttemptService loginAttemptService)
         {
             _context = context;
             _jwtService = jwtService;
             _logger = logger;
             _loginAttemptService = loginAttemptService;
-            _adService = adService; // TILFØJ DENNE
         }
 
         [Authorize]
@@ -101,74 +94,6 @@ namespace API.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
             return Ok(new { message = "Bruger oprettet!", userId = user.Id });
-        }
-
-        [AllowAnonymous]
-        [HttpPost("staff-login")]
-        public async Task<IActionResult> StaffLogin(StaffLoginDto dto)
-        {
-            // 1. Valider mod Active Directory med det direkte brugernavn
-            var isValidAdUser = _adService.ValidateUserCredentials(dto.Username, dto.Password);
-            if (!isValidAdUser)
-            {
-                return Unauthorized("Forkert medarbejder-login eller adgangskode.");
-            }
-
-            // 2. Hent brugeroplysninger (inkl. telefonnummer) og grupper fra AD
-            var adUser = _adService.GetUserWithGroups(dto.Username);
-            if (adUser == null || string.IsNullOrWhiteSpace(adUser.Email))
-            {
-                return StatusCode(500, "Brugeren mangler en email i Active Directory og kan ikke logges ind.");
-            }
-
-            // 3. Find eller opret bruger i lokal database
-            var localUser = await _context.Users
-                                          .Include(u => u.Role)
-                                          .FirstOrDefaultAsync(u => u.Email.ToLower() == adUser.Email.ToLower());
-
-            if (localUser == null)
-            {
-                // Brugeren oprettes
-                localUser = new User
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Email = adUser.Email,
-                    FirstName = adUser.FirstName,
-                    LastName = adUser.LastName,
-                    PhoneNumber = adUser.Phone, // <-- TILFØJ HER for nye brugere
-                    HashedPassword = "EXTERNALLY_MANAGED"
-                };
-                _context.Users.Add(localUser);
-            }
-            else
-            {
-                // Brugeren opdateres
-                localUser.FirstName = adUser.FirstName;
-                localUser.LastName = adUser.LastName;
-                localUser.PhoneNumber = adUser.Phone; // <-- TILFØJ HER for eksisterende brugere
-            }
-
-            // 4. Synkroniser roller
-            var roleNameFromAd = adUser.Groups.FirstOrDefault(g => g == "Admin" || g == "Manager" || g == "Receptionist") ?? "Staff";
-            var localRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleNameFromAd);
-            if (localRole == null)
-            {
-                localRole = new Role { Id = Guid.NewGuid().ToString(), Name = roleNameFromAd };
-                _context.Roles.Add(localRole);
-            }
-            localUser.Role = localRole;
-
-            localUser.LastLogin = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            // 5. Generer JWT Token
-            var token = _jwtService.GenerateToken(localUser);
-
-            return Ok(new
-            {
-                token,
-                user = new { id = localUser.Id, email = localUser.Email, firstName = localUser.FirstName, role = localUser.Role.Name }
-            });
         }
 
         [Authorize]
