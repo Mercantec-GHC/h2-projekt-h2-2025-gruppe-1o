@@ -197,13 +197,40 @@ namespace API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
+            // Find brugeren i den lokale database
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword))
+            // Hvis brugeren slet ikke findes, afvis med det samme
+            if (user == null)
             {
                 return Unauthorized("Forkert email eller adgangskode");
             }
 
+            bool isAuthenticated = false;
+
+            // TJEK HER: Er brugeren en Active Directory bruger?
+            if (user.HashedPassword == "EXTERNAL_MANAGED") // Eller "EXTERNALLY_MANAGED" afhængig af hvad du bruger
+            {
+                // Ja, valider mod Active Directory
+                // Bemærk: AD validering bruger ofte et sAMAccountName (f.eks. 'hans') og ikke en email.
+                // Vi antager her, at brugernavnet er det samme som emailen, eller den del før @.
+                // Du skal muligvis justere dette. For nu prøver vi med den fulde email.
+                var adUsername = user.Email; // Eller en anden logik til at finde AD brugernavn
+                isAuthenticated = _adService.ValidateUserCredentials(adUsername, dto.Password);
+            }
+            else
+            {
+                // Nej, det er en almindelig bruger. Valider med BCrypt.
+                isAuthenticated = BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword);
+            }
+
+            // Hvis valideringen fejlede (uanset metode), afvis.
+            if (!isAuthenticated)
+            {
+                return Unauthorized("Forkert email eller adgangskode");
+            }
+
+            // Hvis vi når hertil, er brugeren logget ind korrekt!
             user.LastLogin = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             var token = _jwtService.GenerateToken(user);
