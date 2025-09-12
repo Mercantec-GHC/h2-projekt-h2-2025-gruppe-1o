@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration; // Sørg for at have denne using-statement
+using Microsoft.Extensions.Configuration; // Sørg for at have denne using-statement please virk
 using System.Configuration;
 using System.DirectoryServices.AccountManagement;
 
