@@ -18,7 +18,7 @@ public class Program
 
 
         // Peger permanent på dit live API
-        var apiBaseAddress = new Uri("https://flyhigh-api.mercantec.tech/");
+        var apiBaseAddress = new Uri("https://localhost:8091");
 
         // Opsætning af en enkelt HttpClient, som alle services deler
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });

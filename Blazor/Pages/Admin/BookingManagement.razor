@@ -1,4 +1,4 @@
-﻿@page "/admin/bookings"
+﻿@page "/admin"
 @layout AdminLayout
 @attribute [Authorize(Roles = "Receptionist, Manager")]
 @inject APIService ApiService
@@ -15,7 +15,7 @@
                 <div class="col-md-5">
                     <label class="form-label fw-semibold">Søg i bookinger</label>
                     <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Booking ID, gæstenavn..." @bind="_searchTerm" @oninput="ApplyFilters" />
+                        <input type="text" class="form-control" placeholder="Booking ID , gæstenavn..." @bind="_searchTerm" @oninput="ApplyFilters" />
                         <span class="input-group-text"><i class="bi bi-search"></i></span>
                     </div>
                 </div>

@@ -9,17 +9,6 @@
     <h2 class="section-title">Min Konto</h2>
     <p class="section-subtitle">Velkommen, @user?.Identity?.Name! Her kan du administrere dine oplysninger og bookinger.</p>
 
-    <!-- Debug Section - Remove after testing -->
-    <div style="background: #ffffcc; border: 2px solid #ff0000; padding: 15px; margin: 20px 0;">
-        <h3 style="color: red;">DEBUG TOOLS (Remove after testing)</h3>
-        <button class="btn btn-primary" @onclick="TestDebugClaims">Test Debug Claims</button>
-        <button class="btn btn-primary" @onclick="TestGetMe">Test Get Me</button>
-        @if (!string.IsNullOrEmpty(_debugOutput))
-        {
-            <pre style="background: #f0f0f0; padding: 10px; margin-top: 10px;">@_debugOutput</pre>
-        }
-    </div>
-
     <div class="account-grid">
         <div class="account-card">
             <h3 class="card-title">Mine Bookinger</h3>
@@ -81,7 +70,8 @@
                         <label>Telefon nr.</label>
                         <InputText class="form-control" @bind-Value="_userUpdateDto.PhoneNumber" />
                     </div>
-                    <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Ændre Oplysninger</ActionButton>
+                    <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Gem Oplysninger</ActionButton>
+                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="ToggleEditMode">Annuller</ActionButton>
                 </EditForm>
             }
             else if (_userDetailDto != null)
@@ -96,34 +86,36 @@
             }
         </div>
 
-        <div class="account-card">
-            <h3 class="card-title">Sikkerhed</h3>
-            <EditForm Model="_changePasswordDto" OnValidSubmit="HandleChangePassword">
-                <DataAnnotationsValidator />
-                <ValidationSummary class="text-danger" />
+        <AuthorizeView Roles="User">
+            <div class="account-card">
+                <h3 class="card-title">Sikkerhed</h3>
+                <EditForm Model="_changePasswordDto" OnValidSubmit="HandleChangePassword" Context="formContext">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger" />
 
-                @if (!string.IsNullOrEmpty(_passwordChangeMessage))
-                {
-                    <div class="alert @(_passwordChangeSuccess ? "alert-success" : "alert-danger")" role="alert">
-                        @_passwordChangeMessage
+                    @if (!string.IsNullOrEmpty(_passwordChangeMessage))
+                    {
+                        <div class="alert @(_passwordChangeSuccess ? "alert-success" : "alert-danger")" role="alert">
+                            @_passwordChangeMessage
+                        </div>
+                    }
+
+                    <div class="form-group">
+                        <label>Nuværende adgangskode</label>
+                        <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.CurrentPassword" />
                     </div>
-                }
-
-                <div class="form-group">
-                    <label>Nuværende adgangskode</label>
-                    <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.CurrentPassword" />
-                </div>
-                <div class="form-group">
-                    <label>Ny adgangskode</label>
-                    <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.NewPassword" />
-                </div>
-                <div class="form-group">
-                    <label>Bekræft ny adgangskode</label>
-                    <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.ConfirmNewPassword" />
-                </div>
-                <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Skift Adgangskode</ActionButton>
-            </EditForm>
-        </div>
+                    <div class="form-group">
+                        <label>Ny adgangskode</label>
+                        <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.NewPassword" />
+                    </div>
+                    <div class="form-group">
+                        <label>Bekræft ny adgangskode</label>
+                        <InputText type="password" class="form-control" @bind-Value="_changePasswordDto.ConfirmNewPassword" />
+                    </div>
+                    <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Skift Adgangskode</ActionButton>
+                </EditForm>
+            </div>
+        </AuthorizeView>
     </div>
 </div>
 
@@ -148,30 +140,30 @@
     private string? _passwordChangeMessage;
     private bool _passwordChangeSuccess = false;
 
-    // Debug fields - remove after testing
-    private string _debugOutput = "";
-
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateTask;
         user = authState.User;
 
-        var bookingsTask = ApiService.GetMyBookingsAsync();
-        var userDetailsTask = ApiService.GetMyDetailsAsync();
-        await Task.WhenAll(bookingsTask, userDetailsTask);
-
-        _myBookings = bookingsTask.Result ?? new();
-        _userDetailDto = userDetailsTask.Result;
-
-        if (_userDetailDto != null)
+        if (user?.Identity?.IsAuthenticated ?? false)
         {
-            _userUpdateDto = new UserUpdateDto
+            var bookingsTask = ApiService.GetMyBookingsAsync();
+            var userDetailsTask = ApiService.GetMyDetailsAsync();
+            await Task.WhenAll(bookingsTask, userDetailsTask);
+
+            _myBookings = bookingsTask.Result ?? new();
+            _userDetailDto = userDetailsTask.Result;
+
+            if (_userDetailDto != null)
             {
-                FirstName = _userDetailDto.FirstName,
-                LastName = _userDetailDto.LastName,
-                Email = _userDetailDto.Email,
-                PhoneNumber = _userDetailDto.PhoneNumber
-            };
+                _userUpdateDto = new UserUpdateDto
+                {
+                    FirstName = _userDetailDto.FirstName,
+                    LastName = _userDetailDto.LastName,
+                    Email = _userDetailDto.Email,
+                    PhoneNumber = _userDetailDto.PhoneNumber
+                };
+            }
         }
         _isLoading = false;
     }
@@ -236,39 +228,5 @@
         {
             _passwordChangeMessage = $"Fejl: {errorMessage}";
         }
-    }
-
-    // Debug methods - remove after testing
-    private async Task TestDebugClaims()
-    {
-        Console.WriteLine("[TEST] Starting Debug Claims test");
-        _debugOutput = "Testing Debug Claims...";
-        StateHasChanged();
-
-        var result = await ApiService.DebugClaimsAsync();
-        _debugOutput = result ?? "No response received";
-        StateHasChanged();
-
-        Console.WriteLine($"[TEST] Debug Claims Result: {result}");
-    }
-
-    private async Task TestGetMe()
-    {
-        Console.WriteLine("[TEST] Starting Get Me test");
-        _debugOutput = "Testing Get Me endpoint...";
-        StateHasChanged();
-
-        var result = await ApiService.GetMyDetailsAsync();
-        if (result != null)
-        {
-            _debugOutput = $"Success! User: {result.FirstName} {result.LastName}, Email: {result.Email}";
-        }
-        else
-        {
-            _debugOutput = "Get Me returned null";
-        }
-        StateHasChanged();
-
-        Console.WriteLine($"[TEST] Get Me Result: {result != null}");
     }
 }

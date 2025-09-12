@@ -1,0 +1,62 @@
+﻿@page "/staff-login"
+@using DomainModels.DTOs
+
+<PageTitle>Medarbejder Login</PageTitle>
+
+<div class="form-container">
+    <div class="form-card">
+        <div class="form-logo">S</div>
+        <h2 class="form-title">Medarbejder Portal</h2>
+        <p class="form-subtitle">Log ind med din AD-konto</p>
+
+        <EditForm Model="_loginModel" OnValidSubmit="HandleStaffLogin">
+            <DataAnnotationsValidator />
+            
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+
+            <div class="form-group">
+                <label for="username">Brugernavn</label>
+                <InputText id="username" class="form-control" @bind-Value="_loginModel.Username" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Adgangskode</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="_loginModel.Password" />
+            </div>
+
+            <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">
+                Log ind
+            </ActionButton>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [Inject]
+    private APIService ApiService { get; set; } = default!;
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
+    private StaffLoginDto _loginModel = new();
+    private string? _errorMessage;
+
+    private async Task HandleStaffLogin()
+    {
+        _errorMessage = null;
+        // Vi kalder den nye metode i APIService
+        var token = await ApiService.StaffLoginAsync(_loginModel);
+
+        if (!string.IsNullOrEmpty(token))
+        {
+            // Login lykkedes, naviger til en admin-side eller forsiden
+            Navigation.NavigateTo("/admin", forceLoad: true); // forceLoad genindlæser siden og sikrer, at auth-state opdateres
+        }
+        else
+        {
+            _errorMessage = "Ugyldigt brugernavn eller adgangskode. Prøv venligst igen.";
+        }
+    }
+}
