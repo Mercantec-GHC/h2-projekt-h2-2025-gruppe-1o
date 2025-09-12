@@ -198,40 +198,75 @@ namespace API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            // Find brugeren i den lokale database
+            // TRIN 1: Forsøg at finde brugeren via email, som normalt.
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
-
-            // Hvis brugeren slet ikke findes, afvis med det samme
-            if (user == null)
-            {
-                return Unauthorized("Forkert email eller adgangskode");
-            }
 
             bool isAuthenticated = false;
 
-            // TJEK HER: Er brugeren en Active Directory bruger?
-            if (user.HashedPassword == "EXTERNAL_MANAGED") // Eller "EXTERNALLY_MANAGED" afhængig af hvad du bruger
+            if (user != null)
             {
-                // Ja, valider mod Active Directory
-                // Bemærk: AD validering bruger ofte et sAMAccountName (f.eks. 'hans') og ikke en email.
-                // Vi antager her, at brugernavnet er det samme som emailen, eller den del før @.
-                // Du skal muligvis justere dette. For nu prøver vi med den fulde email.
-                var adUsername = user.Email; // Eller en anden logik til at finde AD brugernavn
-                isAuthenticated = _adService.ValidateUserCredentials(adUsername, dto.Password);
-            }
-            else
-            {
-                // Nej, det er en almindelig bruger. Valider med BCrypt.
-                isAuthenticated = BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword);
+                // Brugeren blev fundet i databasen. Nu tjekker vi, hvordan de skal valideres.
+                if (user.HashedPassword == "EXTERNALLY_MANAGED" || user.HashedPassword == "EXTERNAL_MANAGED")
+                {
+                    // Dette scenarie er svært, for vi har kun brugerens DB-email, ikke nødvendigvis deres AD-login.
+                    // SÅ vi springer videre og lader TRIN 2 håndtere AD-validering.
+                }
+                else
+                {
+                    // Dette er en almindelig bruger med et lokalt password.
+                    isAuthenticated = BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword);
+                    if (isAuthenticated)
+                    {
+                        // Hvis password er korrekt, log ind.
+                        return await CompleteLogin(user);
+                    }
+                }
             }
 
-            // Hvis valideringen fejlede (uanset metode), afvis.
-            if (!isAuthenticated)
+            // TRIN 2: Hvis vi når hertil, betyder det enten:
+            // a) Brugeren blev ikke fundet via email (fordi de loggede ind med AD-navn).
+            // b) Brugeren blev fundet, men er markeret som ekstern.
+            // Vi prøver derfor at validere direkte mod Active Directory.
+
+            // Vi antager, at det, der blev skrevet i email-feltet, er AD-brugernavnet.
+            var adUsername = dto.Email;
+
+            try
             {
+                if (_adService.ValidateUserCredentials(adUsername, dto.Password))
+                {
+                    // AD-login var en succes! Nu henter vi brugerens detaljer fra AD.
+                    var adUser = _adService.GetUserWithGroups(adUsername);
+                    if (adUser != null && !string.IsNullOrEmpty(adUser.Email))
+                    {
+                        // Nu bruger vi den KORREKTE email fra AD til at finde brugeren i VORES database.
+                        var localUserFromAd = await _context.Users.Include(u => u.Role)
+                                                   .FirstOrDefaultAsync(u => u.Email.ToLower() == adUser.Email.ToLower());
+
+                        if (localUserFromAd != null)
+                        {
+                            // Vi fandt den matchende lokale bruger! Log dem ind.
+                            return await CompleteLogin(localUserFromAd);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Hvis der sker en fejl under AD-kaldet (f.eks. server nede), log det.
+                _logger.LogError(ex, "Fejl under forsøg på AD-validering i det primære login-flow.");
+                // Fald tilbage til generisk fejl for ikke at lække systeminformation.
                 return Unauthorized("Forkert email eller adgangskode");
             }
 
-            // Hvis vi når hertil, er brugeren logget ind korrekt!
+
+            // Hvis ingen af metoderne virkede, afvis.
+            return Unauthorized("Forkert email eller adgangskode");
+        }
+
+        // Hjælpe-metode for at undgå at gentage kode
+        private async Task<IActionResult> CompleteLogin(User user)
+        {
             user.LastLogin = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             var token = _jwtService.GenerateToken(user);
@@ -242,7 +277,6 @@ namespace API.Controllers
                 user = new { id = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName, role = user.Role?.Name ?? "User" }
             });
         }
-
         [AllowAnonymous]
         [HttpPost("test-ad")] // Ændret fra HttpGet til HttpPost
         public IActionResult TestAdConnection([FromBody] TestAdCredentialsDto dto)
