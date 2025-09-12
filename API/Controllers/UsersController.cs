@@ -5,7 +5,6 @@ using DomainModels.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.DirectoryServices.AccountManagement;
 using System.Security.Claims;
 
 namespace API.Controllers
@@ -18,13 +17,20 @@ namespace API.Controllers
         private readonly JwtService _jwtService;
         private readonly ILogger<UsersController> _logger;
         private readonly LoginAttemptService _loginAttemptService;
+        private readonly ActiveDirectoryTesting.ActiveDirectoryService _adService; // TILFØJ DENNE
 
-        public UsersController(AppDBContext context, JwtService jwtService, ILogger<UsersController> logger, LoginAttemptService loginAttemptService)
+        public UsersController(
+            AppDBContext context,
+            JwtService jwtService,
+            ILogger<UsersController> logger,
+            LoginAttemptService loginAttemptService,
+            ActiveDirectoryTesting.ActiveDirectoryService adService) // TILFØJ DENNE
         {
             _context = context;
             _jwtService = jwtService;
             _logger = logger;
             _loginAttemptService = loginAttemptService;
+            _adService = adService; // TILFØJ DENNE
         }
 
         [Authorize]
@@ -96,6 +102,74 @@ namespace API.Controllers
             return Ok(new { message = "Bruger oprettet!", userId = user.Id });
         }
 
+        [AllowAnonymous]
+        [HttpPost("staff-login")]
+        public async Task<IActionResult> StaffLogin(StaffLoginDto dto)
+        {
+            // 1. Valider mod Active Directory med det direkte brugernavn
+            var isValidAdUser = _adService.ValidateUserCredentials(dto.Username, dto.Password);
+            if (!isValidAdUser)
+            {
+                return Unauthorized("Forkert medarbejder-login eller adgangskode.");
+            }
+
+            // 2. Hent brugeroplysninger (inkl. telefonnummer) og grupper fra AD
+            var adUser = _adService.GetUserWithGroups(dto.Username);
+            if (adUser == null || string.IsNullOrWhiteSpace(adUser.Email))
+            {
+                return StatusCode(500, "Brugeren mangler en email i Active Directory og kan ikke logges ind.");
+            }
+
+            // 3. Find eller opret bruger i lokal database
+            var localUser = await _context.Users
+                                          .Include(u => u.Role)
+                                          .FirstOrDefaultAsync(u => u.Email.ToLower() == adUser.Email.ToLower());
+
+            if (localUser == null)
+            {
+                // Brugeren oprettes
+                localUser = new User
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Email = adUser.Email,
+                    FirstName = adUser.FirstName,
+                    LastName = adUser.LastName,
+                    PhoneNumber = adUser.Phone, // <-- TILFØJ HER for nye brugere
+                    HashedPassword = "EXTERNALLY_MANAGED"
+                };
+                _context.Users.Add(localUser);
+            }
+            else
+            {
+                // Brugeren opdateres
+                localUser.FirstName = adUser.FirstName;
+                localUser.LastName = adUser.LastName;
+                localUser.PhoneNumber = adUser.Phone; // <-- TILFØJ HER for eksisterende brugere
+            }
+
+            // 4. Synkroniser roller
+            var roleNameFromAd = adUser.Groups.FirstOrDefault(g => g == "Admin" || g == "Manager" || g == "Receptionist") ?? "Staff";
+            var localRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleNameFromAd);
+            if (localRole == null)
+            {
+                localRole = new Role { Id = Guid.NewGuid().ToString(), Name = roleNameFromAd };
+                _context.Roles.Add(localRole);
+            }
+            localUser.Role = localRole;
+
+            localUser.LastLogin = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            // 5. Generer JWT Token
+            var token = _jwtService.GenerateToken(localUser);
+
+            return Ok(new
+            {
+                token,
+                user = new { id = localUser.Id, email = localUser.Email, firstName = localUser.FirstName, role = localUser.Role.Name }
+            });
+        }
+
         [Authorize]
         [HttpPost("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
@@ -123,75 +197,13 @@ namespace API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(LoginDto dto)
         {
-            // TRIN 1: Forsøg at finde brugeren via email, som normalt.
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
 
-            bool isAuthenticated = false;
-
-            if (user != null)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword))
             {
-                // Brugeren blev fundet i databasen. Nu tjekker vi, hvordan de skal valideres.
-                if (user.HashedPassword == "EXTERNALLY_MANAGED" || user.HashedPassword == "EXTERNAL_MANAGED")
-                {
-                    // Dette scenarie er svært, for vi har kun brugerens DB-email, ikke nødvendigvis deres AD-login.
-                    // SÅ vi springer videre og lader TRIN 2 håndtere AD-validering.
-                }
-                else
-                {
-                    // Dette er en almindelig bruger med et lokalt password.
-                    isAuthenticated = BCrypt.Net.BCrypt.Verify(dto.Password, user.HashedPassword);
-                    if (isAuthenticated)
-                    {
-                        // Hvis password er korrekt, log ind.
-                        return await CompleteLogin(user);
-                    }
-                }
-            }
-
-            // TRIN 2: Hvis vi når hertil, betyder det enten:
-            // a) Brugeren blev ikke fundet via email (fordi de loggede ind med AD-navn).
-            // b) Brugeren blev fundet, men er markeret som ekstern.
-            // Vi prøver derfor at validere direkte mod Active Directory.
-
-            // Vi antager, at det, der blev skrevet i email-feltet, er AD-brugernavnet.
-            var adUsername = dto.Email;
-
-            try
-            {
-                if (_adService.ValidateUserCredentials(adUsername, dto.Password))
-                {
-                    // AD-login var en succes! Nu henter vi brugerens detaljer fra AD.
-                    var adUser = _adService.GetUserWithGroups(adUsername);
-                    if (adUser != null && !string.IsNullOrEmpty(adUser.Email))
-                    {
-                        // Nu bruger vi den KORREKTE email fra AD til at finde brugeren i VORES database.
-                        var localUserFromAd = await _context.Users.Include(u => u.Role)
-                                                   .FirstOrDefaultAsync(u => u.Email.ToLower() == adUser.Email.ToLower());
-
-                        if (localUserFromAd != null)
-                        {
-                            // Vi fandt den matchende lokale bruger! Log dem ind.
-                            return await CompleteLogin(localUserFromAd);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Hvis der sker en fejl under AD-kaldet (f.eks. server nede), log det.
-                _logger.LogError(ex, "Fejl under forsøg på AD-validering i det primære login-flow.");
-                // Fald tilbage til generisk fejl for ikke at lække systeminformation.
                 return Unauthorized("Forkert email eller adgangskode");
             }
 
-
-            // Hvis ingen af metoderne virkede, afvis.
-            return Unauthorized("Forkert email eller adgangskode");
-        }
-
-        // Hjælpe-metode for at undgå at gentage kode
-        private async Task<IActionResult> CompleteLogin(User user)
-        {
             user.LastLogin = DateTime.UtcNow;
             await _context.SaveChangesAsync();
             var token = _jwtService.GenerateToken(user);
@@ -201,80 +213,6 @@ namespace API.Controllers
                 token,
                 user = new { id = user.Id, email = user.Email, firstName = user.FirstName, lastName = user.LastName, role = user.Role?.Name ?? "User" }
             });
-        }
-        [AllowAnonymous]
-        [HttpPost("test-ad")] // Ændret fra HttpGet til HttpPost
-        public IActionResult TestAdConnection([FromBody] TestAdCredentialsDto dto)
-        {
-            _logger.LogInformation($"--- Starter AD Forbindelsestest for bruger: {dto.Username} ---");
-            try
-            {
-                // Vi bruger de oplysninger, du sender med, til at validere.
-                _logger.LogInformation($"Tester validering med '{dto.Username}'...");
-                bool isValid = _adService.ValidateUserCredentials(dto.Username, dto.Password);
-
-                if (isValid)
-                {
-                    _logger.LogInformation($"AD-validering for '{dto.Username}' var en succes!");
-                    return Ok(new { status = "Succes", message = $"Bruger '{dto.Username}' blev valideret succesfuldt mod Active Directory." });
-                }
-                else
-                {
-                    _logger.LogError($"AD-validering for '{dto.Username}' fejlede (forkert brugernavn/kodeord?).");
-                    // VIGTIGT: Returner 400 Bad Request, ikke 500, hvis det bare er forkerte credentials.
-                    return BadRequest(new { status = "Fejl", message = "Forbindelsen til AD var OK, men brugeroplysningerne var forkerte." });
-                }
-            }
-            catch (Exception ex)
-            {
-                // Fanger fatale fejl som f.eks. netværksproblemer.
-                _logger.LogError(ex, "FATAL FEJL under AD-forbindelsestest.");
-                return StatusCode(500, new
-                {
-                    status = "Fatal Fejl",
-                    message = "Der skete en fejl under forsøget på at forbinde til Active Directory.",
-                    error = new
-                    {
-                        type = ex.GetType().ToString(),
-                        errorMessage = ex.Message,
-                        stackTrace = ex.StackTrace
-                    }
-                });
-            }
-
-
-        }
-
-        [AllowAnonymous]
-        [HttpGet("test-live-ad-connection")]
-        public IActionResult TestLiveAdConnection()
-        {
-            try
-            {
-                // Forsøger at oprette forbindelse med de konfigurationer, API'en kører med.
-                // Dette vil kaste en fejl, hvis serveren ikke kan nås.
-                using var context = new PrincipalContext(
-                    ContextType.Domain,
-                    _adService.Server, // Henter fra ADConfig (10.133.71.101)
-                    null,
-                    _adService.Username, // Henter fra ADConfig ("hans")
-                    "Password123!" // Password fra din ADConfig klasse
-                );
-
-                // Hvis vi når hertil uden en fejl, er forbindelsen OK.
-                return Ok(new { status = "Succes", message = $"API'en på {Request.Host} kan succesfuldt forbinde til AD-serveren på '{_adService.Server}'." });
-            }
-            catch (Exception ex)
-            {
-                // Dette vil fange netværksfejlen og returnere den præcise besked.
-                return StatusCode(500, new
-                {
-                    status = "Forbindelsesfejl",
-                    message = "API'en kunne IKKE få forbindelse til Active Directory-serveren.",
-                    errorMessage = ex.Message,
-                    innerExceptionMessage = ex.InnerException?.Message // Meget vigtig for netværksfejl
-                });
-            }
         }
     }
 }
