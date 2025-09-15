@@ -14,25 +14,34 @@
         <div class="header-right">
             <AuthorizeView>
                 <Authorized>
-                    @if (context.User.IsInRole("Receptionist") || context.User.IsInRole("Manager"))
+
+                    @if (context.User.IsInRole("Housekeeping"))
                     {
-                        <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick='() => Navigation.NavigateTo("/admin/bookings")'>
-                            Booking Management
-                        </ActionButton>
+                        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/housekeepingdashboard")'>
+                            Housekeeping
+                        </button>
                     }
 
-                    <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="GoToAccount">
-                        Min Konto
-                    </ActionButton>
+                    @if (context.User.IsInRole("Receptionist") || context.User.IsInRole("Manager"))
+                    {
+                        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/admin/bookings")'>
+                            Booking Management
+                        </button>
+                    }
 
-                    <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="LogoutClicked">
+                    <button class="btn btn-secondary" @onclick="GoToAccount">
+                        Min Konto
+                    </button>
+
+                    <button class="btn btn-secondary" @onclick="LogoutClicked">
                         Log ud
-                    </ActionButton>
+                    </button>
+
                 </Authorized>
                 <NotAuthorized>
-                    <ActionButton Type="ActionButton.ButtonType.Secondary" @onclick="LoginClicked">
+                    <button class="btn btn-secondary" @onclick="LoginClicked">
                         Login
-                    </ActionButton>
+                    </button>
                 </NotAuthorized>
             </AuthorizeView>
         </div>

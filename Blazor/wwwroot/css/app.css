@@ -248,4 +248,13 @@ code {
     background-color: #6c757d !important;
 }
 
+.global-header .btn-secondary {
+        background-color: transparent !important;
+        color: white !important;
+        border-color: white !important;
+}
 
+    .global-header .btn-secondary:hover {
+            background-color: white !important;
+            color: #003366 !important;
+    }

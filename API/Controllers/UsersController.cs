@@ -173,6 +173,13 @@ namespace API.Controllers
 
             var token = _jwtService.GenerateToken(localUser);
 
+            // Add debugging information
+            Console.WriteLine($"--- DEBUG: Successfully authenticated user '{dto.Username}' ---");
+            Console.WriteLine($"User ID: {localUser.Id}");
+            Console.WriteLine($"Email: {localUser.Email}");
+            Console.WriteLine($"Role: {localUser.Role.Name}");
+            Console.WriteLine($"Token generated successfully");
+
             return Ok(new
             {
                 token,

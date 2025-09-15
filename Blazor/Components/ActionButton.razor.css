@@ -38,14 +38,3 @@
         background-color: #A08859; /* Lidt mørkere ved hover */
     }
 
-/* Secondary Style - Outlined */
-.btn-secondary {
-    background-color: transparent;
-    color: white; /* Rettet fra mørkeblå til hvid */
-    border-color: white; /* Rettet fra mørkeblå til hvid */
-}
-
-    .btn-secondary:hover {
-        background-color: white;
-        color: #003366; /* Mørkeblå tekst ved hover for god kontrast */
-    }
