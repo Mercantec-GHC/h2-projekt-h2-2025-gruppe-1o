@@ -17,8 +17,8 @@ public class Program
         JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 
-        // Peger permanent på dit live API
-        var apiBaseAddress = new Uri("http://localhost:8072");
+        // fikset dum localhost fejl til at teste uden deployment
+        var apiBaseAddress = new Uri("https://localhost:8091");
 
         // Opsætning af en enkelt HttpClient, som alle services deler
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });
@@ -28,8 +28,6 @@ public class Program
 
         var host = builder.Build();
 
-        // Initialize authentication state on startup
-        // This ensures the auth header is set if a token exists in sessionStorage
         var authStateProvider = host.Services.GetRequiredService<AuthenticationStateProvider>();
         await authStateProvider.GetAuthenticationStateAsync();
 
