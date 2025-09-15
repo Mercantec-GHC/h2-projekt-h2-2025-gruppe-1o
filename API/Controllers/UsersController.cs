@@ -155,7 +155,7 @@ namespace API.Controllers
             string.Equals(g, "Manager", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(g, "Receptionist", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(g, "Housekeeping", StringComparison.OrdinalIgnoreCase)
-            ) ?? "Housekeeping"; // Default to Housekeeping instead of Staff for helle
+            ) ?? "Housekeeping"; 
 
             Console.WriteLine($"--- DEBUG: Assigned role for {dto.Username}: {roleNameFromAd} ---");
 
