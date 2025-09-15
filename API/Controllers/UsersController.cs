@@ -134,7 +134,7 @@ namespace API.Controllers
                     Email = adUser.Email,
                     FirstName = adUser.FirstName,
                     LastName = adUser.LastName,
-                    PhoneNumber = adUser.Phone, // <-- TILFØJ HER for nye brugere
+                    PhoneNumber = adUser.Phone,
                     HashedPassword = "EXTERNALLY_MANAGED"
                 };
                 _context.Users.Add(localUser);
@@ -144,11 +144,17 @@ namespace API.Controllers
                 // Brugeren opdateres
                 localUser.FirstName = adUser.FirstName;
                 localUser.LastName = adUser.LastName;
-                localUser.PhoneNumber = adUser.Phone; // <-- TILFØJ HER for eksisterende brugere
+                localUser.PhoneNumber = adUser.Phone; 
             }
 
             // 4. Synkroniser roller
-            var roleNameFromAd = adUser.Groups.FirstOrDefault(g => g == "Admin" || g == "Manager" || g == "Receptionist") ?? "Staff";
+            var roleNameFromAd = adUser.Groups.FirstOrDefault(g =>
+            string.Equals(g, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(g, "Manager", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(g, "Receptionist", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(g, "Housekeeping", StringComparison.OrdinalIgnoreCase)
+            ) ?? "Staff";
+
             var localRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleNameFromAd);
             if (localRole == null)
             {
@@ -160,7 +166,6 @@ namespace API.Controllers
             localUser.LastLogin = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            // 5. Generer JWT Token
             var token = _jwtService.GenerateToken(localUser);
 
             return Ok(new

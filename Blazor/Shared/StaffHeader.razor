@@ -1,31 +1,45 @@
 ﻿@inject NavigationManager Navigation
+@inject APIService ApiService
 
 <header class="staff-header">
     <div class="staff-header-content">
         <div class="staff-header-left">
-            <a href="/admin/bookings" class="staff-logo">
+            <a href="/admin" class="staff-logo">
                 <div class="staff-logo-icon">F</div>
                 <span>Flyhigh</span>
             </a>
         </div>
+
         <nav class="staff-header-nav">
-            <NavLink href="/admin/bookings" class="staff-nav-link">Dashboard</NavLink>
-            <NavLink href="/admin/housekeeping" class="staff-nav-link">Housekeeping</NavLink>
-            <NavLink href="/admin/administration" class="staff-nav-link">Administration</NavLink>
+            <AuthorizeView>
+                <Authorized>
+                    <AuthorizeView Roles="Manager, Receptionist" Context="adminContext">
+                        <NavLink href="/admin" class="staff-nav-link">Dashboard</NavLink>
+                        <NavLink href="/admin/administration" class="staff-nav-link">Administration</NavLink>
+                    </AuthorizeView>
+
+                    <AuthorizeView Roles="Housekeeping" Context="housekeepingContext">
+                        <NavLink href="/housekeeping-dashboard" class="staff-nav-link">Housekeeping</NavLink>
+                    </AuthorizeView>
+                </Authorized>
+            </AuthorizeView>
         </nav>
+
         <div class="staff-header-right">
-            <button class="btn btn-outline-light" @onclick="LogoutClicked">Log ud</button>
+            <AuthorizeView>
+                <Authorized>
+                    <button class="btn btn-outline-light" @onclick="LogoutClicked">Log ud</button>
+                </Authorized>
+            </AuthorizeView>
         </div>
     </div>
 </header>
 
 @code {
-    [Inject]
-    private APIService ApiService { get; set; } = default!;
-
     private async Task LogoutClicked()
     {
         await ApiService.LogoutAsync();
-        Navigation.NavigateTo("/login");
+        // Send brugeren til forsiden efter logud
+        Navigation.NavigateTo("/", forceLoad: true);
     }
 }

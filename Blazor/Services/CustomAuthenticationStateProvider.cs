@@ -2,7 +2,6 @@
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
-using System.Net.Http;
 using System.Net.Http.Headers;
 
 namespace Blazor.Services
@@ -11,7 +10,7 @@ namespace Blazor.Services
     {
         private readonly IJSRuntime _jsRuntime;
         private readonly HttpClient _httpClient;
-        private ClaimsPrincipal _anonymous = new ClaimsPrincipal(new ClaimsIdentity());
+        private readonly ClaimsPrincipal _anonymous = new ClaimsPrincipal(new ClaimsIdentity());
 
         public CustomAuthenticationStateProvider(IJSRuntime jsRuntime, HttpClient httpClient)
         {
@@ -26,13 +25,10 @@ namespace Blazor.Services
                 var token = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
                 if (string.IsNullOrEmpty(token))
                 {
-                    _httpClient.DefaultRequestHeaders.Authorization = null;
                     return new AuthenticationState(_anonymous);
                 }
 
-                // DENNE LINJE ER AFGØRENDE: Den sætter token på ALLE fremtidige kald.
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
                 var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuth"));
                 return new AuthenticationState(claimsPrincipal);
             }
@@ -64,9 +60,7 @@ namespace Blazor.Services
 
             if (keyValuePairs != null)
             {
-                
 
-                // Kig efter de korte navne, som rent faktisk er i tokenet
                 keyValuePairs.TryGetValue("nameid", out object? nameId);
                 if (nameId != null)
                 {
@@ -85,13 +79,23 @@ namespace Blazor.Services
                     claims.Add(new Claim(ClaimTypes.Email, email.ToString()!));
                 }
 
-                keyValuePairs.TryGetValue("role", out object? role);
-                if (role != null)
+                // This is the most important part. We explicitly look for the "role" key.
+                keyValuePairs.TryGetValue("role", out object? roleValue);
+                if (roleValue != null)
                 {
-                    claims.Add(new Claim(ClaimTypes.Role, role.ToString()!));
+                    // This handles both single roles (a string) and multiple roles (an array)
+                    if (roleValue is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var role in jsonElement.EnumerateArray())
+                        {
+                            claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
+                        }
+                    }
+                    else
+                    {
+                        claims.Add(new Claim(ClaimTypes.Role, roleValue.ToString()!));
+                    }
                 }
-
-                
             }
             return claims;
         }
