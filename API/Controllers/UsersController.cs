@@ -148,18 +148,23 @@ namespace API.Controllers
             }
 
             // 4. Synkroniser roller
+            Console.WriteLine($"--- DEBUG: AD Groups for {dto.Username}: {string.Join(", ", adUser.Groups)} ---");
+            
             var roleNameFromAd = adUser.Groups.FirstOrDefault(g =>
             string.Equals(g, "Admin", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(g, "Manager", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(g, "Receptionist", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(g, "Housekeeping", StringComparison.OrdinalIgnoreCase)
-            ) ?? "Staff";
+            ) ?? "Housekeeping"; // Default to Housekeeping instead of Staff for helle
+
+            Console.WriteLine($"--- DEBUG: Assigned role for {dto.Username}: {roleNameFromAd} ---");
 
             var localRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleNameFromAd);
             if (localRole == null)
             {
                 localRole = new Role { Id = Guid.NewGuid().ToString(), Name = roleNameFromAd };
                 _context.Roles.Add(localRole);
+                Console.WriteLine($"--- DEBUG: Created new role: {roleNameFromAd} ---");
             }
             localUser.Role = localRole;
 

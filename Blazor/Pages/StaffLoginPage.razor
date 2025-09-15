@@ -47,12 +47,21 @@
     {
         _errorMessage = null;
         // Vi kalder den nye metode i APIService
-        var token = await ApiService.StaffLoginAsync(_loginModel);
+        var loginResult = await ApiService.StaffLoginAsync(_loginModel);
 
-        if (!string.IsNullOrEmpty(token))
+        if (loginResult != null && !string.IsNullOrEmpty(loginResult.Token))
         {
-            // Login lykkedes, naviger til en admin-side eller forsiden
-            Navigation.NavigateTo("/admin", forceLoad: true); // forceLoad genindlæser siden og sikrer, at auth-state opdateres
+            // Redirect based on user role from login response
+            var redirectUrl = loginResult.User?.Role?.ToLower() switch
+            {
+                "housekeeping" => "/housekeeping-dashboard",
+                "receptionist" => "/admin",
+                "manager" => "/admin",
+                "admin" => "/admin",
+                _ => "/admin" // Default fallback
+            };
+            
+            Navigation.NavigateTo(redirectUrl, forceLoad: true);
         }
         else
         {

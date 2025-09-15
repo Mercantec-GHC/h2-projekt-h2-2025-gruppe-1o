@@ -18,7 +18,7 @@ public class Program
 
 
         // Peger permanent på dit live API
-        var apiBaseAddress = new Uri("http://localhost:8071");
+        var apiBaseAddress = new Uri("http://localhost:8072");
 
         // Opsætning af en enkelt HttpClient, som alle services deler
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });

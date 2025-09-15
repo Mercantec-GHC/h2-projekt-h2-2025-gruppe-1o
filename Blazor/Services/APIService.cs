@@ -144,24 +144,23 @@ namespace Blazor.Services
         }
 
         // --- ▼▼▼ NY METODE TILFØJET HER ▼▼▼ ---
-        public async Task<string?> StaffLoginAsync(StaffLoginDto loginModel)
+        public async Task<StaffLoginResult?> StaffLoginAsync(StaffLoginDto loginModel)
         {
             // Vi kalder det nye staff-login endpoint
             var response = await _httpClient.PostAsJsonAsync("api/Users/staff-login", loginModel);
             if (!response.IsSuccessStatusCode) return null;
 
             var responseContent = await response.Content.ReadAsStringAsync();
-            var loginResult = JsonSerializer.Deserialize<LoginResult>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            var token = loginResult?.Token;
-
-            if (string.IsNullOrEmpty(token)) return null;
+            var loginResult = JsonSerializer.Deserialize<StaffLoginResult>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            
+            if (loginResult?.Token == null) return null;
 
             // Gem token og opdater authentication state - præcis som i det almindelige login
-            await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", token);
-            ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(token);
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", loginResult.Token);
+            ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(loginResult.Token);
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult.Token);
 
-            return token;
+            return loginResult;
         }
         // --- ▲▲▲ TIL HER ▲▲▲ ---
 
@@ -232,5 +231,20 @@ namespace Blazor.Services
     public class LoginResult
     {
         public string? Token { get; set; }
+    }
+
+    // Hjælpeklasse til at deserialisere staff login-svaret
+    public class StaffLoginResult
+    {
+        public string? Token { get; set; }
+        public StaffUser? User { get; set; }
+    }
+
+    public class StaffUser
+    {
+        public string? Id { get; set; }
+        public string? Email { get; set; }
+        public string? FirstName { get; set; }
+        public string? Role { get; set; }
     }
 }
