@@ -31,7 +31,9 @@
         <div class="room-types-grid">
             @foreach (var room in featuredRooms)
             {
-                <RoomTypeCard RoomType="room" OnButtonClicked="ViewRoomDetails" />
+                <RoomTypeCard RoomType="room" 
+                              OnBookNowClicked="ViewRoomDetails" 
+                              OnDetailsClicked="ViewRoomDetails" />
             }
         </div>
     }
@@ -40,18 +42,14 @@
 @code {
     private List<RoomTypeGetDto> featuredRooms;
 
-    // 1. Hent data fra din service, når siden indlæses
     protected override async Task OnInitializedAsync()
     {
         var allRooms = await ApiService.GetAllRoomTypesAsync();
-        // Vi tager de første 3 rum til at vise på forsiden
         featuredRooms = allRooms?.Take(3).ToList();
     }
 
-    // 2. Håndter navigation, når der klikkes på en knap
     private void ViewRoomDetails(int roomTypeId)
     {
-        // Vi navigerer til den nye, korrekte URL for detaljesiden
         Navigation.NavigateTo($"/room/{roomTypeId}");
     }
 }

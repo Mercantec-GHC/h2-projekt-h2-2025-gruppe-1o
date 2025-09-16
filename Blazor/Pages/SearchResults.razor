@@ -6,8 +6,11 @@
 
 <PageTitle>Søgeresultater - Ledige Værelser</PageTitle>
 
-<div class="page-section">
-    <h2 class="section-title">Ledige værelser</h2>
+<div class="container my-5">
+    <h1 class="text-center mb-4">Ledige Værelser</h1>
+    <p class="text-center text-muted">
+        Resultater for perioden @CheckInDate?.ToString("d. MMM") til @CheckOutDate?.ToString("d. MMM yyyy") for @GuestCount gæst(er).
+    </p>
 
     @if (_isLoading)
     {
@@ -15,14 +18,14 @@
     }
     else if (_availableRooms != null && _availableRooms.Any())
     {
-        <p class="search-summary">
-            Viser resultater for: <strong>@CheckInDate?.ToString("d. MMMM yyyy")</strong> til <strong>@CheckOutDate?.ToString("d. MMMM yyyy")</strong> for <strong>@GuestCount gæster</strong>.
-        </p>
-
-        <div class="room-types-grid">
+        <div class="row g-4">
             @foreach (var roomType in _availableRooms)
             {
-                <RoomTypeCard RoomType="roomType" OnButtonClicked="ViewRoomDetails" />
+                <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
+                    <RoomTypeCard RoomType="roomType"
+                                  OnBookNowClicked="HandleBookNowClicked"
+                                  OnDetailsClicked="NavigateToRoomDetails" />
+                </div>
             }
         </div>
     }
@@ -30,11 +33,17 @@
     {
         <p class="text-center">Der er desværre ingen ledige værelser i den valgte periode. Prøv venligst en anden søgning.</p>
     }
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger mt-4">@_errorMessage</div>
+    }
 </div>
 
 @code {
     private bool _isLoading = true;
     private List<RoomTypeGetDto> _availableRooms;
+    private string _errorMessage;
 
     [Parameter]
     [SupplyParameterFromQuery(Name = "checkin")]
@@ -57,7 +66,30 @@
         _isLoading = false;
     }
 
-    private void ViewRoomDetails(int roomTypeId)
+    // Denne metode håndterer "Book Nu"-klikket
+    private async Task HandleBookNowClicked(int roomTypeId)
+    {
+        _errorMessage = null;
+        var bookingDetails = new BookingCreateDto
+        {
+            RoomTypeId = roomTypeId,
+            CheckInDate = CheckInDate.Value,
+            CheckOutDate = CheckOutDate.Value
+        };
+        var success = await ApiService.CreateBookingAsync(bookingDetails);
+        if (success)
+        {
+            Navigation.NavigateTo("/account");
+        }
+        else
+        {
+            _errorMessage = "Bookingen kunne ikke gennemføres. Værelset er muligvis lige blevet optaget. Prøv at søge igen.";
+            StateHasChanged();
+        }
+    }
+
+    // Denne metode håndterer "Se detaljer"-klikket
+    private void NavigateToRoomDetails(int roomTypeId)
     {
         var url = $"/room/{roomTypeId}?checkin={CheckInDate:yyyy-MM-dd}&checkout={CheckOutDate:yyyy-MM-dd}&guests={GuestCount}";
         Navigation.NavigateTo(url);

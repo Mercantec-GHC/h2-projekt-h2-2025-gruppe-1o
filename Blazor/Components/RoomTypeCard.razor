@@ -7,8 +7,9 @@
         <p class="card-text text-muted flex-grow-1">@RoomType.Description</p>
         <p class="card-text">Fra <strong>@RoomType.BasePrice.ToString("C0")</strong> / nat</p>
 
-        <div class="mt-auto">
-            <button class="btn btn-primary w-100" @onclick="HandleButtonClick">Se detaljer</button>
+        <div class="mt-auto d-flex justify-content-between align-items-center">
+            <button class="btn btn-link px-0" @onclick="HandleDetailsClick">Se detaljer</button>
+            <button class="btn btn-primary" @onclick="HandleBookNowClick">Book Nu</button>
         </div>
     </div>
 </div>
@@ -17,15 +18,22 @@
     [Parameter, EditorRequired]
     public RoomTypeGetDto RoomType { get; set; }
 
+    // NYT: To separate EventCallbacks for to forskellige handlinger
     [Parameter]
-    public EventCallback<int> OnButtonClicked { get; set; }
+    public EventCallback<int> OnBookNowClicked { get; set; }
+    [Parameter]
+    public EventCallback<int> OnDetailsClicked { get; set; }
 
-    private async Task HandleButtonClick()
+    private async Task HandleBookNowClick()
     {
-        await OnButtonClicked.InvokeAsync(RoomType.Id);
+        await OnBookNowClicked.InvokeAsync(RoomType.Id);
     }
 
-    // Denne metode genbruger billed-logikken
+    private async Task HandleDetailsClick()
+    {
+        await OnDetailsClicked.InvokeAsync(RoomType.Id);
+    }
+
     private string GetImageUrlForRoom(string roomName)
     {
         return roomName switch
