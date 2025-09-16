@@ -17,14 +17,14 @@
 
                     @if (context.User.IsInRole("Housekeeping"))
                     {
-                        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/housekeepingdashboard")'>
+                        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/housekeeping-dashboard")'>
                             Housekeeping
                         </button>
                     }
 
                     @if (context.User.IsInRole("Receptionist") || context.User.IsInRole("Manager"))
                     {
-                        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/admin/bookings")'>
+                        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/admin")'>
                             Booking Management
                         </button>
                     }
