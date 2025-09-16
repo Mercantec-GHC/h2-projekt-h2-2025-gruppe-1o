@@ -60,6 +60,21 @@ namespace Blazor.Services
             }
         }
 
+        public async Task<List<RoomTypeGetDto>?> GetAllRoomTypesAsync()
+        {
+
+            try
+            {
+
+                return await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>("api/rooms/types");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af alle værelsestyper: {ex.Message}");
+                return new List<RoomTypeGetDto>();
+            }
+        }
+
         public async Task<bool> CreateBookingAsync(BookingCreateDto bookingDetails)
         {
             await EnsureAuthHeaderAsync();
@@ -143,7 +158,6 @@ namespace Blazor.Services
             return token;
         }
 
-        // --- ▼▼▼ NY METODE TILFØJET HER ▼▼▼ ---
         public async Task<StaffLoginResult?> StaffLoginAsync(StaffLoginDto loginModel)
         {
             // Vi kalder det nye staff-login endpoint
@@ -162,7 +176,6 @@ namespace Blazor.Services
 
             return loginResult;
         }
-        // --- ▲▲▲ TIL HER ▲▲▲ ---
 
         public async Task LogoutAsync()
         {

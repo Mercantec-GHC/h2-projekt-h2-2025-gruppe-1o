@@ -1,45 +1,39 @@
-﻿@using Blazor.Components
+﻿@using DomainModels.DTOs
 
-<div class="room-card">
-    <img class="room-image" src="@ImageUrl" alt="@Title" />
-    <div class="room-content">
-        <h3 class="room-title">@Title</h3>
-        <div class="features">
-            @foreach (var feature in Features)
-            {
-                <span class="feature-tag">@feature</span>
-            }
-        </div>
-        <p class="room-description">@Description</p>
-        <p class="room-price">Fra <strong>@Price.ToString("N0") kr.</strong> / nat</p>
-        <div class="room-action">
-            <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleButtonClick">
-                Se Værelse
-            </ActionButton>
+<div class="card h-100 shadow-sm">
+    <img src="@GetImageUrlForRoom(RoomType.Name)" class="card-img-top" alt="Billede af @RoomType.Name" style="height: 200px; object-fit: cover;">
+    <div class="card-body d-flex flex-column">
+        <h5 class="card-title">@RoomType.Name</h5>
+        <p class="card-text text-muted flex-grow-1">@RoomType.Description</p>
+        <p class="card-text">Fra <strong>@RoomType.BasePrice.ToString("C0")</strong> / nat</p>
+
+        <div class="mt-auto">
+            <button class="btn btn-primary w-100" @onclick="HandleButtonClick">Se detaljer</button>
         </div>
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired]
-    public string Title { get; set; } = "Værelsestype";
-    [Parameter, EditorRequired]
-    public decimal Price { get; set; }
-    [Parameter, EditorRequired]
-    public string ImageUrl { get; set; } = "";
-    [Parameter]
-    public string Description { get; set; } = "";
-    [Parameter]
-    public List<string> Features { get; set; } = new();
-    [Parameter]
-    public int RoomTypeId { get; set; }
+    public RoomTypeGetDto RoomType { get; set; }
 
-    // VI UDSENDER NU EN EVENT I STEDET FOR AT NAVIGERE SELV
     [Parameter]
     public EventCallback<int> OnButtonClicked { get; set; }
 
     private async Task HandleButtonClick()
     {
-        await OnButtonClicked.InvokeAsync(RoomTypeId);
+        await OnButtonClicked.InvokeAsync(RoomType.Id);
+    }
+
+    // Denne metode genbruger billed-logikken
+    private string GetImageUrlForRoom(string roomName)
+    {
+        return roomName switch
+        {
+            "Standard Værelse" => "/images/room-standard.png",
+            "Deluxe Suite" => "/images/room-deluxe.png",
+            "Presidential Suite" => "/images/room-presidential.png",
+            _ => "/images/room-default.png"
+        };
     }
 }

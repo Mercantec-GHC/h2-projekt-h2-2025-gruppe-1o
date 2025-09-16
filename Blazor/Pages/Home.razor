@@ -1,7 +1,8 @@
 ﻿@page "/"
 @using Blazor.Components
-@using Blazor.Models
+@using DomainModels.DTOs 
 @inject NavigationManager Navigation
+@inject APIService ApiService
 
 <PageTitle>Velkommen til Flyhigh Hotel</PageTitle>
 
@@ -20,37 +21,37 @@
 <div class="page-section">
     <h2 class="section-title">Vores Værelsestyper</h2>
     <p class="section-subtitle">Oplev luksus og komfort i vores nøje udvalgte værelser</p>
-    <div class="room-types-grid">
-        <RoomTypeCard Title="Standard Værelse"
-                      Price="800"
-                      Description="Komfortabelt værelse med alle basisfaciliteter for et behageligt ophold."
-                      Features="@(new List<string> { "2 gæster", "Gratis WiFi", "Smart TV" })"
-                      ImageUrl="/images/room-standard.png"
-                      RoomTypeId="1"
-                      OnButtonClicked="ViewRoomDetails" />
-
-        <RoomTypeCard Title="Deluxe Suite"
-                      Price="2200"
-                      Description="Rummelig suite med panoramaudsigt og premium faciliteter for det ultimative ophold."
-                      Features="@(new List<string> { "4 gæster", "Balkon", "Mini bar" })"
-                      ImageUrl="/images/room-deluxe.png"
-                      RoomTypeId="2"
-                      OnButtonClicked="ViewRoomDetails" />
-
-        <RoomTypeCard Title="Presidential Suite"
-                      Price="5000"
-                      Description="Den ultimative luksusoplevelse med eksklusiv service og faciliteter i verdensklasse."
-                      Features="@(new List<string> { "8 gæster", "Privat spa", "Butler-service" })"
-                      ImageUrl="/images/room-presidential.png"
-                      RoomTypeId="3"
-                      OnButtonClicked="ViewRoomDetails" />
-    </div>
+    
+    @if (featuredRooms is null)
+    {
+        <p><em>Indlæser værelser...</em></p>
+    }
+    else
+    {
+        <div class="room-types-grid">
+            @foreach (var room in featuredRooms)
+            {
+                <RoomTypeCard RoomType="room" OnButtonClicked="ViewRoomDetails" />
+            }
+        </div>
+    }
 </div>
 
 @code {
-    // DENNE METODE LYTTER NU PÅ KNAP-KLIK FRA ROOMTYPECARD
+    private List<RoomTypeGetDto> featuredRooms;
+
+    // 1. Hent data fra din service, når siden indlæses
+    protected override async Task OnInitializedAsync()
+    {
+        var allRooms = await ApiService.GetAllRoomTypesAsync();
+        // Vi tager de første 3 rum til at vise på forsiden
+        featuredRooms = allRooms?.Take(3).ToList();
+    }
+
+    // 2. Håndter navigation, når der klikkes på en knap
     private void ViewRoomDetails(int roomTypeId)
     {
-        Navigation.NavigateTo($"/rooms/{roomTypeId}");
+        // Vi navigerer til den nye, korrekte URL for detaljesiden
+        Navigation.NavigateTo($"/room/{roomTypeId}");
     }
 }

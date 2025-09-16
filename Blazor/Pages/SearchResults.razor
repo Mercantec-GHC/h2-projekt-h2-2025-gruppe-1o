@@ -1,88 +1,65 @@
 ﻿@page "/search-results"
-@using Microsoft.AspNetCore.WebUtilities
-@using DomainModels
+@using DomainModels.DTOs
 @using Blazor.Components
-@inject NavigationManager Navigation
 @inject APIService ApiService
+@inject NavigationManager Navigation
 
-<PageTitle>Søgeresultater</PageTitle>
+<PageTitle>Søgeresultater - Ledige Værelser</PageTitle>
 
 <div class="page-section">
     <h2 class="section-title">Ledige værelser</h2>
 
     @if (_isLoading)
     {
-        <p>Søger efter ledige værelser...</p>
+        <p class="text-center"><em>Søger efter ledige værelser...</em></p>
     }
-    else
+    else if (_availableRooms != null && _availableRooms.Any())
     {
         <p class="search-summary">
-            Viser resultater for: <strong>@_checkInDate.ToString("d. MMMM yyyy")</strong> til <strong>@_checkOutDate.ToString("d. MMMM yyyy")</strong> for <strong>@_guestCount gæster</strong>.
+            Viser resultater for: <strong>@CheckInDate?.ToString("d. MMMM yyyy")</strong> til <strong>@CheckOutDate?.ToString("d. MMMM yyyy")</strong> for <strong>@GuestCount gæster</strong>.
         </p>
 
-        <div class="results-container">
-            @if (_availableRooms != null && _availableRooms.Any())
+        <div class="room-types-grid">
+            @foreach (var roomType in _availableRooms)
             {
-                <div class="room-types-grid">
-                    @foreach (var room in _availableRooms)
-                    {
-                        // OPDATERET LINJE: Vi tilføjer OnBookNowClicked event-handleren.
-                        <RoomTypeCard Title="@room.Name"
-                                      Price="@room.BasePrice"
-                                      Description="@room.Description"
-                                      Features="@(new List<string> { $"{room.Capacity} gæster" })"
-                                      ImageUrl="@GetImageUrlForRoom(room.Name)"
-                                      RoomTypeId="@room.Id"
-                                      OnButtonClicked="ViewRoomDetails" />
-                    }
-                </div>
-            }
-            else
-            {
-                <p>Der er desværre ingen ledige værelser i den valgte periode. Prøv venligst en anden søgning.</p>
+                <RoomTypeCard RoomType="roomType" OnButtonClicked="ViewRoomDetails" />
             }
         </div>
     }
+    else
+    {
+        <p class="text-center">Der er desværre ingen ledige værelser i den valgte periode. Prøv venligst en anden søgning.</p>
+    }
 </div>
-
 
 @code {
     private bool _isLoading = true;
-    private DateTime _checkInDate;
-    private DateTime _checkOutDate;
-    private int _guestCount;
-    private List<RoomTypeGetDto> _availableRooms = new();
+    private List<RoomTypeGetDto> _availableRooms;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "checkin")]
+    public DateTime? CheckInDate { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "checkout")]
+    public DateTime? CheckOutDate { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "guests")]
+    public int GuestCount { get; set; } = 1;
 
     protected override async Task OnInitializedAsync()
     {
-        var uri = new Uri(Navigation.Uri);
-        var queryParams = QueryHelpers.ParseQuery(uri.Query);
-
-        DateTime.TryParse(queryParams.TryGetValue("checkin", out var checkin) ? checkin.ToString() : "", out _checkInDate);
-        DateTime.TryParse(queryParams.TryGetValue("checkout", out var checkout) ? checkout.ToString() : "", out _checkOutDate);
-        int.TryParse(queryParams.TryGetValue("guests", out var guests) ? guests.ToString() : "", out _guestCount);
-
-        _availableRooms = await ApiService.GetAvailableRoomTypesAsync(_checkInDate, _checkOutDate, _guestCount) ?? new();
+        if (CheckInDate.HasValue && CheckOutDate.HasValue)
+        {
+            _availableRooms = await ApiService.GetAvailableRoomTypesAsync(CheckInDate.Value, CheckOutDate.Value, GuestCount);
+        }
         _isLoading = false;
     }
 
     private void ViewRoomDetails(int roomTypeId)
     {
-        // Vi tilføjer nu de kendte datoer og gæsteantal som query-parametre
-        var checkInDateString = _checkInDate.ToString("yyyy-MM-dd");
-        var checkOutDateString = _checkOutDate.ToString("yyyy-MM-dd");
-
-        Navigation.NavigateTo($"/rooms/{roomTypeId}?checkin={checkInDateString}&checkout={checkOutDateString}&guests={_guestCount}");
-    }
-
-    private string GetImageUrlForRoom(string roomName)
-    {
-        return roomName switch
-        {
-            "Standard Værelse" => "/images/room-standard.png",
-            "Deluxe Suite" => "/images/room-deluxe.png",
-            "Presidential Suite" => "/images/room-presidential.png",
-            _ => "/images/room-default.png"
-        };
+        var url = $"/room/{roomTypeId}?checkin={CheckInDate:yyyy-MM-dd}&checkout={CheckOutDate:yyyy-MM-dd}&guests={GuestCount}";
+        Navigation.NavigateTo(url);
     }
 }

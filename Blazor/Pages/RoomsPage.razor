@@ -1,0 +1,42 @@
+﻿@page "/rooms"
+@using DomainModels.DTOs
+@using Blazor.Components
+@inject APIService ApiService
+@inject NavigationManager Navigation
+
+<PageTitle>Vores Værelser - Flyhigh Hotel</PageTitle>
+
+<div class="container my-5">
+    <h1 class="text-center mb-4">Udforsk Vores Værelser</h1>
+
+    @if (_roomTypes is null)
+    {
+        <p class="text-center"><em>Indlæser værelser...</em></p>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var roomType in _roomTypes)
+            {
+                <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
+                    <RoomTypeCard RoomType="roomType" OnButtonClicked="NavigateToRoomDetails" />
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<RoomTypeGetDto> _roomTypes;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roomTypes = await ApiService.GetAllRoomTypesAsync();
+    }
+
+    private void NavigateToRoomDetails(int roomTypeId)
+    {
+        // Husk at vi omdøbte detalje-siden til /room/{id}
+        Navigation.NavigateTo($"/room/{roomTypeId}");
+    }
+}
