@@ -51,6 +51,7 @@ namespace Blazor.Services
             await EnsureAuthHeaderAsync();
             try
             {
+                // Denne metode returnerer nu RoomType inkl. den filtrerede service-liste
                 return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/rooms/types/{id}");
             }
             catch (Exception ex)
@@ -62,10 +63,8 @@ namespace Blazor.Services
 
         public async Task<List<RoomTypeGetDto>?> GetAllRoomTypesAsync()
         {
-
             try
             {
-
                 return await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>("api/rooms/types");
             }
             catch (Exception ex)
@@ -81,6 +80,22 @@ namespace Blazor.Services
             var response = await _httpClient.PostAsJsonAsync("api/Bookings", bookingDetails);
             return response.IsSuccessStatusCode;
         }
+
+        public async Task<List<ServiceGetDto>?> GetAvailableServicesAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            try
+            {
+                // RETTELSE: Forventer nu en liste af ServiceGetDto
+                return await _httpClient.GetFromJsonAsync<List<ServiceGetDto>>("api/services");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af services: {ex.Message}");
+                return new List<ServiceGetDto>();
+            }
+        }
+
 
         // --- Bruger-specifikke Metoder ---
         public async Task<List<BookingGetDto>?> GetMyBookingsAsync()

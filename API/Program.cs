@@ -1,4 +1,4 @@
-using API.Data;
+using API.Data; // Tilføj denne
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +15,6 @@ builder.Host.UseSerilog((context, configuration) =>
 
 IConfiguration Configuration = builder.Configuration;
 string connectionString = Configuration.GetConnectionString("DefaultConnection")!;
-
 builder.Services.AddDbContext<AppDBContext>(options =>
     options.UseNpgsql(connectionString));
 
@@ -26,12 +25,9 @@ builder.Services.AddScoped<DataSeederService>();
 builder.Services.AddScoped<API.Repositories.IBookingRepository, API.Repositories.BookingRepository>();
 builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
 
-
-
 var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
 var jwtIssuer = Configuration["Jwt:Issuer"] ?? "H2-2025-API";
 var jwtAudience = Configuration["Jwt:Audience"] ?? "H2-2025-Client";
-
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -54,7 +50,6 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
-
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Flyhigh Hotel API", Version = "v1" });
@@ -80,10 +75,13 @@ builder.Services.AddSwaggerGen(c =>
         new string[] {}
     }});
 });
-
 builder.Services.AddCors();
 
 var app = builder.Build();
+
+// ----- NYT: KALD DIN DATABASE SEEDER HER -----
+await DataSeeder.InitializeDatabaseAsync(app);
+// ------------------------------------------
 
 if (app.Environment.IsDevelopment())
 {
@@ -105,7 +103,6 @@ app.UseCors(policy => policy
     })
     .AllowAnyMethod()
     .AllowAnyHeader());
-
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
 app.UseAuthentication();

@@ -3,6 +3,7 @@ using System;
 using API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250917105449_RemoveUserSeedFromModelSnapshot")]
+    partial class RemoveUserSeedFromModelSnapshot
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -582,25 +585,25 @@ namespace API.Migrations
                         {
                             Id = 1,
                             BasePrice = 800m,
-                            Capacity = 2,
+                            Capacity = 1,
                             Description = "Hyggeligt enkeltværelse med alt hvad du behøver.",
-                            Name = "Standard Værelse"
+                            Name = "Single Room"
                         },
                         new
                         {
                             Id = 2,
-                            BasePrice = 2200m,
-                            Capacity = 4,
-                            Description = "Rummelig suite med panoramaudsigt og premium faciliteter.",
-                            Name = "Deluxe Suite"
+                            BasePrice = 1200m,
+                            Capacity = 2,
+                            Description = "Rummeligt dobbeltværelse med plads til to.",
+                            Name = "Double Room"
                         },
                         new
                         {
                             Id = 3,
-                            BasePrice = 5000m,
-                            Capacity = 8,
-                            Description = "Den ultimative luksusoplevelse med eksklusiv service.",
-                            Name = "Presidential Suite"
+                            BasePrice = 2500m,
+                            Capacity = 4,
+                            Description = "Luksuriøs suite med separat opholdsområde og fantastisk udsigt.",
+                            Name = "Suite"
                         });
                 });
 
@@ -686,7 +689,7 @@ namespace API.Migrations
                             Id = 5,
                             BillingType = 0,
                             Category = "Mad & Drikke",
-                            Description = "Premium Gin og tonic-vand med garniture.",
+                            Description = "Premium Gin og tonic-vand med garniture. Skab din egen perfekte drink.",
                             IsActive = true,
                             Name = "Gin & Tonic Kit",
                             Price = 180.00m
@@ -706,7 +709,7 @@ namespace API.Migrations
                             Id = 7,
                             BillingType = 0,
                             Category = "Mad & Drikke",
-                            Description = "En kurateret smagsoplevelse med udsøgte vine og oste.",
+                            Description = "En kurateret smagsoplevelse med udsøgte vine og oste i hotellets vinkælder.",
                             IsActive = true,
                             Name = "Vin & Ostesmagning",
                             Price = 500.00m
@@ -716,7 +719,7 @@ namespace API.Migrations
                             Id = 8,
                             BillingType = 0,
                             Category = "Mad & Drikke",
-                            Description = "Et udvalg af salte og søde snacks.",
+                            Description = "Et udvalg af salte og søde snacks, perfekte til en filmaften på værelset.",
                             IsActive = true,
                             Name = "Late Night Snacks",
                             Price = 85.00m
@@ -746,7 +749,7 @@ namespace API.Migrations
                             Id = 11,
                             BillingType = 0,
                             Category = "Wellness & Afslapning",
-                            Description = "Få en yogamatte og en guide til morgen-yoga.",
+                            Description = "Få en yogamatte og en guide til morgen-yoga på værelset.",
                             IsActive = true,
                             Name = "Yogamatte og instruktion",
                             Price = 50.00m
@@ -756,7 +759,7 @@ namespace API.Migrations
                             Id = 12,
                             BillingType = 0,
                             Category = "Wellness & Afslapning",
-                            Description = "En privat træningssession med en certificeret træner.",
+                            Description = "En privat træningssession med en certificeret træner i hotellets fitnesscenter.",
                             IsActive = true,
                             Name = "Personlig Træner",
                             Price = 450.00m
@@ -826,7 +829,7 @@ namespace API.Migrations
                             Id = 19,
                             BillingType = 0,
                             Category = "Praktisk & Komfort",
-                            Description = "Få dit tøj vasket, tørret og strøget.",
+                            Description = "Få dit tøj vasket, tørret og strøget inden kl. 18:00.",
                             IsActive = true,
                             Name = "Tøjvask & Strygning",
                             Price = 120.00m
@@ -856,7 +859,7 @@ namespace API.Migrations
                             Id = 22,
                             BillingType = 0,
                             Category = "Særlige Lejligheder",
-                            Description = "En smuk, frisk buket fra vores lokale florist.",
+                            Description = "En smuk, frisk buket fra vores lokale florist på værelset.",
                             IsActive = true,
                             Name = "Friske Blomster",
                             Price = 250.00m
@@ -876,7 +879,7 @@ namespace API.Migrations
                             Id = 24,
                             BillingType = 1,
                             Category = "Særlige Lejligheder",
-                            Description = "En privat butler er tilgængelig 24/7.",
+                            Description = "En privat butler er tilgængelig for at imødekomme alle dine behov.",
                             IsActive = true,
                             Name = "Butler Service",
                             Price = 2000.00m
@@ -941,278 +944,6 @@ namespace API.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("RoomTypeServices", b =>
-                {
-                    b.Property<int>("RoomTypesId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ServicesId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("RoomTypesId", "ServicesId");
-
-                    b.HasIndex("ServicesId");
-
-                    b.ToTable("RoomTypeServices");
-
-                    b.HasData(
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 1
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 3
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 4
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 8
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 9
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 11
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 15
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 16
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 19
-                        },
-                        new
-                        {
-                            RoomTypesId = 1,
-                            ServicesId = 20
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 1
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 3
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 4
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 8
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 9
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 11
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 15
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 16
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 19
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 20
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 2
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 5
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 13
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 14
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 17
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 18
-                        },
-                        new
-                        {
-                            RoomTypesId = 2,
-                            ServicesId = 22
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 1
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 2
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 3
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 4
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 5
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 6
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 7
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 8
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 9
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 10
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 11
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 12
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 13
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 14
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 15
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 16
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 17
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 18
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 19
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 20
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 21
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 22
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 23
-                        },
-                        new
-                        {
-                            RoomTypesId = 3,
-                            ServicesId = 24
-                        });
-                });
-
             modelBuilder.Entity("BookingServices", b =>
                 {
                     b.HasOne("DomainModels.Booking", null)
@@ -1274,21 +1005,6 @@ namespace API.Migrations
                         .IsRequired();
 
                     b.Navigation("Role");
-                });
-
-            modelBuilder.Entity("RoomTypeServices", b =>
-                {
-                    b.HasOne("DomainModels.RoomType", null)
-                        .WithMany()
-                        .HasForeignKey("RoomTypesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("DomainModels.Service", null)
-                        .WithMany()
-                        .HasForeignKey("ServicesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("DomainModels.Role", b =>

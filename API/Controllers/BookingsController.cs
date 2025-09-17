@@ -2,10 +2,10 @@
 using API.Repositories;
 using DomainModels;
 using DomainModels.DTOs;
+using DomainModels.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 
 namespace API.Controllers
@@ -17,14 +17,12 @@ namespace API.Controllers
     {
         private readonly IBookingRepository _bookingRepository;
         private readonly ILogger<BookingsController> _logger;
-        private readonly IMemoryCache _cache;
         private readonly AppDBContext _context;
 
-        public BookingsController(IBookingRepository bookingRepository, ILogger<BookingsController> logger, IMemoryCache cache, AppDBContext context)
+        public BookingsController(IBookingRepository bookingRepository, ILogger<BookingsController> logger, AppDBContext context)
         {
             _bookingRepository = bookingRepository;
             _logger = logger;
-            _cache = cache;
             _context = context;
         }
 
@@ -57,41 +55,73 @@ namespace API.Controllers
         [HttpPost]
         public async Task<ActionResult<BookingGetDto>> CreateBooking(BookingCreateDto bookingDto)
         {
+            var checkInDateUtc = DateTime.SpecifyKind(bookingDto.CheckInDate, DateTimeKind.Utc);
+            var checkOutDateUtc = DateTime.SpecifyKind(bookingDto.CheckOutDate, DateTimeKind.Utc);
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized("Bruger-ID ikke fundet i token.");
 
             var roomType = await _context.RoomTypes.Include(rt => rt.Rooms).FirstOrDefaultAsync(rt => rt.Id == bookingDto.RoomTypeId);
             if (roomType == null) return BadRequest("Den valgte værelsestype findes ikke.");
 
-            var nights = (bookingDto.CheckOutDate - bookingDto.CheckInDate).Days;
+            var nights = (checkOutDateUtc - checkInDateUtc).Days;
             if (nights <= 0) return BadRequest("Check-ud dato skal være efter check-in dato.");
 
-            var bookedCount = (await _bookingRepository.GetAllAsync()).Count(b => b.RoomTypeId == bookingDto.RoomTypeId &&
-                                     b.CheckInDate < bookingDto.CheckOutDate &&
-                                     b.CheckOutDate > bookingDto.CheckInDate &&
-                                     b.Status != "Cancelled");
+            var allRoomIdsForType = roomType.Rooms.Select(r => r.Id).ToList();
+            var conflictingBookings = await _context.Bookings
+                .Where(b => b.RoomTypeId == bookingDto.RoomTypeId &&
+                            b.Status != "Cancelled" &&
+                            b.CheckInDate < checkOutDateUtc &&
+                            b.CheckOutDate > checkInDateUtc)
+                .ToListAsync();
+            var occupiedRoomIds = conflictingBookings.Where(b => b.RoomId.HasValue).Select(b => b.RoomId.Value).ToList();
+            var availableRoom = roomType.Rooms.FirstOrDefault(r => !occupiedRoomIds.Contains(r.Id));
 
-            if (bookedCount >= roomType.Rooms.Count) return Conflict("Der er desværre ingen ledige værelser af den valgte type i den angivne periode.");
+            if (availableRoom == null)
+            {
+                return Conflict("Der er desværre ingen specifikke ledige værelser af den valgte type i den angivne periode.");
+            }
+
+            decimal servicesPrice = 0;
+            var selectedServices = new List<Service>();
+
+            if (bookingDto.ServiceIds != null && bookingDto.ServiceIds.Any())
+            {
+                selectedServices = await _context.Services
+                    .Where(s => bookingDto.ServiceIds.Contains(s.Id))
+                    .ToListAsync();
+
+                foreach (var service in selectedServices)
+                {
+                    switch (service.BillingType)
+                    {
+                        case BillingType.PerBooking: servicesPrice += service.Price; break;
+                        case BillingType.PerNight: servicesPrice += service.Price * nights; break;
+                        case BillingType.PerPerson: servicesPrice += service.Price; break; // Antager 1 person
+                        case BillingType.PerPersonPerNight: servicesPrice += service.Price * nights; break; // Antager 1 person
+                    }
+                }
+            }
+
+            var totalPrice = (nights * roomType.BasePrice) + servicesPrice;
 
             var booking = new Booking
             {
                 Id = Guid.NewGuid().ToString(),
                 UserId = userId,
                 RoomTypeId = bookingDto.RoomTypeId,
-                RoomId = null,
-                CheckInDate = bookingDto.CheckInDate.ToUniversalTime(),
-                CheckOutDate = bookingDto.CheckOutDate.ToUniversalTime(),
-                TotalPrice = nights * roomType.BasePrice,
-                Status = "Confirmed"
+                RoomId = availableRoom.Id,
+                CheckInDate = checkInDateUtc,
+                CheckOutDate = checkOutDateUtc,
+                TotalPrice = totalPrice,
+                Status = "Confirmed",
+                Services = selectedServices
             };
 
             var createdBooking = await _bookingRepository.CreateAsync(booking);
-            var userFullName = $"{User.FindFirstValue(ClaimTypes.GivenName)} {User.FindFirstValue(ClaimTypes.Surname)}".Trim();
-            if (string.IsNullOrEmpty(userFullName))
-            {
-                userFullName = User.FindFirstValue(ClaimTypes.Name) ?? "N/A";
-            }
 
+            var user = await _context.Users.FindAsync(userId);
+            var userFullName = user != null ? $"{user.FirstName} {user.LastName}" : "N/A";
 
             var resultDto = new BookingGetDto
             {
@@ -101,22 +131,19 @@ namespace API.Controllers
                 TotalPrice = createdBooking.TotalPrice,
                 Status = createdBooking.Status,
                 RoomTypeName = roomType.Name,
-                RoomNumber = "Not Assigned",
+                RoomNumber = availableRoom.RoomNumber,
                 UserFullName = userFullName,
                 CreatedAt = createdBooking.CreatedAt
             };
 
-            // Assuming you have a GetBookingById method or similar
             return CreatedAtAction(nameof(GetMyBookings), new { id = resultDto.Id }, resultDto);
         }
-
 
         [HttpGet]
         [Authorize(Roles = "Receptionist, Manager")]
         public async Task<ActionResult<IEnumerable<BookingSummaryDto>>> GetAllBookings([FromQuery] string? guestName, [FromQuery] DateTime? date)
         {
             var bookings = await _bookingRepository.GetAllAsync(null, guestName, date);
-
             var resultDto = bookings.Select(b => new BookingSummaryDto
             {
                 Id = b.Id,
@@ -126,7 +153,6 @@ namespace API.Controllers
                 CheckOutDate = b.CheckOutDate,
                 Status = b.Status
             }).ToList();
-
             return Ok(resultDto);
         }
     }

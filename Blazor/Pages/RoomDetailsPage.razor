@@ -1,6 +1,7 @@
 ﻿@page "/room/{id:int}"
 @attribute [Authorize]
 @using DomainModels
+@using DomainModels.DTOs
 @using Blazor.Models
 @using Blazor.Components
 @using Microsoft.AspNetCore.WebUtilities
@@ -11,7 +12,7 @@
 
 @if (_isLoading)
 {
-    <p>Indlæser værelsesdetaljer...</p>
+    <p><em>Indlæser værelsesdetaljer...</em></p>
 }
 else if (_roomType != null)
 {
@@ -28,10 +29,41 @@ else if (_roomType != null)
 
             @if (_hasPreselectedDates)
             {
+                <div class="services-section">
+                    <h3 class="section-title">Vælg Tilkøb</h3>
+
+                    @* NYT: Gruppering og Dropdowns *@
+                    @foreach (var group in _roomType.Services.GroupBy(s => s.Category))
+                    {
+                        <details class="service-category-dropdown">
+                            <summary>@group.Key</summary>
+                            <div class="services-checklist">
+                                @foreach (var service in group)
+                                {
+                                    <div class="service-check-item">
+                                        <input type="checkbox" class="form-check-input" id="service-@service.Id" @onchange="(e) => ToggleServiceSelection(service.Id, (bool)e.Value)" />
+                                        <label class="form-check-label" for="service-@service.Id">
+                                            <div class="service-details">
+                                                <span class="service-name">@service.Name</span>
+                                                <span class="service-price">@service.Price.ToString("C0")</span>
+                                            </div>
+                                            <small class="service-description">@service.Description</small>
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                        </details>
+                    }
+                </div>
+
+                <hr />
+
                 <div class="booking-confirm-box">
                     <h3 class="form-title">Gennemfør din booking</h3>
                     <p><strong>Periode:</strong> @_searchQuery.CheckInDate?.ToString("d. MMM") - @_searchQuery.CheckOutDate?.ToString("d. MMM yyyy")</p>
                     <p><strong>Antal gæster:</strong> @_searchQuery.GuestCount</p>
+                    <hr>
+                    <p class="total-price"><strong>Totalpris: @CalculateTotalPrice().ToString("C0")</strong></p>
                     <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleConfirmBooking">Book Nu</ActionButton>
                 </div>
             }
@@ -62,19 +94,20 @@ else
     private bool _hasPreselectedDates = false;
     private string? _errorMessage;
 
+    private List<int> _selectedServiceIds = new();
+
     protected override async Task OnInitializedAsync()
     {
+        // Nu henter vi KUN værelsestypen, som nu indeholder den korrekte liste af services
         _roomType = await ApiService.GetRoomTypeByIdAsync(Id);
 
         var uri = new Uri(Navigation.Uri);
         var queryParams = QueryHelpers.ParseQuery(uri.Query);
 
-        // Tjek om URL'en indeholder datoer
         if (queryParams.TryGetValue("checkin", out var checkinStr) &&
             queryParams.TryGetValue("checkout", out var checkoutStr) &&
             queryParams.TryGetValue("guests", out var guestsStr))
         {
-            // Hvis ja, opdater vores model og sæt flaget
             DateTime.TryParse(checkinStr, out var checkin);
             DateTime.TryParse(checkoutStr, out var checkout);
             int.TryParse(guestsStr, out var guests);
@@ -88,6 +121,43 @@ else
         _isLoading = false;
     }
 
+    private void ToggleServiceSelection(int serviceId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_selectedServiceIds.Contains(serviceId)) _selectedServiceIds.Add(serviceId);
+        }
+        else
+        {
+            _selectedServiceIds.Remove(serviceId);
+        }
+        StateHasChanged();
+    }
+
+    private decimal CalculateTotalPrice()
+    {
+        if (_roomType == null || !_searchQuery.CheckInDate.HasValue || !_searchQuery.CheckOutDate.HasValue) return 0;
+        var nights = (_searchQuery.CheckOutDate.Value - _searchQuery.CheckInDate.Value).Days;
+        if (nights <= 0) return 0;
+
+        var roomPrice = _roomType.BasePrice * nights;
+
+        var servicesPrice = _roomType.Services
+            .Where(s => _selectedServiceIds.Contains(s.Id))
+            .Sum(s =>
+            {
+                return s.BillingType switch
+                {
+                    "PerNight" => s.Price * nights,
+                    "PerPerson" => s.Price * _searchQuery.GuestCount,
+                    "PerPersonPerNight" => s.Price * nights * _searchQuery.GuestCount,
+                    _ => s.Price
+                };
+            });
+
+        return roomPrice + servicesPrice;
+    }
+
     private async Task HandleConfirmBooking()
     {
         _errorMessage = null;
@@ -95,19 +165,12 @@ else
         {
             RoomTypeId = Id,
             CheckInDate = _searchQuery.CheckInDate.Value,
-            CheckOutDate = _searchQuery.CheckOutDate.Value
+            CheckOutDate = _searchQuery.CheckOutDate.Value,
+            ServiceIds = _selectedServiceIds
         };
-
         var success = await ApiService.CreateBookingAsync(bookingDetails);
-
-        if (success)
-        {
-            Navigation.NavigateTo("/account");
-        }
-        else
-        {
-            _errorMessage = "Bookingen kunne ikke gennemføres. Værelset er muligvis blevet optaget i mellemtiden.";
-        }
+        if (success) Navigation.NavigateTo("/account");
+        else _errorMessage = "Bookingen kunne ikke gennemføres. Værelset er muligvis blevet optaget i mellemtiden.";
     }
 
     private string GetImageUrlForRoom(string roomName)

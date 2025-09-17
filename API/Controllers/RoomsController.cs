@@ -1,5 +1,6 @@
 ﻿using API.Data;
 using DomainModels;
+using DomainModels.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -87,15 +88,14 @@ namespace API.Controllers
         /// Henter detaljer for en specifik værelsestype baseret på ID.
         /// </summary>
         [HttpGet("types/{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<RoomTypeDetailDto>> GetRoomTypeById(int id)
         {
-            var roomType = await _context.RoomTypes.FindAsync(id);
+            var roomType = await _context.RoomTypes
+                .Include(rt => rt.Services)
+                .FirstOrDefaultAsync(rt => rt.Id == id);
 
             if (roomType == null)
             {
-                _logger.LogWarning("Værelsestype med ID {RoomTypeId} blev ikke fundet.", id);
                 return NotFound();
             }
 
@@ -105,12 +105,20 @@ namespace API.Controllers
                 Name = roomType.Name,
                 Description = roomType.Description,
                 BasePrice = roomType.BasePrice,
-                Capacity = roomType.Capacity
+                Capacity = roomType.Capacity,
+                // Vi mapper den nu filtrerede liste af services
+                Services = roomType.Services.Select(s => new ServiceGetDto
+                {
+                    Id = s.Id,
+                    Name = s.Name,
+                    Description = s.Description,
+                    Category = s.Category,
+                    Price = s.Price,
+                    BillingType = s.BillingType.ToString()
+                }).ToList()
             };
-
             return Ok(dto);
         }
-
         /// <summary>
         /// Finder ledige værelsestyper baseret på ankomst, afrejse og antal gæster.
         /// </summary>

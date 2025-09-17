@@ -115,9 +115,7 @@ namespace ActiveDirectoryTesting
 
         // UI-metoderne nedenfor er primært til konsol-app'en og behøver ikke ændres,
         // da de kalder de metoder, vi lige har rettet ovenfor.
-        public void ShowAdvancedSearchMenu() { /* ... Din eksisterende kode her ... */ }
-        private void ShowAdvancedUserSearch() { /* ... Din eksisterende kode her ... */ }
-        private void ShowAdvancedGroupSearch() { /* ... Din eksisterende kode her ... */ }
-        private void ShowUsersInGroup() { /* ... Din eksisterende kode her ... */ }
+        public void ShowAdvancedSearchMenu() { }
+
     }
 }
