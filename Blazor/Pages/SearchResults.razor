@@ -22,8 +22,8 @@
             @foreach (var roomType in _availableRooms)
             {
                 <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
+                    @* RETTELSE: OnBookNowClicked er fjernet herfra *@
                     <RoomTypeCard RoomType="roomType"
-                                  OnBookNowClicked="HandleBookNowClicked"
                                   OnDetailsClicked="NavigateToRoomDetails" />
                 </div>
             }
@@ -42,8 +42,8 @@
 
 @code {
     private bool _isLoading = true;
-    private List<RoomTypeGetDto> _availableRooms;
-    private string _errorMessage;
+    private List<RoomTypeGetDto>? _availableRooms;
+    private string? _errorMessage;
 
     [Parameter]
     [SupplyParameterFromQuery(Name = "checkin")]
@@ -66,29 +66,6 @@
         _isLoading = false;
     }
 
-    // Denne metode håndterer "Book Nu"-klikket
-    private async Task HandleBookNowClicked(int roomTypeId)
-    {
-        _errorMessage = null;
-        var bookingDetails = new BookingCreateDto
-        {
-            RoomTypeId = roomTypeId,
-            CheckInDate = CheckInDate.Value,
-            CheckOutDate = CheckOutDate.Value
-        };
-        var success = await ApiService.CreateBookingAsync(bookingDetails);
-        if (success)
-        {
-            Navigation.NavigateTo("/account");
-        }
-        else
-        {
-            _errorMessage = "Bookingen kunne ikke gennemføres. Værelset er muligvis lige blevet optaget. Prøv at søge igen.";
-            StateHasChanged();
-        }
-    }
-
-    // Denne metode håndterer "Se detaljer"-klikket
     private void NavigateToRoomDetails(int roomTypeId)
     {
         var url = $"/room/{roomTypeId}?checkin={CheckInDate:yyyy-MM-dd}&checkout={CheckOutDate:yyyy-MM-dd}&guests={GuestCount}";

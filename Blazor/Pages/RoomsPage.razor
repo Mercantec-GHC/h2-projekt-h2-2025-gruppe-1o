@@ -18,9 +18,8 @@
         <div class="row g-4">
             @foreach (var roomType in _roomTypes)
             {
-                <div class="col-lg-4 col-md-6 d-flex align--stretch">
+                <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
                     <RoomTypeCard RoomType="roomType"
-                                  OnBookNowClicked="NavigateToRoomDetails"
                                   OnDetailsClicked="NavigateToRoomDetails" />
                 </div>
             }
@@ -29,7 +28,7 @@
 </div>
 
 @code {
-    private List<RoomTypeGetDto> _roomTypes;
+    private List<RoomTypeGetDto>? _roomTypes;
 
     protected override async Task OnInitializedAsync()
     {

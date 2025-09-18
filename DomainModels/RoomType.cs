@@ -15,7 +15,10 @@ namespace DomainModels
 
         [Required]
         [MaxLength(500)]
-        public string Description { get; set; } = string.Empty;
+        public string ShortDescription { get; set; } = string.Empty;
+
+        [Required]
+        public string LongDescription { get; set; } = string.Empty;
 
         [Required]
         public decimal BasePrice { get; set; }
@@ -24,8 +27,6 @@ namespace DomainModels
         public int Capacity { get; set; }
 
         public virtual ICollection<Room> Rooms { get; set; } = new List<Room>();
-
-        // DENNE LINJE MANGLER I DIN FIL:
         public virtual ICollection<Service> Services { get; set; } = new List<Service>();
     }
 
@@ -44,7 +45,8 @@ namespace DomainModels
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
+        public string ShortDescription { get; set; } = string.Empty;
+        public string LongDescription { get; set; } = string.Empty;
         public decimal BasePrice { get; set; }
         public int Capacity { get; set; }
         public List<ServiceGetDto> Services { get; set; } = new();

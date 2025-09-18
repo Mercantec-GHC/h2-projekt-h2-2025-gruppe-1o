@@ -103,10 +103,10 @@ namespace API.Controllers
             {
                 Id = roomType.Id,
                 Name = roomType.Name,
-                Description = roomType.Description,
+                ShortDescription = roomType.ShortDescription,
+                LongDescription = roomType.LongDescription, 
                 BasePrice = roomType.BasePrice,
                 Capacity = roomType.Capacity,
-                // Vi mapper den nu filtrerede liste af services
                 Services = roomType.Services.Select(s => new ServiceGetDto
                 {
                     Id = s.Id,
@@ -119,6 +119,7 @@ namespace API.Controllers
             };
             return Ok(dto);
         }
+
         /// <summary>
         /// Finder ledige værelsestyper baseret på ankomst, afrejse og antal gæster.
         /// </summary>
@@ -175,7 +176,7 @@ namespace API.Controllers
                 {
                     Id = rt.Id,
                     Name = rt.Name,
-                    Description = rt.Description,
+                    Description = rt.ShortDescription,
                     BasePrice = rt.BasePrice,
                     Capacity = rt.Capacity,
                     AvailableCount = rt.Rooms.Count - bookedCounts.GetValueOrDefault(rt.Id, 0)

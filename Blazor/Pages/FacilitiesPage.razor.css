@@ -1,0 +1,147 @@
+﻿.facility-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    height: 100%;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    display: flex;
+    flex-direction: column;
+}
+
+    .facility-card img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+    }
+
+.facility-card-body {
+    padding: 1.5rem;
+    flex-grow: 1;
+}
+
+
+.facility-card-split {
+    display: flex;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    height: 100%;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+    .facility-card-split .card-image {
+        flex: 0 0 40%; 
+    }
+
+    .facility-card-split img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .facility-card-split .card-text {
+        flex: 1 1 auto;
+        padding: 2rem;
+    }
+
+
+
+.meeting-room-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    background-color: #fff;
+    height: 100%;
+}
+
+    .meeting-room-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    .meeting-room-card.selected {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    .meeting-room-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        border-top-left-radius: 0.5rem;
+        border-top-right-radius: 0.5rem;
+    }
+
+.meeting-room-card-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+    .meeting-room-card-body span {
+        display: block;
+        margin-top: 0.25rem;
+        color: #6c757d;
+    }
+
+.booking-section {
+    padding: 2rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+}
+
+.timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.5rem;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 1rem;
+}
+
+.timeslot {
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    text-align: center;
+    font-weight: 500;
+    border: 1px solid;
+    background-clip: padding-box;
+}
+
+    .timeslot.available {
+        border-color: #198754;
+        background-color: #e8f5e9;
+        color: #198754;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+        .timeslot.available:hover {
+            background-color: #c8e6c9;
+            font-weight: 600;
+        }
+
+    .timeslot.occupied {
+        border-color: #ced4da;
+        background-color: #e9ecef;
+        color: #6c757d;
+        cursor: not-allowed;
+        text-decoration: line-through;
+    }
+
+    .timeslot.start-time {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0a58ca;
+        font-weight: 700;
+    }
+
+    .timeslot.in-range {
+        background-color: #198754;
+        color: white;
+        font-weight: 700;
+        border-color: #146c43;
+    }

@@ -3,6 +3,7 @@ using System;
 using API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20250918075310_AddLongDescriptionToRoomType")]
+    partial class AddLongDescriptionToRoomType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -85,125 +88,6 @@ namespace API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Bookings");
-                });
-
-            modelBuilder.Entity("DomainModels.MeetingRoom", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("Capacity")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<decimal>("HourlyRate")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("MeetingRooms");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Capacity = 12,
-                            Description = "Intimt og professionelt lokale med videokonferenceudstyr.",
-                            HourlyRate = 750m,
-                            ImageUrl = "/images/meeting-boardroom.jpg",
-                            Name = "Bestyrelseslokalet"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Capacity = 100,
-                            Description = "Stor sal perfekt til præsentationer og større arrangementer.",
-                            HourlyRate = 2500m,
-                            ImageUrl = "/images/meeting-conference.jpg",
-                            Name = "Konferencesalen"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Capacity = 6,
-                            Description = "Lille og lyst rum til kreative workshops eller gruppearbejde.",
-                            HourlyRate = 400m,
-                            ImageUrl = "/images/meeting-breakout.jpg",
-                            Name = "Grupperum Alfa"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Capacity = 8,
-                            Description = "Fleksibelt rum med whiteboard og plads til samarbejde.",
-                            HourlyRate = 500m,
-                            ImageUrl = "/images/meeting-breakout-2.jpg",
-                            Name = "Grupperum Beta"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Capacity = 50,
-                            Description = "Moderne auditorium med biografopstilling og AV-udstyr i topklasse.",
-                            HourlyRate = 1800m,
-                            ImageUrl = "/images/meeting-auditorium.jpg",
-                            Name = "Auditoriet"
-                        });
-                });
-
-            modelBuilder.Entity("DomainModels.MeetingRoomBooking", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("BookedByEmail")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<string>("BookedByName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("EndTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("MeetingRoomId")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("TotalPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MeetingRoomId");
-
-                    b.ToTable("MeetingRoomBookings");
                 });
 
             modelBuilder.Entity("DomainModels.Role", b =>
@@ -872,9 +756,9 @@ namespace API.Migrations
                             Id = 11,
                             BillingType = 0,
                             Category = "Wellness & Afslapning",
-                            Description = "Få en yogamåtte og en guide til morgen-yoga.",
+                            Description = "Få en yogamatte og en guide til morgen-yoga.",
                             IsActive = true,
-                            Name = "Yogamåtte og instruktion",
+                            Name = "Yogamatte og instruktion",
                             Price = 50.00m
                         },
                         new
@@ -1380,17 +1264,6 @@ namespace API.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("DomainModels.MeetingRoomBooking", b =>
-                {
-                    b.HasOne("DomainModels.MeetingRoom", "MeetingRoom")
-                        .WithMany("Bookings")
-                        .HasForeignKey("MeetingRoomId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("MeetingRoom");
-                });
-
             modelBuilder.Entity("DomainModels.Room", b =>
                 {
                     b.HasOne("DomainModels.RoomType", "RoomType")
@@ -1426,11 +1299,6 @@ namespace API.Migrations
                         .HasForeignKey("ServicesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("DomainModels.MeetingRoom", b =>
-                {
-                    b.Navigation("Bookings");
                 });
 
             modelBuilder.Entity("DomainModels.Role", b =>

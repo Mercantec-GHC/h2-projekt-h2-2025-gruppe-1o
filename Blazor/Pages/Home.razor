@@ -32,7 +32,6 @@
             @foreach (var room in featuredRooms)
             {
                 <RoomTypeCard RoomType="room" 
-                              OnBookNowClicked="ViewRoomDetails" 
                               OnDetailsClicked="ViewRoomDetails" />
             }
         </div>
@@ -40,7 +39,7 @@
 </div>
 
 @code {
-    private List<RoomTypeGetDto> featuredRooms;
+    private List<RoomTypeGetDto>? featuredRooms;
 
     protected override async Task OnInitializedAsync()
     {

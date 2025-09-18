@@ -5,6 +5,8 @@
 @using Blazor.Models
 @using Blazor.Components
 @using Microsoft.AspNetCore.WebUtilities
+@using System.Globalization
+
 @inject APIService ApiService
 @inject NavigationManager Navigation
 
@@ -22,17 +24,19 @@ else if (_roomType != null)
         </div>
         <div class="room-info">
             <h1>@_roomType.Name</h1>
-            <p class="room-price">Fra <strong>@_roomType.BasePrice.ToString("N0") kr.</strong> / nat</p>
-            <p class="room-description">@_roomType.Description</p>
+            <p class="room-price">Fra <strong>@_roomType.BasePrice.ToString("C0", _danishCulture)</strong> / nat</p>
+
+            @* Bruger nu den lange, detaljerede beskrivelse *@
+            <p class="room-description">@_roomType.LongDescription</p>
 
             <hr />
 
             @if (_hasPreselectedDates)
             {
                 <div class="services-section">
-                    <h3 class="section-title">Vælg Tilkøb</h3>
+                    @* Overskrift er omdøbt *@
+                    <h3 class="section-title">Ekstra Luksus</h3>
 
-                    @* NYT: Gruppering og Dropdowns *@
                     @foreach (var group in _roomType.Services.GroupBy(s => s.Category))
                     {
                         <details class="service-category-dropdown">
@@ -45,7 +49,7 @@ else if (_roomType != null)
                                         <label class="form-check-label" for="service-@service.Id">
                                             <div class="service-details">
                                                 <span class="service-name">@service.Name</span>
-                                                <span class="service-price">@service.Price.ToString("C0")</span>
+                                                <span class="service-price">@service.Price.ToString("C0", _danishCulture)</span>
                                             </div>
                                             <small class="service-description">@service.Description</small>
                                         </label>
@@ -63,13 +67,14 @@ else if (_roomType != null)
                     <p><strong>Periode:</strong> @_searchQuery.CheckInDate?.ToString("d. MMM") - @_searchQuery.CheckOutDate?.ToString("d. MMM yyyy")</p>
                     <p><strong>Antal gæster:</strong> @_searchQuery.GuestCount</p>
                     <hr>
-                    <p class="total-price"><strong>Totalpris: @CalculateTotalPrice().ToString("C0")</strong></p>
+                    <p class="total-price"><strong>Totalpris: @CalculateTotalPrice().ToString("C0", _danishCulture)</strong></p>
                     <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleConfirmBooking">Book Nu</ActionButton>
                 </div>
             }
             else
             {
-                <BookingSearchForm SearchQueryModel="_searchQuery" />
+                @* Bruger den opdaterede søgeform, der nu søger specifikt for dette rum *@
+                <BookingSearchForm SearchQueryModel="_searchQuery" RoomTypeId="Id" Title="Tjek ledighed for dette værelse" />
             }
 
             @if (!string.IsNullOrEmpty(_errorMessage))
@@ -88,6 +93,9 @@ else
     [Parameter]
     public int Id { get; set; }
 
+    // NYT: Definerer den danske kultur én gang for genbrug
+    private CultureInfo _danishCulture = new CultureInfo("da-DK");
+
     private RoomTypeDetailDto? _roomType;
     private SearchQuery _searchQuery = new();
     private bool _isLoading = true;
@@ -98,7 +106,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Nu henter vi KUN værelsestypen, som nu indeholder den korrekte liste af services
         _roomType = await ApiService.GetRoomTypeByIdAsync(Id);
 
         var uri = new Uri(Navigation.Uri);

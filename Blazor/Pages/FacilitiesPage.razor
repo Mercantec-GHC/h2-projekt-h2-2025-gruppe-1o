@@ -1,0 +1,351 @@
+﻿@page "/facilities"
+@using DomainModels.DTOs
+@using System.Globalization
+@using System.ComponentModel.DataAnnotations
+
+@inject APIService ApiService
+
+<PageTitle>Faciliteter - Flyhigh Hotel</PageTitle>
+
+<div class="container my-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4">Vores Faciliteter</h1>
+        <p class="lead text-muted">Oplev de enestående omgivelser og services på Flyhigh Hotel.</p>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <div class="col-lg-4 col-md-6">
+            <div class="facility-card">
+                <img src="/images/facility-fitness.png" alt="Fitness Lokale" />
+                <div class="facility-card-body">
+                    <h3>Moderne Fitnesscenter</h3>
+                    <p>Hold formen ved lige i vores fuldt udstyrede fitnesscenter med topmoderne udstyr fra Technogym. Åbent 24/7 for alle vores gæster.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="facility-card">
+                <img src="/images/facility-lounge.png" alt="Lounge Område" />
+                <div class="facility-card-body">
+                    <h3>Executive Lounge</h3>
+                    <p>Slap af med en drink eller arbejd i fredelige omgivelser i vores eksklusive lounge med panoramaudsigt over byen.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="facility-card">
+                <img src="/images/facility-kitchen.png" alt="Hotellets Køkken" />
+                <div class="facility-card-body">
+                    <h3>Gourmet i Særklasse</h3>
+                    <p>Vores anerkendte køkken, ledet af stjernekokke, forvandler lokale råvarer til kulinariske mesterværker til hotellets restauranter.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5 justify-content-center">
+        <div class="col-lg-6 col-md-12">
+            <div class="facility-card-split">
+                <div class="card-image">
+                    <img src="/images/facility-lobby.png" alt="Hotellets Entré" />
+                </div>
+                <div class="card-text">
+                    <h3>Imponerende Ankomst</h3>
+                    <p>Vores storslåede entré og lobby er designet til at byde dig velkommen med elegance og en følelse af luksus fra første øjeblik. Den åbne planløsning, de luksuriøse materialer og den betagende udsigt sætter standarden for dit ophold.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 col-md-12">
+            <div class="facility-card-split">
+                <div class="card-image">
+                    <img src="/images/facility-staff.png" alt="Glade Medarbejdere" />
+                </div>
+                <div class="card-text">
+                    <h3>Service med et Smil</h3>
+                    <p>Vores dedikerede team af medarbejdere er hotellets hjerte og er altid klar til at levere en personlig og uforglemmelig service. Fra check-in til check-ud er vi her for at sikre, at dit ophold bliver intet mindre end perfekt.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-5" />
+
+    <div class="text-center mb-5">
+        <h2 class="display-5">Møde- & Konferencelokaler</h2>
+        <p class="lead text-muted">Hold dit næste arrangement i professionelle og inspirerende rammer.</p>
+    </div>
+
+    @if (_meetingRooms == null)
+    {
+        <p><em>Indlæser mødelokaler...</em></p>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var room in _meetingRooms)
+            {
+                <div class="col-lg-4 col-md-6">
+                    <div class="meeting-room-card @(IsRoomSelected(room) ? "selected" : "")" @onclick="() => SelectMeetingRoom(room)">
+                        <img src="@room.ImageUrl" alt="@room.Name" />
+                        <div class="meeting-room-card-body">
+                            <h5>@room.Name</h5>
+                            <span>Kapacitet: @room.Capacity personer</span>
+                            <span>@room.HourlyRate.ToString("C0", _danishCulture) / time</span>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    @if (_selectedMeetingRoom != null)
+    {
+        <div class="booking-section mt-5">
+            <h3>Book "@_selectedMeetingRoom.Name"</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <h4>Vælg dato</h4>
+                    <input type="date" class="form-control mb-3" value="@_selectedDate.ToString("yyyy-MM-dd")" @onchange="OnDateChanged" />
+
+                    @if (_dayTimeSlots.Any())
+                    {
+                        <h5 class="mt-4">Vælg start- og sluttid for @_selectedDate.ToShortDateString()</h5>
+                        <div class="timeline">
+                            @foreach (var slot in _dayTimeSlots)
+                            {
+                                if (IsSlotBooked(slot))
+                                {
+                                    <div class="timeslot occupied">@slot.ToString(@"hh\:mm") (Optaget)</div>
+                                }
+                                else
+                                {
+                                    <button class="timeslot available @(GetSlotClass(slot))"
+                                            @onclick="() => SelectTimeSlot(slot)"
+                                            @onmouseover="() => _hoveredTime = slot"
+                                            @onmouseout="() => _hoveredTime = null">
+                                        @slot.ToString(@"hh\:mm")
+                                    </button>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="col-md-6">
+                    @if (_bookingModel.StartTime != default)
+                    {
+                        <h4>Bekræft booking</h4>
+                        <p>
+                            Du er ved at booke lokalet fra
+                            <strong>@_bookingModel.StartTime.ToLocalTime().ToString("HH:mm")</strong> til
+                            <strong>@_bookingModel.EndTime.ToLocalTime().ToString("HH:mm")</strong>.
+                        </p>
+                        <p>Totalpris: <strong>@CalculateTotalPrice().ToString("C0", _danishCulture)</strong></p>
+                        <EditForm Model="_bookingModel" OnValidSubmit="HandleBookingSubmit">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary />
+                            <div class="mb-3">
+                                <label>Fulde navn</label>
+                                <InputText class="form-control" @bind-Value="_bookingModel.BookedByName" />
+                            </div>
+                            <div class="mb-3">
+                                <label>Email</label>
+                                <InputText class="form-control" @bind-Value="_bookingModel.BookedByEmail" />
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Gennemfør Booking</button>
+                        </EditForm>
+                    }
+                    else
+                    {
+                        <div class="text-center p-5 bg-light rounded">
+                            <p class="lead">
+                                @if (_selectedStartTime.HasValue)
+                                {
+                                    <span>Starttid valgt: <strong>@_selectedStartTime.Value.ToString(@"hh\:mm")</strong>. Vælg nu en sluttid.</span>
+                                }
+                                else
+                                {
+                                    <span>Vælg en ledig starttid i tidslinjen til venstre.</span>
+                                }
+                            </p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert @(_isSuccess ? "alert-success" : "alert-danger") mt-4">@_statusMessage</div>
+    }
+</div>
+
+@code {
+    private List<MeetingRoomGetDto>? _meetingRooms;
+    private MeetingRoomGetDto? _selectedMeetingRoom;
+    private List<TimeSlotDto>? _bookedSlots;
+    private DateTime _selectedDate = DateTime.Today;
+    private MeetingRoomBookingCreateDto _bookingModel = new();
+    private string? _statusMessage;
+    private bool _isSuccess;
+    private CultureInfo _danishCulture = new CultureInfo("da-DK");
+    private List<TimeSpan> _dayTimeSlots = new();
+    private TimeSpan _slotDuration = TimeSpan.FromMinutes(30);
+    private TimeSpan? _selectedStartTime;
+    private TimeSpan? _selectedEndTime;
+    private TimeSpan? _hoveredTime;
+
+    protected override void OnInitialized()
+    {
+        GenerateDayTimeSlots();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _meetingRooms = await ApiService.GetMeetingRoomsAsync();
+    }
+
+    private async Task SelectMeetingRoom(MeetingRoomGetDto room)
+    {
+        _selectedMeetingRoom = room;
+        await ResetSelection();
+    }
+
+    private async Task OnDateChanged(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var newDate))
+        {
+            _selectedDate = newDate;
+            await ResetSelection();
+        }
+    }
+
+    private async Task ResetSelection()
+    {
+        _selectedStartTime = null;
+        _selectedEndTime = null;
+        _bookingModel = new MeetingRoomBookingCreateDto();
+        _statusMessage = null;
+        await LoadAvailability();
+    }
+
+    private async Task LoadAvailability()
+    {
+        _bookingModel = new MeetingRoomBookingCreateDto();
+        if (_selectedMeetingRoom != null)
+        {
+            _bookedSlots = await ApiService.GetMeetingRoomAvailabilityAsync(_selectedMeetingRoom.Id, _selectedDate);
+            StateHasChanged();
+        }
+    }
+
+    private bool IsSlotBooked(TimeSpan time)
+    {
+        if (_bookedSlots == null) return true;
+        var slotStart = _selectedDate.Date + time;
+        var slotEnd = slotStart + _slotDuration;
+        return _bookedSlots.Any(b => b.StartTime < slotEnd && b.EndTime > slotStart);
+    }
+
+    private void SelectTimeSlot(TimeSpan slot)
+    {
+        _statusMessage = null;
+
+        if (_selectedEndTime.HasValue)
+        {
+            _selectedStartTime = null;
+            _selectedEndTime = null;
+            _bookingModel = new MeetingRoomBookingCreateDto();
+        }
+
+        if (!_selectedStartTime.HasValue)
+        {
+            _selectedStartTime = slot;
+            _bookingModel = new MeetingRoomBookingCreateDto();
+        }
+        else
+        {
+            var startTime = _selectedStartTime.Value;
+            var endTime = slot;
+
+            if (endTime <= startTime)
+            {
+                _statusMessage = "Sluttidspunkt skal være efter starttidspunkt. Vælg igen.";
+                _isSuccess = false;
+                _selectedStartTime = null;
+                return;
+            }
+
+            for (var time = startTime; time <= endTime; time += _slotDuration)
+            {
+                if (IsSlotBooked(time))
+                {
+                    _statusMessage = "Den valgte periode overlapper med en eksisterende booking. Vælg igen.";
+                    _isSuccess = false;
+                    _selectedStartTime = null;
+                    return;
+                }
+            }
+
+            _bookingModel.StartTime = _selectedDate.Date + startTime;
+            _bookingModel.EndTime = _selectedDate.Date + endTime + _slotDuration;
+            _selectedEndTime = endTime;
+        }
+    }
+
+    private string GetSlotClass(TimeSpan slot)
+    {
+        if (_selectedStartTime.HasValue)
+        {
+            if (_selectedEndTime.HasValue)
+            {
+                if (slot >= _selectedStartTime.Value && slot <= _selectedEndTime.Value)
+                {
+                    return "in-range";
+                }
+            }
+            else
+            {
+                if (slot == _selectedStartTime.Value) return "start-time";
+                if (_hoveredTime.HasValue && slot > _selectedStartTime.Value && slot <= _hoveredTime.Value)
+                {
+                    return "in-range";
+                }
+            }
+        }
+        return string.Empty;
+    }
+
+    private async Task HandleBookingSubmit()
+    {
+        if (_selectedMeetingRoom == null) return;
+        _bookingModel.MeetingRoomId = _selectedMeetingRoom.Id;
+        var (success, message) = await ApiService.BookMeetingRoomAsync(_bookingModel);
+
+        _isSuccess = success;
+        _statusMessage = message;
+
+        if (success)
+        {
+            await ResetSelection();
+        }
+    }
+
+    private decimal CalculateTotalPrice()
+    {
+        if (_selectedMeetingRoom == null || _bookingModel.StartTime == default || _bookingModel.EndTime == default) return 0;
+        var duration = (_bookingModel.EndTime - _bookingModel.StartTime).TotalHours;
+        return (decimal)duration * _selectedMeetingRoom.HourlyRate;
+    }
+
+    private void GenerateDayTimeSlots()
+    {
+        for (int hour = 8; hour < 22; hour++)
+        {
+            _dayTimeSlots.Add(new TimeSpan(hour, 0, 0));
+            _dayTimeSlots.Add(new TimeSpan(hour, 30, 0));
+        }
+    }
+
+    private bool IsRoomSelected(MeetingRoomGetDto room) => _selectedMeetingRoom?.Id == room.Id;
+}

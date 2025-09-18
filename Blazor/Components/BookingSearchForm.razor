@@ -1,7 +1,7 @@
 ﻿@using Blazor.Models
 
 <div class="booking-form-card">
-    <h2 class="form-title">Find dit perfekte værelse</h2>
+    <h2 class="form-title">@Title</h2>
     <EditForm Model="SearchQueryModel" OnValidSubmit="HandleSearch">
         <DataAnnotationsValidator />
         <div class="form-inputs">
@@ -10,7 +10,7 @@
             <GuestCounterInput @bind-Value="SearchQueryModel.GuestCount" Label="Antal gæster" />
         </div>
         <ActionButton Type="ActionButton.ButtonType.Accent" IsSubmit="true">
-            Søg efter værelser
+            Søg ledighed
         </ActionButton>
     </EditForm>
 </div>
@@ -19,14 +19,30 @@
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
-    // NYT: Modtager nu sin data-model udefra via en parameter.
     [Parameter, EditorRequired]
     public SearchQuery SearchQueryModel { get; set; } = new();
 
+    // NY PARAMETER til at skelne mellem generel og specifik søgning
+    [Parameter]
+    public int? RoomTypeId { get; set; }
+
+    // NY PARAMETER til at tilpasse overskriften
+    [Parameter]
+    public string Title { get; set; } = "Find dit perfekte værelse";
+
     private void HandleSearch()
     {
-        // Bruger nu den modtagne model til at bygge URL'en.
-        var url = $"/search-results?checkin={SearchQueryModel.CheckInDate:yyyy-MM-dd}&checkout={SearchQueryModel.CheckOutDate:yyyy-MM-dd}&guests={SearchQueryModel.GuestCount}";
-        Navigation.NavigateTo(url);
+        string url;
+        if (RoomTypeId.HasValue)
+        {
+            // Hvis vi er på en detaljeside, genindlæs siden med de nye datoer
+            url = $"/room/{RoomTypeId.Value}?checkin={SearchQueryModel.CheckInDate:yyyy-MM-dd}&checkout={SearchQueryModel.CheckOutDate:yyyy-MM-dd}&guests={SearchQueryModel.GuestCount}";
+        }
+        else
+        {
+            // Hvis vi er på forsiden, gå til den generelle søgeresultatside
+            url = $"/search-results?checkin={SearchQueryModel.CheckInDate:yyyy-MM-dd}&checkout={SearchQueryModel.CheckOutDate:yyyy-MM-dd}&guests={SearchQueryModel.GuestCount}";
+        }
+        Navigation.NavigateTo(url, forceLoad: true); // forceLoad sikrer at OnInitializedAsync genkøres
     }
 }

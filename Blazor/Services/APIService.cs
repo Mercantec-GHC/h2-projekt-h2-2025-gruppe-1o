@@ -51,7 +51,6 @@ namespace Blazor.Services
             await EnsureAuthHeaderAsync();
             try
             {
-                // Denne metode returnerer nu RoomType inkl. den filtrerede service-liste
                 return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/rooms/types/{id}");
             }
             catch (Exception ex)
@@ -81,21 +80,44 @@ namespace Blazor.Services
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<List<ServiceGetDto>?> GetAvailableServicesAsync()
+        // --- Mødelokale Metoder ---
+        public async Task<List<MeetingRoomGetDto>?> GetMeetingRoomsAsync()
         {
-            await EnsureAuthHeaderAsync();
             try
             {
-                // RETTELSE: Forventer nu en liste af ServiceGetDto
-                return await _httpClient.GetFromJsonAsync<List<ServiceGetDto>>("api/services");
+                return await _httpClient.GetFromJsonAsync<List<MeetingRoomGetDto>>("api/meetingrooms");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Fejl ved hentning af services: {ex.Message}");
-                return new List<ServiceGetDto>();
+                Console.WriteLine($"Fejl ved hentning af mødelokaler: {ex.Message}");
+                return null;
             }
         }
 
+        public async Task<List<TimeSlotDto>?> GetMeetingRoomAvailabilityAsync(int roomId, DateTime date)
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<TimeSlotDto>>($"api/meetingrooms/availability/{roomId}?date={date:yyyy-MM-dd}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af ledighed for mødelokale {roomId}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<(bool Success, string Message)> BookMeetingRoomAsync(MeetingRoomBookingCreateDto dto)
+        {
+            // DENNE ENE LINJE ER RETTET:
+            var response = await _httpClient.PostAsJsonAsync("api/meetingrooms/book", dto);
+            var content = await response.Content.ReadAsStringAsync();
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, "Booking gennemført!");
+            }
+            return (false, content ?? "Ukendt fejl");
+        }
 
         // --- Bruger-specifikke Metoder ---
         public async Task<List<BookingGetDto>?> GetMyBookingsAsync()
@@ -143,7 +165,6 @@ namespace Blazor.Services
             {
                 return (true, string.Empty);
             }
-            // Error handling...
             var errorContent = await response.Content.ReadAsStringAsync();
             return (false, errorContent ?? "Der opstod en ukendt fejl under opdatering.");
         }
@@ -175,16 +196,14 @@ namespace Blazor.Services
 
         public async Task<StaffLoginResult?> StaffLoginAsync(StaffLoginDto loginModel)
         {
-            // Vi kalder det nye staff-login endpoint
             var response = await _httpClient.PostAsJsonAsync("api/Users/staff-login", loginModel);
             if (!response.IsSuccessStatusCode) return null;
 
             var responseContent = await response.Content.ReadAsStringAsync();
             var loginResult = JsonSerializer.Deserialize<StaffLoginResult>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            
+
             if (loginResult?.Token == null) return null;
 
-            // Gem token og opdater authentication state - præcis som i det almindelige login
             await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", loginResult.Token);
             ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(loginResult.Token);
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult.Token);
@@ -255,13 +274,11 @@ namespace Blazor.Services
         }
     }
 
-    // Hjælpeklasse til at deserialisere login-svaret
     public class LoginResult
     {
         public string? Token { get; set; }
     }
 
-    // Hjælpeklasse til at deserialisere staff login-svaret
     public class StaffLoginResult
     {
         public string? Token { get; set; }
