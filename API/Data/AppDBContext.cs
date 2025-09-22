@@ -19,6 +19,11 @@ namespace API.Data
         public DbSet<MeetingRoom> MeetingRooms { get; set; } = null!;
         public DbSet<MeetingRoomBooking> MeetingRoomBookings { get; set; } = null!;
 
+        // NYE TILFØJELSER
+        public DbSet<Ticket> Tickets { get; set; } = null!;
+        public DbSet<TicketMessage> TicketMessages { get; set; } = null!;
+
+
 
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -82,8 +87,43 @@ namespace API.Data
                 .WithMany(mr => mr.Bookings)
                 .HasForeignKey(b => b.MeetingRoomId);
 
+            // NY KONFIGURATION FOR TICKET-SYSTEMET
+            modelBuilder.Entity<Ticket>(entity =>
+            {
+                // En bruger kan have oprettet mange tickets. Slettes brugeren, sættes CreatedByUserId til null.
+                entity.HasOne(t => t.CreatedByUser)
+                      .WithMany()
+                      .HasForeignKey(t => t.CreatedByUserId)
+                      .OnDelete(DeleteBehavior.SetNull);
+
+                // En medarbejder kan være tildelt mange tickets. Slettes medarbejderen, sættes AssignedToUserId til null.
+                entity.HasOne(t => t.AssignedToUser)
+                      .WithMany()
+                      .HasForeignKey(t => t.AssignedToUserId)
+                      .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            modelBuilder.Entity<TicketMessage>(entity =>
+            {
+                // En ticket kan have mange beskeder. Slettes ticket, slettes alle beskeder med.
+                entity.HasOne(m => m.Ticket)
+                      .WithMany(t => t.Messages)
+                      .HasForeignKey(m => m.TicketId)
+                      .OnDelete(DeleteBehavior.Cascade);
+
+                // En bruger kan have sendt mange beskeder. Slettes brugeren, slettes beskederne også.
+                entity.HasOne(m => m.Sender)
+                      .WithMany()
+                      .HasForeignKey(m => m.SenderId)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
+
             SeedStaticData(modelBuilder);
         }
+
+
+
+
 
         private void SeedStaticData(ModelBuilder modelBuilder)
         {

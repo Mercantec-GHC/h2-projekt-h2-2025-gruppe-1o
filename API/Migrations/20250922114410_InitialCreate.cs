@@ -9,11 +9,28 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     /// <inheritdoc />
-    public partial class RemoveUserSeedFromModelSnapshot : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "MeetingRooms",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Capacity = table.Column<int>(type: "integer", nullable: false),
+                    HourlyRate = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    ImageUrl = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MeetingRooms", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "Roles",
                 columns: table => new
@@ -37,7 +54,8 @@ namespace API.Migrations
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    Description = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    ShortDescription = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    LongDescription = table.Column<string>(type: "text", nullable: false),
                     BasePrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
                     Capacity = table.Column<int>(type: "integer", nullable: false)
                 },
@@ -62,6 +80,31 @@ namespace API.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Services", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MeetingRoomBookings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    MeetingRoomId = table.Column<int>(type: "integer", nullable: false),
+                    StartTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    BookedByName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    BookedByEmail = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    TotalPrice = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MeetingRoomBookings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MeetingRoomBookings_MeetingRooms_MeetingRoomId",
+                        column: x => x.MeetingRoomId,
+                        principalTable: "MeetingRooms",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -114,6 +157,64 @@ namespace API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "RoomTypeServices",
+                columns: table => new
+                {
+                    RoomTypesId = table.Column<int>(type: "integer", nullable: false),
+                    ServicesId = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RoomTypeServices", x => new { x.RoomTypesId, x.ServicesId });
+                    table.ForeignKey(
+                        name: "FK_RoomTypeServices_RoomTypes_RoomTypesId",
+                        column: x => x.RoomTypesId,
+                        principalTable: "RoomTypes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_RoomTypeServices_Services_ServicesId",
+                        column: x => x.ServicesId,
+                        principalTable: "Services",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Tickets",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    Title = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    Category = table.Column<int>(type: "integer", nullable: false),
+                    CreatedByUserId = table.Column<string>(type: "text", nullable: true),
+                    GuestName = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    GuestEmail = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
+                    AssignedToUserId = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    PasswordBackdoor = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Tickets", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Tickets_Users_AssignedToUserId",
+                        column: x => x.AssignedToUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Tickets_Users_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Bookings",
                 columns: table => new
                 {
@@ -153,6 +254,36 @@ namespace API.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TicketMessages",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "text", nullable: false),
+                    TicketId = table.Column<string>(type: "text", nullable: false),
+                    SenderId = table.Column<string>(type: "text", nullable: false),
+                    Content = table.Column<string>(type: "text", nullable: false),
+                    IsInternalNote = table.Column<bool>(type: "boolean", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    PasswordBackdoor = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TicketMessages", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TicketMessages_Tickets_TicketId",
+                        column: x => x.TicketId,
+                        principalTable: "Tickets",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TicketMessages_Users_SenderId",
+                        column: x => x.SenderId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "BookingServices",
                 columns: table => new
                 {
@@ -177,6 +308,18 @@ namespace API.Migrations
                 });
 
             migrationBuilder.InsertData(
+                table: "MeetingRooms",
+                columns: new[] { "Id", "Capacity", "Description", "HourlyRate", "ImageUrl", "Name" },
+                values: new object[,]
+                {
+                    { 1, 12, "Intimt og professionelt lokale med videokonferenceudstyr.", 750m, "/images/meeting-boardroom.jpg", "Bestyrelseslokalet" },
+                    { 2, 100, "Stor sal perfekt til præsentationer og større arrangementer.", 2500m, "/images/meeting-conference.jpg", "Konferencesalen" },
+                    { 3, 6, "Lille og lyst rum til kreative workshops eller gruppearbejde.", 400m, "/images/meeting-breakout.jpg", "Grupperum Alfa" },
+                    { 4, 8, "Fleksibelt rum med whiteboard og plads til samarbejde.", 500m, "/images/meeting-breakout-2.jpg", "Grupperum Beta" },
+                    { 5, 50, "Moderne auditorium med biografopstilling og AV-udstyr i topklasse.", 1800m, "/images/meeting-auditorium.jpg", "Auditoriet" }
+                });
+
+            migrationBuilder.InsertData(
                 table: "Roles",
                 columns: new[] { "Id", "CreatedAt", "Description", "Name", "PasswordBackdoor", "UpdatedAt" },
                 values: new object[,]
@@ -190,12 +333,12 @@ namespace API.Migrations
 
             migrationBuilder.InsertData(
                 table: "RoomTypes",
-                columns: new[] { "Id", "BasePrice", "Capacity", "Description", "Name" },
+                columns: new[] { "Id", "BasePrice", "Capacity", "LongDescription", "Name", "ShortDescription" },
                 values: new object[,]
                 {
-                    { 1, 800m, 1, "Hyggeligt enkeltværelse med alt hvad du behøver.", "Single Room" },
-                    { 2, 1200m, 2, "Rummeligt dobbeltværelse med plads til to.", "Double Room" },
-                    { 3, 2500m, 4, "Luksuriøs suite med separat opholdsområde og fantastisk udsigt.", "Suite" }
+                    { 1, 800m, 2, "Vores Standard Værelse byder på 25 velindrettede kvadratmeter med en luksuriøs queen-size seng, skrivebord og et moderne badeværelse med regnbruser. Nyd faciliteter som high-speed WiFi, et 4K Smart TV med streaming, og en minibar. Værelset er designet med rene linjer og en rolig farvepalette for at sikre et afslappende ophold.", "Standard Værelse", "Et elegant og komfortabelt værelse, perfekt til forretningsrejsen eller en weekendtur." },
+                    { 2, 2200m, 4, "Vores Deluxe Suite på 55 kvadratmeter er indbegrebet af moderne luksus. Suiten har et separat soveværelse med en king-size seng og en rummelig opholdsstue med sofaarrangement og spiseplads. Fra de store panoramavinduer har du en fantastisk udsigt over byen. Badeværelset er udstyret med både badekar og en separat regnbruser, samt eksklusive toiletartikler.", "Deluxe Suite", "Oplev ekstra plads og luksus med en separat opholdsstue og en imponerende udsigt." },
+                    { 3, 5000m, 8, "Presidential Suiten er mere end et værelse; det er indbegrebet af kompromisløs luksus og Flyhigh Hotels mest prestigefyldte residens. Træd ind i en verden af raffineret elegance, hvor 120 kvadratmeter er dedikeret til din absolutte komfort.\r\n\r\nDen ekspansive opholdsstue er et statement i sig selv med nøje udvalgt kunst, designer-møbler og et imponerende flygel. Gulv-til-loft-vinduer bader rummet i naturligt lys.\r\n\r\nSuiten råder over to separate soveværelser, hver med luksuriøse king-size senge og tilhørende spa-lignende marmorbadeværelser. Det fuldt udstyrede gourmetkøkken giver desuden mulighed for, at vores private kok kan kreere skræddersyede kulinariske oplevelser direkte i suiten.\r\n", "Presidential Suite", "Den ultimative luksusoplevelse fordelt på 120 kvadratmeter med eksklusiv service." }
                 });
 
             migrationBuilder.InsertData(
@@ -207,26 +350,84 @@ namespace API.Migrations
                     { 2, 0, "Mad & Drikke", "En afkølet flaske Moët & Chandon venter på værelset.", true, "Champagne ved ankomst", 400.00m },
                     { 3, 0, "Mad & Drikke", "Et udvalg af sæsonens friske, eksotiske frugter.", true, "Luksus Frugtkurv", 120.00m },
                     { 4, 0, "Mad & Drikke", "Håndlavet luksuschokolade og franske macarons.", true, "Chokolade & Macarons", 95.00m },
-                    { 5, 0, "Mad & Drikke", "Premium Gin og tonic-vand med garniture. Skab din egen perfekte drink.", true, "Gin & Tonic Kit", 180.00m },
+                    { 5, 0, "Mad & Drikke", "Premium Gin og tonic-vand med garniture.", true, "Gin & Tonic Kit", 180.00m },
                     { 6, 2, "Mad & Drikke", "Udsøgt sushi fra hotellets restaurant, leveret til dit værelse.", true, "Sushi Menu", 350.00m },
-                    { 7, 0, "Mad & Drikke", "En kurateret smagsoplevelse med udsøgte vine og oste i hotellets vinkælder.", true, "Vin & Ostesmagning", 500.00m },
-                    { 8, 0, "Mad & Drikke", "Et udvalg af salte og søde snacks, perfekte til en filmaften på værelset.", true, "Late Night Snacks", 85.00m },
+                    { 7, 0, "Mad & Drikke", "En kurateret smagsoplevelse med udsøgte vine og oste.", true, "Vin & Ostesmagning", 500.00m },
+                    { 8, 0, "Mad & Drikke", "Et udvalg af salte og søde snacks.", true, "Late Night Snacks", 85.00m },
                     { 9, 2, "Wellness & Afslapning", "Fuld dagsadgang til vores luksuriøse spa- og wellnessområde.", true, "Spa Adgang", 250.00m },
                     { 10, 0, "Wellness & Afslapning", "Afslappende massage for to i vores private suite.", true, "60 min. Par-massage", 1200.00m },
-                    { 11, 0, "Wellness & Afslapning", "Få en yogamatte og en guide til morgen-yoga på værelset.", true, "Yogamatte og instruktion", 50.00m },
-                    { 12, 0, "Wellness & Afslapning", "En privat træningssession med en certificeret træner i hotellets fitnesscenter.", true, "Personlig Træner", 450.00m },
+                    { 11, 0, "Wellness & Afslapning", "Få en yogamåtte og en guide til morgen-yoga.", true, "Yogamåtte og instruktion", 50.00m },
+                    { 12, 0, "Wellness & Afslapning", "En privat træningssession med en certificeret træner.", true, "Personlig Træner", 450.00m },
                     { 13, 0, "Wellness & Afslapning", "Book vores private sauna til en times eksklusiv brug.", true, "Privat Sauna Session", 300.00m },
                     { 14, 2, "Wellness & Afslapning", "Hjemmesko og en luksuriøs badekåbe til at tage med hjem.", true, "Badekåbe & Sutsko", 180.00m },
                     { 15, 0, "Praktisk & Komfort", "Sov lidt længere og nyd værelset i et par ekstra timer.", true, "Sen Udtjekning (kl. 14:00)", 200.00m },
                     { 16, 1, "Praktisk & Komfort", "Garanteret parkeringsplads i vores overvågede kælder.", true, "Sikker Parkering", 150.00m },
                     { 17, 0, "Praktisk & Komfort", "Privat luksusbil til eller fra lufthavnen.", true, "Lufthavnstransfer", 600.00m },
                     { 18, 0, "Praktisk & Komfort", "Ekstra grundig rengøring af dit værelse under opholdet.", true, "Ekstra Rengøring", 250.00m },
-                    { 19, 0, "Praktisk & Komfort", "Få dit tøj vasket, tørret og strøget inden kl. 18:00.", true, "Tøjvask & Strygning", 120.00m },
+                    { 19, 0, "Praktisk & Komfort", "Få dit tøj vasket, tørret og strøget.", true, "Tøjvask & Strygning", 120.00m },
                     { 20, 0, "Praktisk & Komfort", "Få minibaren fyldt med dine favorit-drikke og snacks.", true, "Minibar Refill", 0.00m },
                     { 21, 0, "Særlige Lejligheder", "Rosenblade på sengen, stearinlys og en flaske Cava.", true, "Romantisk Pakke", 450.00m },
-                    { 22, 0, "Særlige Lejligheder", "En smuk, frisk buket fra vores lokale florist på værelset.", true, "Friske Blomster", 250.00m },
+                    { 22, 0, "Særlige Lejligheder", "En smuk, frisk buket fra vores lokale florist.", true, "Friske Blomster", 250.00m },
                     { 23, 0, "Særlige Lejligheder", "En lækker, speciallavet kage til at fejre den store dag.", true, "Fødselsdagskage", 300.00m },
-                    { 24, 1, "Særlige Lejligheder", "En privat butler er tilgængelig for at imødekomme alle dine behov.", true, "Butler Service", 2000.00m }
+                    { 24, 1, "Særlige Lejligheder", "En privat butler er tilgængelig 24/7.", true, "Butler Service", 2000.00m }
+                });
+
+            migrationBuilder.InsertData(
+                table: "RoomTypeServices",
+                columns: new[] { "RoomTypesId", "ServicesId" },
+                values: new object[,]
+                {
+                    { 1, 1 },
+                    { 1, 3 },
+                    { 1, 4 },
+                    { 1, 8 },
+                    { 1, 9 },
+                    { 1, 11 },
+                    { 1, 15 },
+                    { 1, 16 },
+                    { 1, 19 },
+                    { 1, 20 },
+                    { 2, 1 },
+                    { 2, 2 },
+                    { 2, 3 },
+                    { 2, 4 },
+                    { 2, 5 },
+                    { 2, 8 },
+                    { 2, 9 },
+                    { 2, 11 },
+                    { 2, 13 },
+                    { 2, 14 },
+                    { 2, 15 },
+                    { 2, 16 },
+                    { 2, 17 },
+                    { 2, 18 },
+                    { 2, 19 },
+                    { 2, 20 },
+                    { 2, 22 },
+                    { 3, 1 },
+                    { 3, 2 },
+                    { 3, 3 },
+                    { 3, 4 },
+                    { 3, 5 },
+                    { 3, 6 },
+                    { 3, 7 },
+                    { 3, 8 },
+                    { 3, 9 },
+                    { 3, 10 },
+                    { 3, 11 },
+                    { 3, 12 },
+                    { 3, 13 },
+                    { 3, 14 },
+                    { 3, 15 },
+                    { 3, 16 },
+                    { 3, 17 },
+                    { 3, 18 },
+                    { 3, 19 },
+                    { 3, 20 },
+                    { 3, 21 },
+                    { 3, 22 },
+                    { 3, 23 },
+                    { 3, 24 }
                 });
 
             migrationBuilder.InsertData(
@@ -307,6 +508,11 @@ namespace API.Migrations
                 column: "ServicesId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_MeetingRoomBookings_MeetingRoomId",
+                table: "MeetingRoomBookings",
+                column: "MeetingRoomId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Roles_Name",
                 table: "Roles",
                 column: "Name",
@@ -322,6 +528,31 @@ namespace API.Migrations
                 name: "IX_Rooms_RoomTypeId",
                 table: "Rooms",
                 column: "RoomTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RoomTypeServices_ServicesId",
+                table: "RoomTypeServices",
+                column: "ServicesId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TicketMessages_SenderId",
+                table: "TicketMessages",
+                column: "SenderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TicketMessages_TicketId",
+                table: "TicketMessages",
+                column: "TicketId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tickets_AssignedToUserId",
+                table: "Tickets",
+                column: "AssignedToUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tickets_CreatedByUserId",
+                table: "Tickets",
+                column: "CreatedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
@@ -342,10 +573,25 @@ namespace API.Migrations
                 name: "BookingServices");
 
             migrationBuilder.DropTable(
+                name: "MeetingRoomBookings");
+
+            migrationBuilder.DropTable(
+                name: "RoomTypeServices");
+
+            migrationBuilder.DropTable(
+                name: "TicketMessages");
+
+            migrationBuilder.DropTable(
                 name: "Bookings");
 
             migrationBuilder.DropTable(
+                name: "MeetingRooms");
+
+            migrationBuilder.DropTable(
                 name: "Services");
+
+            migrationBuilder.DropTable(
+                name: "Tickets");
 
             migrationBuilder.DropTable(
                 name: "Rooms");

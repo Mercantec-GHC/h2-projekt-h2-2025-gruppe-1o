@@ -1,4 +1,6 @@
-using API.Data; // Tilføj denne
+using API.Data;
+using API.Repositories;
+using API.Hubs;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -24,10 +26,13 @@ builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
 builder.Services.AddScoped<API.Repositories.IBookingRepository, API.Repositories.BookingRepository>();
 builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
+builder.Services.AddSignalR();
+builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 
 var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
 var jwtIssuer = Configuration["Jwt:Issuer"] ?? "H2-2025-API";
 var jwtAudience = Configuration["Jwt:Audience"] ?? "H2-2025-Client";
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -108,5 +113,6 @@ app.UseSerilogRequestLogging();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapHub<TicketHub>("/ticketHub");
 
 app.Run();

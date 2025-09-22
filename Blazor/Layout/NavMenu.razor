@@ -48,7 +48,6 @@
                     </div>
                 </AuthorizeView>
 
-                <!-- Role-specific navigation for regular Users -->
                 <AuthorizeView Roles="User" Context="userContext">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="account">
@@ -60,8 +59,13 @@
                             <span class="bi bi-calendar-check" aria-hidden="true"></span> Mine Bookinger
                         </NavLink>
                     </div>
-                </AuthorizeView>
 
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="support/tickets">
+                            <span class="bi bi-patch-question-fill" aria-hidden="true"></span> Support
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
                 <!-- Logout button for all authenticated users -->
                 <div class="nav-item px-3">
                     <button class="nav-link btn btn-link" @onclick="Logout">

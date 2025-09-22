@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace API.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20250918075310_AddLongDescriptionToRoomType")]
-    partial class AddLongDescriptionToRoomType
+    [Migration("20250922114410_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -88,6 +88,125 @@ namespace API.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Bookings");
+                });
+
+            modelBuilder.Entity("DomainModels.MeetingRoom", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Capacity")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("HourlyRate")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("MeetingRooms");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Capacity = 12,
+                            Description = "Intimt og professionelt lokale med videokonferenceudstyr.",
+                            HourlyRate = 750m,
+                            ImageUrl = "/images/meeting-boardroom.jpg",
+                            Name = "Bestyrelseslokalet"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Capacity = 100,
+                            Description = "Stor sal perfekt til præsentationer og større arrangementer.",
+                            HourlyRate = 2500m,
+                            ImageUrl = "/images/meeting-conference.jpg",
+                            Name = "Konferencesalen"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Capacity = 6,
+                            Description = "Lille og lyst rum til kreative workshops eller gruppearbejde.",
+                            HourlyRate = 400m,
+                            ImageUrl = "/images/meeting-breakout.jpg",
+                            Name = "Grupperum Alfa"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Capacity = 8,
+                            Description = "Fleksibelt rum med whiteboard og plads til samarbejde.",
+                            HourlyRate = 500m,
+                            ImageUrl = "/images/meeting-breakout-2.jpg",
+                            Name = "Grupperum Beta"
+                        },
+                        new
+                        {
+                            Id = 5,
+                            Capacity = 50,
+                            Description = "Moderne auditorium med biografopstilling og AV-udstyr i topklasse.",
+                            HourlyRate = 1800m,
+                            ImageUrl = "/images/meeting-auditorium.jpg",
+                            Name = "Auditoriet"
+                        });
+                });
+
+            modelBuilder.Entity("DomainModels.MeetingRoomBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BookedByEmail")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("BookedByName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MeetingRoomId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MeetingRoomId");
+
+                    b.ToTable("MeetingRoomBookings");
                 });
 
             modelBuilder.Entity("DomainModels.Role", b =>
@@ -756,9 +875,9 @@ namespace API.Migrations
                             Id = 11,
                             BillingType = 0,
                             Category = "Wellness & Afslapning",
-                            Description = "Få en yogamatte og en guide til morgen-yoga.",
+                            Description = "Få en yogamåtte og en guide til morgen-yoga.",
                             IsActive = true,
-                            Name = "Yogamatte og instruktion",
+                            Name = "Yogamåtte og instruktion",
                             Price = 50.00m
                         },
                         new
@@ -891,6 +1010,97 @@ namespace API.Migrations
                             Name = "Butler Service",
                             Price = 2000.00m
                         });
+                });
+
+            modelBuilder.Entity("DomainModels.Ticket", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("AssignedToUserId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GuestEmail")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("GuestName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PasswordBackdoor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedToUserId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.ToTable("Tickets");
+                });
+
+            modelBuilder.Entity("DomainModels.TicketMessage", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsInternalNote")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PasswordBackdoor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SenderId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TicketId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SenderId");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("TicketMessages");
                 });
 
             modelBuilder.Entity("DomainModels.User", b =>
@@ -1264,6 +1474,17 @@ namespace API.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DomainModels.MeetingRoomBooking", b =>
+                {
+                    b.HasOne("DomainModels.MeetingRoom", "MeetingRoom")
+                        .WithMany("Bookings")
+                        .HasForeignKey("MeetingRoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MeetingRoom");
+                });
+
             modelBuilder.Entity("DomainModels.Room", b =>
                 {
                     b.HasOne("DomainModels.RoomType", "RoomType")
@@ -1273,6 +1494,42 @@ namespace API.Migrations
                         .IsRequired();
 
                     b.Navigation("RoomType");
+                });
+
+            modelBuilder.Entity("DomainModels.Ticket", b =>
+                {
+                    b.HasOne("DomainModels.User", "AssignedToUser")
+                        .WithMany()
+                        .HasForeignKey("AssignedToUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DomainModels.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("AssignedToUser");
+
+                    b.Navigation("CreatedByUser");
+                });
+
+            modelBuilder.Entity("DomainModels.TicketMessage", b =>
+                {
+                    b.HasOne("DomainModels.User", "Sender")
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DomainModels.Ticket", "Ticket")
+                        .WithMany("Messages")
+                        .HasForeignKey("TicketId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Sender");
+
+                    b.Navigation("Ticket");
                 });
 
             modelBuilder.Entity("DomainModels.User", b =>
@@ -1301,6 +1558,11 @@ namespace API.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("DomainModels.MeetingRoom", b =>
+                {
+                    b.Navigation("Bookings");
+                });
+
             modelBuilder.Entity("DomainModels.Role", b =>
                 {
                     b.Navigation("Users");
@@ -1314,6 +1576,11 @@ namespace API.Migrations
             modelBuilder.Entity("DomainModels.RoomType", b =>
                 {
                     b.Navigation("Rooms");
+                });
+
+            modelBuilder.Entity("DomainModels.Ticket", b =>
+                {
+                    b.Navigation("Messages");
                 });
 #pragma warning restore 612, 618
         }

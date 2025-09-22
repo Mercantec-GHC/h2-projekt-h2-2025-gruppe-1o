@@ -109,7 +109,6 @@ namespace Blazor.Services
 
         public async Task<(bool Success, string Message)> BookMeetingRoomAsync(MeetingRoomBookingCreateDto dto)
         {
-            // DENNE ENE LINJE ER RETTET:
             var response = await _httpClient.PostAsJsonAsync("api/meetingrooms/book", dto);
             var content = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)
@@ -201,7 +200,6 @@ namespace Blazor.Services
 
             var responseContent = await response.Content.ReadAsStringAsync();
             var loginResult = JsonSerializer.Deserialize<StaffLoginResult>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
             if (loginResult?.Token == null) return null;
 
             await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", loginResult.Token);
@@ -246,7 +244,6 @@ namespace Blazor.Services
             var queryParams = new Dictionary<string, string?>();
             if (!string.IsNullOrEmpty(guestName)) queryParams["guestName"] = guestName;
             if (date.HasValue) queryParams["date"] = date.Value.ToString("yyyy-MM-dd");
-
             var url = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("api/Bookings", queryParams);
             try
             {
@@ -271,6 +268,85 @@ namespace Blazor.Services
                 Console.WriteLine($"Fejl ved hentning af dashboard-statistik: {ex.Message}");
                 return new DailyStatsDto();
             }
+        }
+
+        // --- TICKET METODER ---
+        public async Task<string?> GetAuthTokenAsync()
+        {
+            return await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
+        }
+
+        public async Task<TicketSummaryDto?> CreateTicketAsync(TicketCreateDto ticket)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync("api/tickets", ticket);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<TicketSummaryDto>();
+            }
+            return null;
+        }
+
+        public async Task<List<TicketSummaryDto>?> GetTicketsAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af tickets: {ex.Message}");
+                return new List<TicketSummaryDto>();
+            }
+        }
+
+        public async Task<List<TicketSummaryDto>?> GetTicketsForMyRoleAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af rolle-baserede tickets: {ex.Message}");
+                return new List<TicketSummaryDto>();
+            }
+        }
+
+        public async Task<TicketDetailDto?> GetTicketByIdAsync(string id)
+        {
+            await EnsureAuthHeaderAsync();
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<TicketDetailDto>($"api/tickets/{id}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af ticket {id}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<TicketMessageDto?> PostMessageAsync(string ticketId, TicketMessageCreateDto message)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync($"api/tickets/{ticketId}/messages", message);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<TicketMessageDto>();
+            }
+            return null;
+        }
+
+        public async Task<bool> UpdateTicketStatusAsync(string ticketId, TicketStatusUpdateDto statusUpdate)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsJsonAsync($"api/tickets/{ticketId}/status", statusUpdate);
+            return response.IsSuccessStatusCode;
         }
     }
 

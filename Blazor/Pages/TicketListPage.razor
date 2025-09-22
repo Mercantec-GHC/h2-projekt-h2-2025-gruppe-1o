@@ -1,0 +1,92 @@
+﻿@page "/support/tickets"
+@attribute [Authorize]
+@inject APIService ApiService
+@inject NavigationManager Navigation
+@inject TicketSignalRService SignalRService
+@implements IDisposable
+
+<PageTitle>Support Sager</PageTitle>
+
+<div class="page-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="section-title">Åbne Sager</h2>
+        <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
+    </div>
+
+    @if (_tickets == null)
+    {
+        <p><em>Indlæser sager...</em></p>
+    }
+    else if (!_tickets.Any())
+    {
+        <p>Der er ingen sager i din kø.</p>
+    }
+    else
+    {
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Titel</th>
+                    <th>Kategori</th>
+                    <th>Status</th>
+                    <th>Oprettet af</th>
+                    <th>Oprettet</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ticket in _tickets)
+                {
+                    <tr @onclick="@(() => ViewTicket(ticket.Id))" style="cursor: pointer;">
+                        <td>#@ticket.Id.Substring(0, 6).ToUpper()</td>
+                        <td>@ticket.Title</td>
+                        <td>@ticket.Category</td>
+                        <td><span class="badge @GetStatusClass(ticket.Status)">@ticket.Status</span></td>
+                        <td>@ticket.CreatedByName</td>
+                        <td>@ticket.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+@code {
+    private List<TicketSummaryDto>? _tickets;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await SignalRService.StartConnectionAsync();
+        SignalRService.OnNewTicketReceived += HandleNewTicket;
+
+        // RETTELSE: Vi kalder nu den nye metode
+        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+    }
+
+    private async void HandleNewTicket(TicketSummaryDto newTicket)
+    {
+        // For at sikre, at live-opdateringen kun viser relevante sager,
+        // genindlæser vi listen. Dette er den simpleste og mest robuste løsning.
+        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ViewTicket(string ticketId)
+    {
+        Navigation.NavigateTo($"/support/ticket/{ticketId}");
+    }
+
+    private string GetStatusClass(DomainModels.Enums.TicketStatus status) => status switch
+    {
+        DomainModels.Enums.TicketStatus.Open => "bg-success",
+        DomainModels.Enums.TicketStatus.InProgress => "bg-info",
+        DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
+        DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
+        _ => "bg-dark"
+    };
+
+    public void Dispose()
+    {
+        SignalRService.OnNewTicketReceived -= HandleNewTicket;
+    }
+}

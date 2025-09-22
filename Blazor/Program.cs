@@ -23,6 +23,7 @@ public class Program
         // Opsætning af en enkelt HttpClient, som alle services deler
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });
         builder.Services.AddScoped<APIService>();
+        builder.Services.AddScoped<TicketSignalRService>();
         builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
         builder.Services.AddAuthorizationCore();
 

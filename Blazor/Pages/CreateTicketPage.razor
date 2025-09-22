@@ -1,0 +1,77 @@
+﻿@page "/support/new"
+@inject APIService ApiService
+@inject NavigationManager Navigation
+
+<PageTitle>Opret Ny Sag</PageTitle>
+
+<div class="form-container">
+    <div class="form-card">
+        <h2 class="form-title">Opret en ny supportsag</h2>
+        <p class="form-subtitle">Udfyld venligst nedenstående felter. Vi vender tilbage hurtigst muligt.</p>
+
+        <EditForm Model="_ticketModel" OnValidSubmit="HandleCreateTicket">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger" />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <div class="alert alert-danger">@_errorMessage</div>
+            }
+
+            <AuthorizeView Context="authContext">
+                <NotAuthorized>
+                    <div class="form-group">
+                        <label for="guestName">Dit Navn</label>
+                        <InputText id="guestName" class="form-control" @bind-Value="_ticketModel.GuestName" />
+                    </div>
+                    <div class="form-group">
+                        <label for="guestEmail">Din Email</label>
+                        <InputText id="guestEmail" type="email" class="form-control" @bind-Value="_ticketModel.GuestEmail" />
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
+
+            <div class="form-group">
+                <label>Kategori</label>
+                <InputSelect class="form-select" @bind-Value="_ticketModel.Category">
+                    @foreach (var category in Enum.GetValues(typeof(DomainModels.Enums.TicketCategory)))
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <div class="form-group">
+                <label for="title">Titel</label>
+                <InputText id="title" class="form-control" @bind-Value="_ticketModel.Title" />
+            </div>
+
+            <div class="form-group">
+                <label for="description">Beskrivelse</label>
+                <InputTextArea id="description" class="form-control" @bind-Value="_ticketModel.Description" rows="5" />
+            </div>
+
+            <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Opret Sag</ActionButton>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private TicketCreateDto _ticketModel = new();
+    private string? _errorMessage;
+
+    private async Task HandleCreateTicket()
+    {
+        _errorMessage = null;
+        var createdTicket = await ApiService.CreateTicketAsync(_ticketModel);
+
+        if (createdTicket != null)
+        {
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            _errorMessage = "Der opstod en fejl under oprettelsen af din sag. Prøv venligst igen.";
+        }
+    }
+}

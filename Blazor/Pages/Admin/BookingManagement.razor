@@ -2,6 +2,9 @@
 @layout MainLayout
 @attribute [Authorize(Roles = "Receptionist, Manager")]
 @inject APIService ApiService
+@inject TicketSignalRService SignalRService
+@inject NavigationManager Navigation
+@implements IDisposable
 
 <PageTitle>Booking Management</PageTitle>
 
@@ -54,7 +57,7 @@
 
     @if (_isLoading)
     {
-        <p><em>Henter bookinger...</em></p>
+        <p><em>Henter data...</em></p>
     }
     else
     {
@@ -138,6 +141,52 @@
             </div>
         </div>
     }
+
+    <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
+        <h2 class="mb-0">Åbne Support Sager</h2>
+        <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            @if (_openTickets == null)
+            {
+                <p><em>Indlæser sager...</em></p>
+            }
+            else if (!_openTickets.Any())
+            {
+                <p>Der er ingen åbne sager i din kø. Godt arbejde!</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Titel</th>
+                                <th>Status</th>
+                                <th>Oprettet af</th>
+                                <th>Oprettet</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ticket in _openTickets)
+                            {
+                                <tr @onclick="@(() => Navigation.NavigateTo($"/support/ticket/{ticket.Id}"))" style="cursor: pointer;">
+                                    <td>#@ticket.Id.Substring(0, 6).ToUpper()</td>
+                                    <td>@ticket.Title</td>
+                                    <td><span class="badge @GetTicketStatusClass(ticket.Status)">@ticket.Status</span></td>
+                                    <td>@ticket.CreatedByName</td>
+                                    <td>@ticket.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
@@ -148,6 +197,7 @@
     private List<BookingSummaryDto> _arrivals = new();
     private List<BookingSummaryDto> _departures = new();
     private DailyStatsDto? _stats;
+    private List<TicketSummaryDto>? _openTickets;
 
     private string _searchTerm = "";
     private DateTime? _dateFilter;
@@ -155,6 +205,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var token = await ApiService.GetAuthTokenAsync();
+        await SignalRService.StartConnectionAsync(token);
+        SignalRService.OnNewTicketReceived += HandleNewTicket;
+
         await LoadData();
     }
 
@@ -164,14 +218,22 @@
 
         var allBookingsTask = ApiService.GetBookingsForAdminAsync();
         var statsTask = ApiService.GetDashboardStatsAsync();
+        var openTicketsTask = ApiService.GetTicketsForMyRoleAsync();
 
-        await Task.WhenAll(allBookingsTask, statsTask);
+        await Task.WhenAll(allBookingsTask, statsTask, openTicketsTask);
 
         _allBookings = await allBookingsTask ?? new();
         _stats = await statsTask;
+        _openTickets = await openTicketsTask ?? new();
 
         FilterLocalLists();
         _isLoading = false;
+    }
+
+    private async void HandleNewTicket(TicketSummaryDto newTicket)
+    {
+        _openTickets = await ApiService.GetTicketsForMyRoleAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void SetActiveTab(string tabName) => _activeTab = tabName;
@@ -185,7 +247,6 @@
             _ => _allBookings
         };
 
-        // Anvend live-filtre
         var filtered = sourceList.AsEnumerable();
         if (!string.IsNullOrEmpty(_searchTerm))
         {
@@ -210,7 +271,7 @@
         _departures = _allBookings.Where(b => b.CheckOutDate.Date == today).ToList();
     }
 
-    private async Task ApplyFilters() => await Task.CompletedTask; // Nødvendig for at tvinge re-rendering
+    private async Task ApplyFilters() => await Task.CompletedTask;
 
     private async Task ClearFilters()
     {
@@ -229,4 +290,18 @@
         "checkedout" => "bg-secondary",
         _ => "bg-dark"
     };
+
+    private string GetTicketStatusClass(DomainModels.Enums.TicketStatus status) => status switch
+    {
+        DomainModels.Enums.TicketStatus.Open => "bg-success",
+        DomainModels.Enums.TicketStatus.InProgress => "bg-info",
+        DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
+        DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
+        _ => "bg-dark"
+    };
+
+    public void Dispose()
+    {
+        SignalRService.OnNewTicketReceived -= HandleNewTicket;
+    }
 }

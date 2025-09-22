@@ -1,0 +1,93 @@
+﻿@attribute [Authorize]
+@inject APIService ApiService
+@inject NavigationManager Navigation
+@inject TicketSignalRService SignalRService
+@implements IDisposable
+
+<div class="card shadow-sm">
+    <div class="card-header">
+        <h3 class="mb-0">
+            <i class="bi bi-inbox-fill me-2"></i> Åbne Sager
+        </h3>
+    </div>
+    <div class="card-body">
+        @if (_tickets == null)
+        {
+            <p><em>Indlæser sager...</em></p>
+        }
+        else if (!_tickets.Any())
+        {
+            <p>Der er ingen åbne sager i din kø. Godt arbejde!</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Titel</th>
+                            <th>Status</th>
+                            <th>Oprettet af</th>
+                            <th>Oprettet</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ticket in _tickets)
+                        {
+                            <tr @onclick="@(() => ViewTicket(ticket.Id))" style="cursor: pointer;">
+                                <td>#@ticket.Id.Substring(0, 6).ToUpper()</td>
+                                <td>@ticket.Title</td>
+                                <td><span class="badge @GetStatusClass(ticket.Status)">@ticket.Status</span></td>
+                                <td>@ticket.CreatedByName</td>
+                                <td>@ticket.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<TicketSummaryDto>? _tickets;
+    private string? _authToken;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _authToken = await ApiService.GetAuthTokenAsync();
+        await SignalRService.StartConnectionAsync(_authToken);
+        SignalRService.OnNewTicketReceived += HandleNewTicket;
+
+        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+    }
+
+    private async void HandleNewTicket(TicketSummaryDto newTicket)
+    {
+        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ViewTicket(string ticketId)
+    {
+        Navigation.NavigateTo($"/support/ticket/{ticketId}");
+    }
+
+    private string GetStatusClass(DomainModels.Enums.TicketStatus status) => status switch
+    {
+        DomainModels.Enums.TicketStatus.Open => "bg-success",
+        DomainModels.Enums.TicketStatus.InProgress => "bg-info",
+        DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
+        DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
+        _ => "bg-dark"
+    };
+
+    public void Dispose()
+    {
+        SignalRService.OnNewTicketReceived -= HandleNewTicket;
+    }
+}
