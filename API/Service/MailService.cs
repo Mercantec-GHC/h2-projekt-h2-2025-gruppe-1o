@@ -2,6 +2,9 @@
 using Microsoft.Extensions.Options;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using System;
+using System.Net.Mail;
+using System.Threading.Tasks;
 
 namespace API.Services
 {
@@ -28,9 +31,6 @@ namespace API.Services
         /// <returns>Returnerer true, hvis e-mailen blev accepteret af SendGrid API'et, ellers false.</returns>
         public async Task<bool> SendEmailAsync(string toEmail, string subject, string body)
         {
-
-            _logger.LogInformation("Forsøger at sende mail FRA: '{FromEmail}'", _sendGridSettings.FromEmail);
-
             try
             {
                 var client = new SendGridClient(_sendGridSettings.ApiKey);

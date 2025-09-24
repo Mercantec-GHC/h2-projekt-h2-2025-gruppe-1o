@@ -3,7 +3,6 @@
 @inject APIService ApiService
 @inject TicketSignalRService SignalRService
 @inject IJSRuntime JSRuntime
-@inject NavigationManager NavigationManager
 @using System.Security.Claims
 @using DomainModels.Enums
 @implements IAsyncDisposable
@@ -96,8 +95,7 @@ else
     private ClaimsPrincipal? _user;
     private bool _isSending = false;
 
-    // ----- RETTELSE HER: Parenteser sikrer korrekt rækkefølge -----
-    private bool IsStaff => (_user?.IsInRole("Manager") ?? false) || (_user?.IsInRole("Receptionist") ?? false) || (_user?.IsInRole("Housekeeping") ?? false);
+    private bool IsStaff => _user?.IsInRole("Manager") == true || _user?.IsInRole("Receptionist") == true || _user?.IsInRole("Housekeeping") == true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,6 +112,14 @@ else
         if (_ticket != null)
         {
             await SignalRService.JoinTicketGroupAsync(TicketId);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _ticket != null)
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToEnd", "chat-messages");
         }
     }
 

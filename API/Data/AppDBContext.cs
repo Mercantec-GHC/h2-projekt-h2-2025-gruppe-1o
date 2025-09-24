@@ -156,9 +156,23 @@ namespace API.Data
 
             var rooms = new List<Room>();
             var roomCounter = 1;
-            for (int i = 0; i < 20; i++) rooms.Add(new Room { Id = roomCounter++, RoomNumber = (101 + i).ToString(), Status = "Clean", RoomTypeId = 1 });
-            for (int i = 0; i < 20; i++) rooms.Add(new Room { Id = roomCounter++, RoomNumber = (201 + i).ToString(), Status = "Clean", RoomTypeId = 2 });
-            for (int i = 0; i < 10; i++) rooms.Add(new Room { Id = roomCounter++, RoomNumber = (301 + i).ToString(), Status = "Clean", RoomTypeId = 3 });
+            for (int i = 0; i < 250; i++)
+            {
+                int roomNo = (i < 100) ? 101 + i : 201 + (i - 100);
+                rooms.Add(new Room { Id = roomCounter++, RoomNumber = roomNo.ToString(), Status = "Clean", RoomTypeId = 1 });
+            }
+
+            // KORREKT LOGIK: 100 Deluxe Suites (Etage 3)
+            for (int i = 0; i < 100; i++)
+            {
+                rooms.Add(new Room { Id = roomCounter++, RoomNumber = (351 + i).ToString(), Status = "Clean", RoomTypeId = 2 });
+            }
+
+            // KORREKT LOGIK: 50 Presidential Suites (Etage 4)
+            for (int i = 0; i < 50; i++)
+            {
+                rooms.Add(new Room { Id = roomCounter++, RoomNumber = (451 + i).ToString(), Status = "Clean", RoomTypeId = 3 });
+            }
             modelBuilder.Entity<Room>().HasData(rooms);
 
             modelBuilder.Entity<Service>().HasData(

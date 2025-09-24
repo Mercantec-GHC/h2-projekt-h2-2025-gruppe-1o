@@ -1,4 +1,4 @@
-ï»¿using API.Data;
+using API.Data;
 using API.Hubs;
 using API.Repositories;
 using API.Services;
@@ -27,15 +27,14 @@ builder.Services.AddSingleton<LoginAttemptService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
 
-// Registrering af MailService og dens Settings
+// ----- TILFØJELSE AF MAILSERVICE STARTER -----
 builder.Services.Configure<SendGridSettings>(builder.Configuration.GetSection("SendGridSettings"));
 builder.Services.AddScoped<MailService>();
+// ----- TILFØJELSE AF MAILSERVICE SLUTTER -----
 
-// Registrering af Repositories fra din backup
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
-
 builder.Services.AddSignalR();
 builder.Services.AddCors();
 builder.Services.AddRouting();

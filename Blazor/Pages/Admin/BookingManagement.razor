@@ -96,49 +96,13 @@
     }
 
     <h2 class="mt-5 mb-3">Dagens Statistik</h2>
-    @if (_stats == null)
-    {
-        <p><em>Henter statistik...</em></p>
-    }
-    else
+    @if (_stats != null)
     {
         <div class="row">
-            <div class="col-md-3">
-                <div class="card text-center shadow-sm h-100">
-                    <div class="card-body">
-                        <i class="bi bi-box-arrow-in-right fs-1 text-primary"></i>
-                        <h4 class="mt-2">@_stats.ArrivalsCount</h4>
-                        <p class="text-muted mb-0">Ankomster</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center shadow-sm h-100">
-                    <div class="card-body">
-                        <i class="bi bi-box-arrow-left fs-1 text-primary"></i>
-                        <h4 class="mt-2">@_stats.DeparturesCount</h4>
-                        <p class="text-muted mb-0">Afrejser</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center shadow-sm h-100">
-                    <div class="card-body">
-                        <i class="bi bi-building fs-1 text-primary"></i>
-                        <h4 class="mt-2">@_stats.OccupancyPercentage %</h4>
-                        <p class="text-muted mb-0">Belægning</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center shadow-sm h-100">
-                    <div class="card-body">
-                        <i class="bi bi-cash-stack fs-1 text-primary"></i>
-                        <h4 class="mt-2">@_stats.TodaysRevenue.ToString("N0") kr.</h4>
-                        <p class="text-muted mb-0">Omsætning</p>
-                    </div>
-                </div>
-            </div>
+            <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-in-right fs-1 text-primary"></i><h4 class="mt-2">@_stats.ArrivalsCount</h4><p class="text-muted mb-0">Ankomster</p></div></div></div>
+            <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-left fs-1 text-primary"></i><h4 class="mt-2">@_stats.DeparturesCount</h4><p class="text-muted mb-0">Afrejser</p></div></div></div>
+            <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-building fs-1 text-primary"></i><h4 class="mt-2">@_stats.OccupancyPercentage %</h4><p class="text-muted mb-0">Belægning</p></div></div></div>
+            <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-cash-stack fs-1 text-primary"></i><h4 class="mt-2">@_stats.TodaysRevenue.ToString("N0") kr.</h4><p class="text-muted mb-0">Omsætning</p></div></div></div>
         </div>
     }
 
@@ -187,6 +151,48 @@
             }
         </div>
     </div>
+
+    <h2 class="mt-5 mb-3">Lukkede Support Sager</h2>
+    <div class="card shadow-sm">
+        <div class="card-body">
+            @if (_closedTickets == null)
+            {
+                <p><em>Indlæser lukkede sager...</em></p>
+            }
+            else if (!_closedTickets.Any())
+            {
+                <p>Der er ingen lukkede sager.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Titel</th>
+                                <th>Status</th>
+                                <th>Oprettet af</th>
+                                <th>Oprettet</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ticket in _closedTickets)
+                            {
+                                <tr @onclick="@(() => Navigation.NavigateTo($"/support/ticket/{ticket.Id}"))" style="cursor: pointer;">
+                                    <td>#@ticket.Id.Substring(0, 6).ToUpper()</td>
+                                    <td>@ticket.Title</td>
+                                    <td><span class="badge @GetTicketStatusClass(ticket.Status)">@ticket.Status</span></td>
+                                    <td>@ticket.CreatedByName</td>
+                                    <td>@ticket.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
@@ -198,6 +204,7 @@
     private List<BookingSummaryDto> _departures = new();
     private DailyStatsDto? _stats;
     private List<TicketSummaryDto>? _openTickets;
+    private List<TicketSummaryDto>? _closedTickets;
 
     private string _searchTerm = "";
     private DateTime? _dateFilter;
@@ -207,7 +214,8 @@
     {
         var token = await ApiService.GetAuthTokenAsync();
         await SignalRService.StartConnectionAsync(token);
-        SignalRService.OnNewTicketReceived += HandleNewTicket;
+        SignalRService.OnNewTicketReceived += HandleNewTicketReceived;
+        SignalRService.OnStatusChanged += HandleStatusChanged;
 
         await LoadData();
     }
@@ -218,22 +226,35 @@
 
         var allBookingsTask = ApiService.GetBookingsForAdminAsync();
         var statsTask = ApiService.GetDashboardStatsAsync();
-        var openTicketsTask = ApiService.GetTicketsForMyRoleAsync();
+        var openTicketsTask = ApiService.GetOpenTicketsForMyRoleAsync();
+        var closedTicketsTask = ApiService.GetClosedTicketsForMyRoleAsync();
 
-        await Task.WhenAll(allBookingsTask, statsTask, openTicketsTask);
+        await Task.WhenAll(allBookingsTask, statsTask, openTicketsTask, closedTicketsTask);
 
         _allBookings = await allBookingsTask ?? new();
         _stats = await statsTask;
         _openTickets = await openTicketsTask ?? new();
+        _closedTickets = await closedTicketsTask ?? new();
 
         FilterLocalLists();
         _isLoading = false;
     }
 
-    private async void HandleNewTicket(TicketSummaryDto newTicket)
+    private async Task ReloadTickets()
     {
-        _openTickets = await ApiService.GetTicketsForMyRoleAsync();
+        _openTickets = await ApiService.GetOpenTicketsForMyRoleAsync();
+        _closedTickets = await ApiService.GetClosedTicketsForMyRoleAsync();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async void HandleNewTicketReceived(TicketSummaryDto newTicket)
+    {
+        await ReloadTickets();
+    }
+
+    private async void HandleStatusChanged(string ticketId, DomainModels.Enums.TicketStatus newStatus)
+    {
+        await ReloadTickets();
     }
 
     private void SetActiveTab(string tabName) => _activeTab = tabName;
@@ -302,6 +323,7 @@
 
     public void Dispose()
     {
-        SignalRService.OnNewTicketReceived -= HandleNewTicket;
+        SignalRService.OnNewTicketReceived -= HandleNewTicketReceived;
+        SignalRService.OnStatusChanged -= HandleStatusChanged;
     }
 }

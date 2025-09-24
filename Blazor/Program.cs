@@ -16,12 +16,11 @@ public class Program
 
         JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
+        var apiBaseAddress = new Uri(builder.Configuration["ApiBaseUrl"]
+            ?? builder.HostEnvironment.BaseAddress);
 
-        // fikset dum localhost fejl til at teste uden deployment
-        var apiBaseAddress = new Uri("https://localhost:8091");
-
-        // Opsætning af en enkelt HttpClient, som alle services deler
         builder.Services.AddScoped(sp => new HttpClient { BaseAddress = apiBaseAddress });
+
         builder.Services.AddScoped<APIService>();
         builder.Services.AddScoped<TicketSignalRService>();
         builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();

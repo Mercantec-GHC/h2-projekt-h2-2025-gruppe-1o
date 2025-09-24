@@ -54,21 +54,18 @@
     private List<TicketSummaryDto>? _tickets;
     private string? _authToken;
 
-    [CascadingParameter]
-    private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
-
     protected override async Task OnInitializedAsync()
     {
         _authToken = await ApiService.GetAuthTokenAsync();
         await SignalRService.StartConnectionAsync(_authToken);
         SignalRService.OnNewTicketReceived += HandleNewTicket;
 
-        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+        _tickets = await ApiService.GetOpenTicketsForMyRoleAsync();
     }
 
     private async void HandleNewTicket(TicketSummaryDto newTicket)
     {
-        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+        _tickets = await ApiService.GetOpenTicketsForMyRoleAsync();
         await InvokeAsync(StateHasChanged);
     }
 

@@ -1,6 +1,7 @@
 ﻿using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace API.Controllers
 {
@@ -34,7 +35,7 @@ namespace API.Controllers
             }
 
             var subject = "Test af MailService fra Flyhigh Hotel API";
-            var body = $"<h1>Dette er en test</h1><p>Hvis du modtager denne e-mail, er din MailService konfigureret korrekt.</p><p>Tidspunkt: {DateTime.UtcNow:G}</p>";
+            var body = $"<h1>Dette er en test</h1><p>Hvis du modtager denne e-mail, er din MailService konfigureret korrekt via SendGrid.</p><p>Tidspunkt: {DateTime.UtcNow:G}</p>";
 
             _logger.LogInformation("Påbegynder afsendelse af test-mail til {Email}", toEmail);
 

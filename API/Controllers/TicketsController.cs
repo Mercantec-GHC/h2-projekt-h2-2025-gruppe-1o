@@ -81,7 +81,16 @@ namespace API.Controllers
             var query = GetRoleBasedQuery(User).Where(t => t.Status == TicketStatus.Closed && t.UpdatedAt > sixtyDaysAgo);
 
             var tickets = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
-            var ticketDtos = tickets.Select(t => new TicketSummaryDto { /* ... mapping ... */ });
+            var ticketDtos = tickets.Select(t => new TicketSummaryDto
+            {
+                Id = t.Id,
+                Title = t.Title,
+                Status = t.Status,
+                Category = t.Category,
+                CreatedByName = t.CreatedByUser?.FirstName ?? t.GuestName ?? "N/A",
+                AssignedToName = t.AssignedToUser?.FirstName ?? "Ikke tildelt",
+                CreatedAt = t.CreatedAt
+            });
             return Ok(ticketDtos);
         }
 
@@ -96,7 +105,16 @@ namespace API.Controllers
                 .Where(t => t.CreatedByUserId == userId)
                 .Include(t => t.AssignedToUser)
                 .OrderByDescending(t => t.CreatedAt)
-                .Select(t => new TicketSummaryDto { /* ... mapping ... */ })
+                .Select(t => new TicketSummaryDto
+                {
+                    Id = t.Id,
+                    Title = t.Title,
+                    Status = t.Status,
+                    Category = t.Category,
+                    CreatedByName = "Mig",
+                    AssignedToName = t.AssignedToUser != null ? t.AssignedToUser.FirstName : "Ikke tildelt",
+                    CreatedAt = t.CreatedAt
+                })
                 .ToListAsync();
             return Ok(tickets);
         }
@@ -108,7 +126,26 @@ namespace API.Controllers
             var ticket = await _ticketRepository.GetTicketByIdAsync(id);
             if (ticket == null) return NotFound();
 
-            var ticketDto = new TicketDetailDto { /* ... mapping ... */ };
+            var ticketDto = new TicketDetailDto
+            {
+                Id = ticket.Id,
+                Title = ticket.Title,
+                Description = ticket.Description,
+                Status = ticket.Status,
+                Category = ticket.Category,
+                CreatedByName = ticket.CreatedByUser?.FirstName ?? ticket.GuestName ?? "N/A",
+                AssignedToName = ticket.AssignedToUser?.FirstName ?? "Ikke tildelt",
+                CreatedAt = ticket.CreatedAt,
+                Messages = ticket.Messages.Select(m => new TicketMessageDto
+                {
+                    Id = m.Id,
+                    SenderName = m.Sender.FirstName,
+                    SenderId = m.SenderId,
+                    Content = m.Content,
+                    IsInternalNote = m.IsInternalNote,
+                    CreatedAt = m.CreatedAt
+                }).ToList()
+            };
             return Ok(ticketDto);
         }
 
@@ -148,7 +185,15 @@ namespace API.Controllers
                 await _mailService.SendEmailAsync(recipientEmail, subject, body);
             }
 
-            var resultDto = new TicketSummaryDto { /* ... mapping ... */ };
+            var resultDto = new TicketSummaryDto
+            {
+                Id = createdTicket.Id,
+                Title = createdTicket.Title,
+                Status = createdTicket.Status,
+                Category = createdTicket.Category,
+                CreatedByName = user?.FirstName ?? createdTicket.GuestName ?? "N/A",
+                CreatedAt = createdTicket.CreatedAt
+            };
             await _ticketHubContext.Clients.All.SendAsync("NewTicketCreated", resultDto);
             return CreatedAtAction(nameof(GetTicketById), new { id = createdTicket.Id }, resultDto);
         }
@@ -166,7 +211,14 @@ namespace API.Controllers
             var ticket = await _context.Tickets.Include(t => t.CreatedByUser).FirstOrDefaultAsync(t => t.Id == id);
             if (ticket == null) return NotFound("Ticket ikke fundet.");
 
-            var message = new TicketMessage { /* ... oprettelse ... */ };
+            var message = new TicketMessage
+            {
+                Id = Guid.NewGuid().ToString(),
+                TicketId = id,
+                SenderId = userId,
+                Content = messageDto.Content,
+                IsInternalNote = messageDto.IsInternalNote
+            };
             _context.TicketMessages.Add(message);
 
             bool isStaff = user.Role?.Name is "Manager" or "Receptionist" or "Housekeeping";
@@ -178,15 +230,24 @@ namespace API.Controllers
             if (isStaff && !message.IsInternalNote)
             {
                 var recipientEmail = ticket.CreatedByUser?.Email ?? ticket.GuestEmail;
+                var recipientName = ticket.CreatedByUser?.FirstName ?? ticket.GuestName;
                 if (!string.IsNullOrEmpty(recipientEmail))
                 {
                     var subject = $"Nyt svar på din sag #{ticket.Id.Substring(0, 6).ToUpper()}";
-                    var body = $"<h1>Hej,</h1><p>Der er kommet et nyt svar fra {user.FirstName} på din sag '{ticket.Title}'.</p><p><em>{message.Content}</em></p>";
+                    var body = $"<h1>Hej {recipientName},</h1><p>Der er kommet et nyt svar fra {user.FirstName} på din sag '{ticket.Title}'.</p><p><em>{message.Content}</em></p>";
                     await _mailService.SendEmailAsync(recipientEmail, subject, body);
                 }
             }
 
-            var resultDto = new TicketMessageDto { /* ... mapping ... */ };
+            var resultDto = new TicketMessageDto
+            {
+                Id = message.Id,
+                SenderId = message.SenderId,
+                SenderName = user.FirstName,
+                Content = message.Content,
+                IsInternalNote = message.IsInternalNote,
+                CreatedAt = message.CreatedAt
+            };
             await _ticketHubContext.Clients.Group($"Ticket_{id}").SendAsync("ReceiveMessage", resultDto);
             return Ok(resultDto);
         }

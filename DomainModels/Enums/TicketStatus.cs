@@ -5,7 +5,7 @@
         Open,
         PendingSupportReply,
         PendingCustomerReply,
-        PendingClosure,
+        PendingClosure, // NY STATUS TILFØJET
         Closed
     }
 }

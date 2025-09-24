@@ -1,50 +1,53 @@
 ﻿using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using DomainModels.DTOs;
-using Microsoft.AspNetCore.Components;
+using DomainModels.Enums;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 
 namespace Blazor.Services
 {
     public class TicketSignalRService : IAsyncDisposable
     {
         private HubConnection? _hubConnection;
-        private readonly NavigationManager _navigationManager;
+        private readonly HttpClient _httpClient;
         private string? _currentTicketId;
 
         public event Action<TicketSummaryDto>? OnNewTicketReceived;
         public event Action<TicketMessageDto>? OnMessageReceived;
-        public event Action<string, DomainModels.Enums.TicketStatus>? OnStatusChanged;
+        public event Action<string, TicketStatus>? OnStatusChanged;
 
-        public TicketSignalRService(NavigationManager navigationManager)
+        public TicketSignalRService(HttpClient httpClient)
         {
-            _navigationManager = navigationManager;
+            _httpClient = httpClient;
         }
 
         public async Task StartConnectionAsync(string? authToken = null)
         {
             if (_hubConnection == null)
             {
-                var hubUrl = _navigationManager.ToAbsoluteUri("/ticketHub");
+                var hubUrl = new Uri(_httpClient.BaseAddress!, $"ticketHub?access_token={authToken}").ToString();
+
                 _hubConnection = new HubConnectionBuilder()
-                    .WithUrl(hubUrl, options =>
-                    {
-                        if (!string.IsNullOrEmpty(authToken))
-                        {
-                            options.AccessTokenProvider = () => Task.FromResult(authToken);
-                        }
-                    })
+                    .WithUrl(hubUrl)
                     .WithAutomaticReconnect()
+                    .ConfigureLogging(logging => logging.SetMinimumLevel(LogLevel.Debug))
                     .Build();
 
                 _hubConnection.On<TicketSummaryDto>("NewTicketCreated", (ticket) => OnNewTicketReceived?.Invoke(ticket));
                 _hubConnection.On<TicketMessageDto>("ReceiveMessage", (message) => OnMessageReceived?.Invoke(message));
-
-                // NY LISTENER
-                _hubConnection.On<string, DomainModels.Enums.TicketStatus>("TicketStatusChanged",
+                _hubConnection.On<string, TicketStatus>("TicketStatusChanged",
                     (ticketId, newStatus) => OnStatusChanged?.Invoke(ticketId, newStatus));
 
-                await _hubConnection.StartAsync();
+                try
+                {
+                    await _hubConnection.StartAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"SignalR Connection failed: {ex.Message}");
+                }
             }
         }
 
@@ -79,6 +82,5 @@ namespace Blazor.Services
                 await _hubConnection.DisposeAsync();
             }
         }
-
     }
 }
