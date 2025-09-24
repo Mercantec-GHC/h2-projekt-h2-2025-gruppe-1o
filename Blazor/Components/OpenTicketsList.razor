@@ -80,7 +80,7 @@
     private string GetStatusClass(DomainModels.Enums.TicketStatus status) => status switch
     {
         DomainModels.Enums.TicketStatus.Open => "bg-success",
-        DomainModels.Enums.TicketStatus.InProgress => "bg-info",
+        DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info",
         DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
         DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
         _ => "bg-dark"

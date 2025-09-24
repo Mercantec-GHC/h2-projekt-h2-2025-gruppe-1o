@@ -27,10 +27,8 @@ builder.Services.AddSingleton<LoginAttemptService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
 
-// ----- OPDATERET TIL SENDGRID -----
 builder.Services.Configure<SendGridSettings>(builder.Configuration.GetSection("SendGridSettings"));
 builder.Services.AddScoped<MailService>();
-// ----------------------------------
 
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
@@ -123,16 +121,14 @@ app.UseSerilogRequestLogging();
 
 app.UseRouting();
 
+// ----- OPDATERET CORS-POLITIK MED PRODUKTIONS-URL -----
 app.UseCors(policy => policy
-    .SetIsOriginAllowed(origin => {
-        if (string.IsNullOrEmpty(origin)) return false;
-        if (origin.Equals("https://h2.mercantec.tech")) return true;
-        if (origin.StartsWith("https://localhost") || origin.StartsWith("http://localhost")) return true;
-        return false;
-    })
+    .WithOrigins("https://localhost:7285", "http://localhost:5085", "https://h2.mercantec.tech")
     .AllowAnyMethod()
     .AllowAnyHeader()
     .AllowCredentials());
+// ----------------------------------------------------
+
 app.UseAuthentication();
 app.UseAuthorization();
 

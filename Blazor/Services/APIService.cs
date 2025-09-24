@@ -276,6 +276,22 @@ namespace Blazor.Services
             return await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
         }
 
+        // ----- NY METODE TILFØJET HER -----
+        public async Task<List<TicketSummaryDto>?> GetMyTicketsAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-tickets");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af mine tickets: {ex.Message}");
+                return new List<TicketSummaryDto>();
+            }
+        }
+        // ------------------------------------
+
         public async Task<TicketSummaryDto?> CreateTicketAsync(TicketCreateDto ticket)
         {
             await EnsureAuthHeaderAsync();

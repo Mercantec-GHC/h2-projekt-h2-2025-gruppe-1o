@@ -1,0 +1,137 @@
+﻿/* Generel container for hele chat-interfacet */
+.ticket-chat-container {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-width: 900px;
+    margin: auto;
+    background-color: #f8f9fa;
+}
+
+/* Header-sektionen med titel og status */
+.chat-header {
+    background-color: #343a40;
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+    .chat-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+    }
+
+/* Området hvor beskederne vises */
+.chat-messages {
+    flex-grow: 1;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    overflow-y: auto;
+    min-height: 50vh;
+    background-color: #e9ecef;
+}
+
+/* Styling for en enkelt besked-boble */
+.message {
+    display: flex;
+    flex-direction: column;
+    max-width: 75%;
+    padding: 0.75rem 1.25rem;
+    border-radius: 1.25rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+/* Beskeder fra andre (venstre side) */
+.other-message {
+    align-self: flex-start;
+    background-color: #ffffff;
+    border-bottom-left-radius: 0.25rem;
+}
+
+/* Beskeder fra "mig" (højre side) */
+.own-message {
+    align-self: flex-end;
+    background-color: #dcf8c6; /* Messenger-grønlig farve */
+    border-bottom-right-radius: 0.25rem;
+}
+
+.message-header {
+    font-size: 0.8rem;
+    margin-bottom: 0.25rem;
+    color: #6c757d;
+}
+
+    .message-header strong {
+        color: #495057;
+    }
+
+.own-message .message-header strong {
+    color: #0056b3;
+}
+
+.message-time {
+    margin-left: 0.5rem;
+    font-style: italic;
+}
+
+/* Indholdet af selve beskeden */
+.message-content {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    font-size: 1rem;
+    color: #212529;
+}
+
+/* Input-feltet i bunden */
+.chat-input {
+    padding: 1rem;
+    background-color: #ffffff;
+    border-top: 1px solid #dee2e6;
+}
+
+    .chat-input > form {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .chat-input textarea {
+        flex-grow: 1;
+        resize: none;
+    }
+
+/* Styling af lukkebesked for kunden */
+.closure-prompt {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+    text-align: center;
+}
+
+    .closure-prompt p {
+        margin-bottom: 0.75rem;
+    }
+
+/* Specifik styling for interne notater */
+.internal-note-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.message-header.internal-note {
+    color: #856404; /* Advarselsfarve */
+}
+
+.message.other-message.internal-note {
+    background-color: #fff3cd; /* Advarselsfarve */
+}

@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using DomainModels.DTOs
 @using System.Security.Claims
+@inject NavigationManager NavigationManager
 
 <PageTitle>Min Konto</PageTitle>
 
@@ -35,6 +36,31 @@
             }
         </div>
 
+        <div class="account-card">
+            <h3 class="card-title">Mine Support Sager</h3>
+            @if (_isLoading)
+            {
+                <p>Henter sager...</p>
+            }
+            else if (_myTickets != null && _myTickets.Any())
+            {
+                <ul class="booking-list">
+                    @foreach (var ticket in _myTickets.OrderByDescending(t => t.CreatedAt))
+                    {
+                        <li>
+                            <a href="@($"/support/ticket/{ticket.Id}")" class="ticket-link">
+                                <span class="booking-room">#@ticket.Id.Substring(0, 6).ToUpper() - @ticket.Title</span>
+                                <span class="booking-status">@ticket.Status</span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Du har ingen support-sager endnu.</p>
+            }
+        </div>
         <div class="account-card">
             <h3 class="card-title">Mine Oplysninger</h3>
             @if (_isLoading)
@@ -128,6 +154,7 @@
 
     private ClaimsPrincipal? user;
     private List<BookingGetDto> _myBookings = new();
+    private List<TicketSummaryDto> _myTickets = new(); // NYT FELT TIL SAGER
     private bool _isLoading = true;
 
     private bool _isEditingInfo = false;
@@ -147,12 +174,17 @@
 
         if (user?.Identity?.IsAuthenticated ?? false)
         {
+            // ----- OPDATERET TIL AT HENTE SAGER SAMTIDIG -----
             var bookingsTask = ApiService.GetMyBookingsAsync();
             var userDetailsTask = ApiService.GetMyDetailsAsync();
-            await Task.WhenAll(bookingsTask, userDetailsTask);
+            var ticketsTask = ApiService.GetMyTicketsAsync(); // NYT API-KALD
+
+            await Task.WhenAll(bookingsTask, userDetailsTask, ticketsTask); // VENTER PÅ ALLE TRE
 
             _myBookings = bookingsTask.Result ?? new();
             _userDetailDto = userDetailsTask.Result;
+            _myTickets = ticketsTask.Result ?? new(); // GEMMER RESULTATET
+            // ---------------------------------------------------
 
             if (_userDetailDto != null)
             {
