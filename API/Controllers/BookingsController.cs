@@ -1,5 +1,6 @@
 ﻿using API.Data;
 using API.Repositories;
+using API.Services;
 using DomainModels;
 using DomainModels.DTOs;
 using DomainModels.Enums;
@@ -18,12 +19,14 @@ namespace API.Controllers
         private readonly IBookingRepository _bookingRepository;
         private readonly ILogger<BookingsController> _logger;
         private readonly AppDBContext _context;
+        private readonly MailService _mailService; // TILFØJET
 
-        public BookingsController(IBookingRepository bookingRepository, ILogger<BookingsController> logger, AppDBContext context)
+        public BookingsController(IBookingRepository bookingRepository, ILogger<BookingsController> logger, AppDBContext context, MailService mailService) // TILFØJET
         {
             _bookingRepository = bookingRepository;
             _logger = logger;
             _context = context;
+            _mailService = mailService; // TILFØJET
         }
 
         [HttpGet("my-bookings")]
@@ -61,13 +64,15 @@ namespace API.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId)) return Unauthorized("Bruger-ID ikke fundet i token.");
 
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return Unauthorized("Bruger ikke fundet.");
+
             var roomType = await _context.RoomTypes.Include(rt => rt.Rooms).FirstOrDefaultAsync(rt => rt.Id == bookingDto.RoomTypeId);
             if (roomType == null) return BadRequest("Den valgte værelsestype findes ikke.");
 
             var nights = (checkOutDateUtc - checkInDateUtc).Days;
             if (nights <= 0) return BadRequest("Check-ud dato skal være efter check-in dato.");
 
-            var allRoomIdsForType = roomType.Rooms.Select(r => r.Id).ToList();
             var conflictingBookings = await _context.Bookings
                 .Where(b => b.RoomTypeId == bookingDto.RoomTypeId &&
                             b.Status != "Cancelled" &&
@@ -97,8 +102,8 @@ namespace API.Controllers
                     {
                         case BillingType.PerBooking: servicesPrice += service.Price; break;
                         case BillingType.PerNight: servicesPrice += service.Price * nights; break;
-                        case BillingType.PerPerson: servicesPrice += service.Price; break; // Antager 1 person
-                        case BillingType.PerPersonPerNight: servicesPrice += service.Price * nights; break; // Antager 1 person
+                        case BillingType.PerPerson: servicesPrice += service.Price * bookingDto.GuestCount; break;
+                        case BillingType.PerPersonPerNight: servicesPrice += service.Price * nights * bookingDto.GuestCount; break;
                     }
                 }
             }
@@ -120,8 +125,25 @@ namespace API.Controllers
 
             var createdBooking = await _bookingRepository.CreateAsync(booking);
 
-            var user = await _context.Users.FindAsync(userId);
-            var userFullName = user != null ? $"{user.FirstName} {user.LastName}" : "N/A";
+            var subject = $"Din booking hos Flyhigh Hotel er bekræftet (ID: {createdBooking.Id.Substring(0, 8).ToUpper()})";
+            var body = $@"
+                <h1>Tak for din booking, {user.FirstName}!</h1>
+                <p>Vi glæder os til at byde dig velkommen på Flyhigh Hotel.</p>
+                <h3>Booking Detaljer:</h3>
+                <ul>
+                    <li><strong>Værelsestype:</strong> {roomType.Name}</li>
+                    <li><strong>Check-in:</strong> {createdBooking.CheckInDate:D}</li>
+                    <li><strong>Check-ud:</strong> {createdBooking.CheckOutDate:D}</li>
+                    <li><strong>Antal nætter:</strong> {nights}</li>
+                    <li><strong>Totalpris:</strong> {createdBooking.TotalPrice:C}</li>
+                </ul>
+                <p>Med venlig hilsen,<br>Flyhigh Hotel</p>";
+
+            bool emailSent = await _mailService.SendEmailAsync(user.Email, subject, body);
+            if (!emailSent)
+            {
+                _logger.LogWarning("Booking {BookingId} blev oprettet, men bekræftelsesmailen kunne ikke sendes til {Email}.", createdBooking.Id, user.Email);
+            }
 
             var resultDto = new BookingGetDto
             {
@@ -132,7 +154,7 @@ namespace API.Controllers
                 Status = createdBooking.Status,
                 RoomTypeName = roomType.Name,
                 RoomNumber = availableRoom.RoomNumber,
-                UserFullName = userFullName,
+                UserFullName = $"{user.FirstName} {user.LastName}",
                 CreatedAt = createdBooking.CreatedAt
             };
 

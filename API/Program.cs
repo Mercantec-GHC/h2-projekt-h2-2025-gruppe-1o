@@ -2,6 +2,7 @@ using API.Data;
 using API.Hubs;
 using API.Repositories;
 using API.Services;
+using DomainModels.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -25,6 +26,12 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<LoginAttemptService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
+
+// ----- TILFØJELSE AF MAILSERVICE STARTER -----
+builder.Services.Configure<SendGridSettings>(builder.Configuration.GetSection("SendGridSettings"));
+builder.Services.AddScoped<MailService>();
+// ----- TILFØJELSE AF MAILSERVICE SLUTTER -----
+
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
@@ -35,7 +42,6 @@ builder.Services.AddRouting();
 var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
 var jwtIssuer = Configuration["Jwt:Issuer"] ?? "H2-2025-API";
 var jwtAudience = Configuration["Jwt:Audience"] ?? "H2-2025-Client";
-
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -97,7 +103,6 @@ builder.Services.AddSwaggerGen(c =>
         new string[] {}
     }});
 });
-
 var app = builder.Build();
 
 await DataSeeder.InitializeDatabaseAsync(app);
@@ -115,16 +120,10 @@ else
 
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
-
 app.UseRouting();
 
 app.UseCors(policy => policy
-    .SetIsOriginAllowed(origin => {
-        if (string.IsNullOrEmpty(origin)) return false;
-        if (origin.Equals("https://h2.mercantec.tech")) return true;
-        if (origin.StartsWith("https://localhost") || origin.StartsWith("http://localhost")) return true;
-        return false;
-    })
+    .WithOrigins("https://localhost:7285", "http://localhost:5085", "https://h2.mercantec.tech")
     .AllowAnyMethod()
     .AllowAnyHeader()
     .AllowCredentials());
@@ -132,10 +131,7 @@ app.UseCors(policy => policy
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllers();
-    endpoints.MapHub<TicketHub>("/ticketHub");
-});
+app.MapControllers();
+app.MapHub<TicketHub>("/ticketHub");
 
 app.Run();

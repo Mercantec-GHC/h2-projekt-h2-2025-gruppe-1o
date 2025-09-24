@@ -9,106 +9,79 @@
 
 <PageTitle>Support Sag: @(_ticket?.Title)</PageTitle>
 
-@if (_isLoading)
+@if (_ticket == null)
 {
     <p><em>Indlæser sag...</em></p>
 }
-else if (_ticket != null)
+else
 {
-    @if (_ticket.Status == TicketStatus.PendingClosure && IsOwner())
-    {
-        <div class="modal-overlay">
-            <div class="modal-content card">
-                <div class="card-body text-center">
-                    <h4 class="card-title">Bekræft Lukning af Sag</h4>
-                    <p>En medarbejder har markeret denne sag som løst. Er du enig i, at sagen kan lukkes?</p>
-                    <div class="d-flex justify-content-center mt-4">
-                        <button class="btn btn-success me-3" @onclick="() => HandleClosureResponse(true)">Ja, luk sagen</button>
-                        <button class="btn btn-danger" @onclick="() => HandleClosureResponse(false)">Nej, sagen er ikke løst</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
-
-    <AuthorizeView Roles="Manager,Receptionist,Housekeeping">
-        <div class="card bg-light mb-4">
-            <div class="card-body d-flex justify-content-between align-items-center">
-                <div>
-                    <label for="status-select" class="form-label fw-bold">Håndter Sag</label>
-                    <select id="status-select" class="form-select w-auto d-inline-block" @bind="_selectedStatus">
-                        @foreach (var status in Enum.GetValues<TicketStatus>())
-                        {
-                            if (status != TicketStatus.PendingClosure)
-                            {
-                                <option value="@status">@status</option>
-                            }
-                        }
-                    </select>
-                </div>
-                <button class="btn btn-secondary" @onclick="HandleStatusUpdate">Opdater Status</button>
-            </div>
-        </div>
-    </AuthorizeView>
-
     <div class="ticket-chat-container">
         <div class="chat-header">
             <h3>@_ticket.Title (#@_ticket.Id.Substring(0, 6).ToUpper())</h3>
-            <span class="badge @GetStatusClass(_ticket.Status)">@_ticket.Status</span>
+            <span class="badge @GetStatusClass(_ticket.Status)">@_ticket.Status.ToString()</span>
         </div>
 
-        <div class="card my-3">
-            <div class="card-header bg-white">
-                <strong>Oprindelig Henvendelse</strong>
-                <span class="text-muted float-end">fra @_ticket.CreatedByName</span>
+        @if (_ticket.Status == TicketStatus.PendingClosure && !IsStaff)
+        {
+            <div class="closure-prompt">
+                <p>En medarbejder har anmodet om at lukke denne sag. Er du enig i, at sagen er løst?</p>
+                <div>
+                    <button class="btn btn-success me-2" @onclick="() => HandleClosureResponse(true)">Ja, luk sagen</button>
+                    <button class="btn btn-danger" @onclick="() => HandleClosureResponse(false)">Nej, jeg har stadig brug for hjælp</button>
+                </div>
             </div>
-            <div class="card-body">
-                <p class="card-text">@_ticket.Description</p>
-            </div>
-        </div>
+        }
 
         <div class="chat-messages" id="chat-messages">
             @foreach (var message in _ticket.Messages.OrderBy(m => m.CreatedAt))
             {
-                <div class="message @(IsOwnMessage(message.SenderId) ? "own-message" : "other-message")">
-                    <div class="message-header">
-                        <strong>@message.SenderName</strong>
-                        <span class="message-time">@message.CreatedAt.ToString("g")</span>
+                if (!message.IsInternalNote || IsStaff)
+                {
+                    <div class="message @(IsOwnMessage(message.SenderId) ? "own-message" : "other-message") @(message.IsInternalNote ? "internal-note-message" : "")">
+                        <div class="message-header">
+                            <strong>@message.SenderName @(message.IsInternalNote ? "(Internt Notat)" : "")</strong>
+                            <span class="message-time">@message.CreatedAt.ToString("g")</span>
+                        </div>
+                        <div class="message-content">@message.Content</div>
                     </div>
-                    <div class="message-content">@message.Content</div>
-                </div>
+                }
             }
         </div>
 
-        <div class="chat-input">
-            @if (_ticket.Status != TicketStatus.Closed && _ticket.Status != TicketStatus.PendingClosure)
-            {
+        @if (_ticket.Status != TicketStatus.Closed && _ticket.Status != TicketStatus.PendingClosure)
+        {
+            <div class="chat-input">
                 <EditForm Model="_newMessage" OnValidSubmit="HandleSendMessage">
-                    <InputTextArea @bind-Value="_newMessage.Content" class="form-control" placeholder="Skriv dit svar her..." />
-                    <button type="submit" class="btn btn-primary" disabled="@(!SignalRService.IsConnected)">Send</button>
+                    <InputTextArea @bind-Value="_newMessage.Content" class="form-control" placeholder="Skriv din besked her..." />
+                    @if (IsStaff)
+                    {
+                        <div class="form-check internal-note-toggle">
+                            <InputCheckbox id="isInternal" @bind-Value="_newMessage.IsInternalNote" />
+                            <label for="isInternal">Internt notat</label>
+                        </div>
+                    }
+                    <button type="submit" class="btn btn-primary" disabled="@(!SignalRService.IsConnected || _isSending)">
+                        @if (_isSending)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <span>Send</span>
+                        }
+                    </button>
                 </EditForm>
-            }
-            else
-            {
-                <div class="alert alert-secondary text-center" role="alert">
-                    @if (_ticket.Status == TicketStatus.Closed)
-                    {
-                        <span>Denne sag er lukket.</span>
-                    }
-                    else
-                    {
-                        <span>Sagen afventer din bekræftelse for at blive lukket.</span>
-                    }
-                </div>
-            }
-        </div>
+            </div>
+        }
     </div>
-}
-else
-{
-    <p class="text-danger">Kunne ikke finde sagen. Den er muligvis blevet slettet.</p>
-}
 
+    @if (IsStaff && _ticket.Status != TicketStatus.Closed && _ticket.Status != TicketStatus.PendingClosure)
+    {
+        <div class="staff-actions">
+            <ActionButton OnClick="RequestClosure">Anmod om at Lukke Sag</ActionButton>
+        </div>
+    }
+}
 
 @code {
     [Parameter]
@@ -117,11 +90,12 @@ else
     [CascadingParameter]
     private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
-    private ClaimsPrincipal? _user;
     private TicketDetailDto? _ticket;
     private TicketMessageCreateDto _newMessage = new();
-    private TicketStatus _selectedStatus;
-    private bool _isLoading = true;
+    private ClaimsPrincipal? _user;
+    private bool _isSending = false;
+
+    private bool IsStaff => _user?.IsInRole("Manager") == true || _user?.IsInRole("Receptionist") == true || _user?.IsInRole("Housekeeping") == true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -134,26 +108,61 @@ else
         SignalRService.OnStatusChanged += HandleStatusChanged;
 
         _ticket = await ApiService.GetTicketByIdAsync(TicketId);
+
         if (_ticket != null)
         {
-            _selectedStatus = _ticket.Status;
             await SignalRService.JoinTicketGroupAsync(TicketId);
         }
-        _isLoading = false;
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_ticket != null)
+        if (firstRender && _ticket != null)
         {
             await JSRuntime.InvokeVoidAsync("scrollToEnd", "chat-messages");
         }
     }
 
-    private async Task HandleStatusUpdate()
+    private async Task HandleSendMessage()
     {
-        if (_ticket == null) return;
-        var statusUpdateDto = new TicketStatusUpdateDto { NewStatus = _selectedStatus };
+        if (string.IsNullOrWhiteSpace(_newMessage.Content) || _isSending) return;
+
+        _isSending = true;
+        StateHasChanged();
+
+        var result = await ApiService.PostMessageAsync(TicketId, _newMessage);
+        if (result != null)
+        {
+            _newMessage.Content = string.Empty;
+            _newMessage.IsInternalNote = false;
+        }
+
+        _isSending = false;
+        StateHasChanged();
+    }
+
+    private async void HandleMessageReceived(TicketMessageDto message)
+    {
+        if (_ticket != null && !_ticket.Messages.Any(m => m.Id == message.Id))
+        {
+            _ticket.Messages.Add(message);
+        }
+        await InvokeAsync(StateHasChanged);
+        await JSRuntime.InvokeVoidAsync("scrollToEnd", "chat-messages");
+    }
+
+    private void HandleStatusChanged(string ticketId, TicketStatus newStatus)
+    {
+        if (_ticket != null && _ticket.Id == ticketId)
+        {
+            _ticket.Status = newStatus;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RequestClosure()
+    {
+        var statusUpdateDto = new TicketStatusUpdateDto { NewStatus = TicketStatus.Closed };
         await ApiService.UpdateTicketStatusAsync(TicketId, statusUpdateDto);
     }
 
@@ -164,61 +173,19 @@ else
         await ApiService.UpdateTicketStatusAsync(TicketId, statusUpdateDto);
     }
 
-    private void HandleStatusChanged(string ticketId, TicketStatus newStatus)
-    {
-        if (_ticket != null && _ticket.Id == ticketId)
-        {
-            _ticket.Status = newStatus;
-            _selectedStatus = newStatus;
-            InvokeAsync(StateHasChanged);
-        }
-    }
-
-    private async Task HandleSendMessage()
-    {
-        if (string.IsNullOrWhiteSpace(_newMessage.Content) || _ticket == null) return;
-
-        var result = await ApiService.PostMessageAsync(TicketId, _newMessage);
-        if (result != null)
-        {
-            _newMessage.Content = string.Empty;
-        }
-    }
-
-    private async void HandleMessageReceived(TicketMessageDto message)
-    {
-        if (_ticket != null && !_ticket.Messages.Any(m => m.Id == message.Id))
-        {
-            _ticket.Messages.Add(message);
-        }
-
-        await InvokeAsync(StateHasChanged);
-        await JSRuntime.InvokeVoidAsync("scrollToEnd", "chat-messages");
-    }
-
-    private bool IsOwner()
-    {
-        if (_user == null || _ticket == null) return false;
-
-        var userId = _user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return _ticket.CreatedByName == _user.Identity?.Name;
-    }
-
     private bool IsOwnMessage(string senderId)
     {
-        if (_user == null) return false;
-
-        var currentUserId = _user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var currentUserId = _user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return senderId == currentUserId;
     }
 
-    private string GetStatusClass(DomainModels.Enums.TicketStatus status) => status switch
+    private string GetStatusClass(TicketStatus status) => status switch
     {
-        DomainModels.Enums.TicketStatus.Open => "bg-success",
-        DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info",
-        DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
-        DomainModels.Enums.TicketStatus.PendingClosure => "bg-danger",
-        DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
+        TicketStatus.Open => "bg-primary",
+        TicketStatus.PendingSupportReply => "bg-info text-dark",
+        TicketStatus.PendingCustomerReply => "bg-warning text-dark",
+        TicketStatus.PendingClosure => "bg-danger",
+        TicketStatus.Closed => "bg-secondary",
         _ => "bg-dark"
     };
 

@@ -1,6 +1,7 @@
 ﻿using API.Data;
 using API.Hubs;
 using API.Repositories;
+using API.Services;
 using DomainModels;
 using DomainModels.DTOs;
 using DomainModels.Enums;
@@ -8,9 +9,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -23,12 +21,21 @@ namespace API.Controllers
         private readonly ITicketRepository _ticketRepository;
         private readonly IHubContext<TicketHub> _ticketHubContext;
         private readonly AppDBContext _context;
+        private readonly MailService _mailService;
+        private readonly ILogger<TicketsController> _logger;
 
-        public TicketsController(ITicketRepository ticketRepository, IHubContext<TicketHub> ticketHubContext, AppDBContext context)
+        public TicketsController(
+            ITicketRepository ticketRepository,
+            IHubContext<TicketHub> ticketHubContext,
+            AppDBContext context,
+            MailService mailService,
+            ILogger<TicketsController> logger)
         {
             _ticketRepository = ticketRepository;
             _ticketHubContext = ticketHubContext;
             _context = context;
+            _mailService = mailService;
+            _logger = logger;
         }
 
         private IQueryable<Ticket> GetRoleBasedQuery(ClaimsPrincipal user)
@@ -38,24 +45,20 @@ namespace API.Controllers
                                                .Include(t => t.CreatedByUser)
                                                .Include(t => t.AssignedToUser);
 
-            switch (userRole)
+            return userRole switch
             {
-                case "Manager":
-                    return query.Where(t => t.Category == TicketCategory.Manager || t.Category == TicketCategory.General);
-                case "Receptionist":
-                    return query.Where(t => t.Category == TicketCategory.Reception);
-                case "Housekeeping":
-                    return query.Where(t => t.Category == TicketCategory.Housekeeping);
-                default:
-                    return Enumerable.Empty<Ticket>().AsQueryable();
-            }
+                "Manager" => query,
+                "Receptionist" => query.Where(t => t.Category == TicketCategory.Reception || t.Category == TicketCategory.General),
+                "Housekeeping" => query.Where(t => t.Category == TicketCategory.Housekeeping),
+                _ => Enumerable.Empty<Ticket>().AsQueryable(),
+            };
         }
 
         [HttpGet("my-role/open")]
         [Authorize(Roles = "Manager,Receptionist,Housekeeping")]
         public async Task<ActionResult<IEnumerable<TicketSummaryDto>>> GetOpenRoleBasedTickets()
         {
-            var query = GetRoleBasedQuery(User).Where(t => t.Status != TicketStatus.Closed);
+            var query = GetRoleBasedQuery(User).Where(t => t.Status != TicketStatus.Closed && t.Status != TicketStatus.PendingClosure);
             var tickets = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
             var ticketDtos = tickets.Select(t => new TicketSummaryDto
             {
@@ -71,10 +74,12 @@ namespace API.Controllers
         }
 
         [HttpGet("my-role/closed")]
-        [Authorize(Roles = "Manager,Receptionist,Housekeeping")]
+        [Authorize(Roles = "Manager")]
         public async Task<ActionResult<IEnumerable<TicketSummaryDto>>> GetClosedRoleBasedTickets()
         {
-            var query = GetRoleBasedQuery(User).Where(t => t.Status == TicketStatus.Closed);
+            var sixtyDaysAgo = DateTime.UtcNow.AddDays(-60);
+            var query = GetRoleBasedQuery(User).Where(t => t.Status == TicketStatus.Closed && t.UpdatedAt > sixtyDaysAgo);
+
             var tickets = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
             var ticketDtos = tickets.Select(t => new TicketSummaryDto
             {
@@ -94,10 +99,7 @@ namespace API.Controllers
         public async Task<ActionResult<IEnumerable<TicketSummaryDto>>> GetMyTickets()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-            {
-                return Unauthorized();
-            }
+            if (userId == null) return Unauthorized();
 
             var tickets = await _context.Tickets
                 .Where(t => t.CreatedByUserId == userId)
@@ -114,7 +116,6 @@ namespace API.Controllers
                     CreatedAt = t.CreatedAt
                 })
                 .ToListAsync();
-
             return Ok(tickets);
         }
 
@@ -123,10 +124,8 @@ namespace API.Controllers
         public async Task<ActionResult<TicketDetailDto>> GetTicketById(string id)
         {
             var ticket = await _ticketRepository.GetTicketByIdAsync(id);
-            if (ticket == null)
-            {
-                return NotFound();
-            }
+            if (ticket == null) return NotFound();
+
             var ticketDto = new TicketDetailDto
             {
                 Id = ticket.Id,
@@ -155,9 +154,9 @@ namespace API.Controllers
         public async Task<ActionResult<TicketSummaryDto>> CreateTicket(TicketCreateDto ticketDto)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var userName = User.FindFirstValue(ClaimTypes.Name);
+            var user = userId != null ? await _context.Users.FindAsync(userId) : null;
 
-            if (userId == null && (string.IsNullOrWhiteSpace(ticketDto.GuestName) || string.IsNullOrWhiteSpace(ticketDto.GuestEmail)))
+            if (user == null && (string.IsNullOrWhiteSpace(ticketDto.GuestName) || string.IsNullOrWhiteSpace(ticketDto.GuestEmail)))
             {
                 return BadRequest("Navn og email er påkrævet for gæster.");
             }
@@ -169,12 +168,22 @@ namespace API.Controllers
                 Description = ticketDto.Description,
                 Category = ticketDto.Category,
                 CreatedByUserId = userId,
-                GuestName = userId == null ? ticketDto.GuestName : null,
-                GuestEmail = userId == null ? ticketDto.GuestEmail : null,
+                GuestName = user == null ? ticketDto.GuestName : null,
+                GuestEmail = user == null ? ticketDto.GuestEmail : null,
                 Status = TicketStatus.Open
             };
 
             var createdTicket = await _ticketRepository.CreateTicketAsync(newTicket);
+
+            var recipientEmail = user?.Email ?? createdTicket.GuestEmail;
+            var recipientName = user?.FirstName ?? createdTicket.GuestName;
+
+            if (!string.IsNullOrEmpty(recipientEmail))
+            {
+                var subject = $"Vi har modtaget din henvendelse (Sag: #{createdTicket.Id.Substring(0, 6).ToUpper()})";
+                var body = $"<h1>Hej {recipientName},</h1><p>Vi har modtaget din henvendelse '{createdTicket.Title}' og vender tilbage hurtigst muligt.</p>";
+                await _mailService.SendEmailAsync(recipientEmail, subject, body);
+            }
 
             var resultDto = new TicketSummaryDto
             {
@@ -182,12 +191,10 @@ namespace API.Controllers
                 Title = createdTicket.Title,
                 Status = createdTicket.Status,
                 Category = createdTicket.Category,
-                CreatedByName = userName ?? createdTicket.GuestName ?? "N/A",
+                CreatedByName = user?.FirstName ?? createdTicket.GuestName ?? "N/A",
                 CreatedAt = createdTicket.CreatedAt
             };
-
             await _ticketHubContext.Clients.All.SendAsync("NewTicketCreated", resultDto);
-
             return CreatedAtAction(nameof(GetTicketById), new { id = createdTicket.Id }, resultDto);
         }
 
@@ -198,11 +205,11 @@ namespace API.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
 
-            var ticket = await _context.Tickets.FindAsync(id);
-            if (ticket == null) return NotFound("Ticket ikke fundet.");
-
             var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return Unauthorized("Bruger ikke fundet.");
+
+            var ticket = await _context.Tickets.Include(t => t.CreatedByUser).FirstOrDefaultAsync(t => t.Id == id);
+            if (ticket == null) return NotFound("Ticket ikke fundet.");
 
             var message = new TicketMessage
             {
@@ -214,19 +221,23 @@ namespace API.Controllers
             };
             _context.TicketMessages.Add(message);
 
-            var senderRole = user.Role?.Name;
-            bool isStaff = senderRole == "Manager" || senderRole == "Receptionist" || senderRole == "Housekeeping";
-
-            if (isStaff)
-            {
-                ticket.Status = TicketStatus.PendingCustomerReply;
-            }
-            else
-            {
-                ticket.Status = TicketStatus.PendingSupportReply;
-            }
+            bool isStaff = user.Role?.Name is "Manager" or "Receptionist" or "Housekeeping";
+            ticket.Status = isStaff ? TicketStatus.PendingCustomerReply : TicketStatus.PendingSupportReply;
 
             await _context.SaveChangesAsync();
+            await _ticketHubContext.Clients.Group($"Ticket_{id}").SendAsync("TicketStatusChanged", id, ticket.Status);
+
+            if (isStaff && !message.IsInternalNote)
+            {
+                var recipientEmail = ticket.CreatedByUser?.Email ?? ticket.GuestEmail;
+                var recipientName = ticket.CreatedByUser?.FirstName ?? ticket.GuestName;
+                if (!string.IsNullOrEmpty(recipientEmail))
+                {
+                    var subject = $"Nyt svar på din sag #{ticket.Id.Substring(0, 6).ToUpper()}";
+                    var body = $"<h1>Hej {recipientName},</h1><p>Der er kommet et nyt svar fra {user.FirstName} på din sag '{ticket.Title}'.</p><p><em>{message.Content}</em></p>";
+                    await _mailService.SendEmailAsync(recipientEmail, subject, body);
+                }
+            }
 
             var resultDto = new TicketMessageDto
             {
@@ -237,50 +248,40 @@ namespace API.Controllers
                 IsInternalNote = message.IsInternalNote,
                 CreatedAt = message.CreatedAt
             };
-
             await _ticketHubContext.Clients.Group($"Ticket_{id}").SendAsync("ReceiveMessage", resultDto);
-            await _ticketHubContext.Clients.Group($"Ticket_{id}").SendAsync("TicketStatusChanged", id, ticket.Status);
-
             return Ok(resultDto);
         }
 
         [HttpPut("{id}/status")]
-        [Authorize(Roles = "Manager,Receptionist,Housekeeping,User")] // User tilføjet for at de kan svare
+        [Authorize(Roles = "Manager,Receptionist,Housekeeping,User")]
         public async Task<IActionResult> UpdateTicketStatus(string id, [FromBody] TicketStatusUpdateDto statusUpdateDto)
         {
             var ticket = await _context.Tickets.Include(t => t.CreatedByUser).FirstOrDefaultAsync(t => t.Id == id);
-            if (ticket == null)
-            {
-                return NotFound();
-            }
+            if (ticket == null) return NotFound();
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userRole = User.FindFirstValue(ClaimTypes.Role);
-            bool isStaff = userRole == "Manager" || userRole == "Receptionist" || userRole == "Housekeeping";
+            bool isStaff = userRole is "Manager" or "Receptionist" or "Housekeeping";
             bool isOwner = ticket.CreatedByUserId == userId;
 
-            // Logik for at sætte sagen til lukning
             if (isStaff && statusUpdateDto.NewStatus == TicketStatus.Closed)
             {
                 ticket.Status = TicketStatus.PendingClosure;
             }
-            // Logik for kundens svar på lukning
-            else if (isOwner && ticket.Status == TicketStatus.PendingClosure)
+            else if (isOwner && ticket.Status == TicketStatus.PendingClosure && (statusUpdateDto.NewStatus == TicketStatus.Closed || statusUpdateDto.NewStatus == TicketStatus.PendingSupportReply))
             {
-                ticket.Status = statusUpdateDto.NewStatus; // Bliver enten Closed eller PendingSupportReply
+                ticket.Status = statusUpdateDto.NewStatus;
             }
-            // Almindelig statusopdatering af medarbejder
             else if (isStaff)
             {
                 ticket.Status = statusUpdateDto.NewStatus;
             }
             else
             {
-                return Forbid(); // Almindelige brugere kan ikke bare ændre status
+                return Forbid();
             }
 
             await _context.SaveChangesAsync();
-
             await _ticketHubContext.Clients.Group($"Ticket_{id}").SendAsync("TicketStatusChanged", id, ticket.Status);
 
             return NoContent();
