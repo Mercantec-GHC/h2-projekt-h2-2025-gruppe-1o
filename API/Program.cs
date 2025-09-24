@@ -1,6 +1,6 @@
 using API.Data;
-using API.Repositories;
 using API.Hubs;
+using API.Repositories;
 using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using System.Reflection;
 using System.Text;
+using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,10 +25,12 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<LoginAttemptService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
-builder.Services.AddScoped<API.Repositories.IBookingRepository, API.Repositories.BookingRepository>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
 builder.Services.AddSignalR();
-builder.Services.AddScoped<ITicketRepository, TicketRepository>();
+builder.Services.AddCors();
+builder.Services.AddRouting();
 
 var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
 var jwtIssuer = Configuration["Jwt:Issuer"] ?? "H2-2025-API";
@@ -40,6 +43,19 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/ticketHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
@@ -55,6 +71,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Flyhigh Hotel API", Version = "v1" });
@@ -80,13 +97,10 @@ builder.Services.AddSwaggerGen(c =>
         new string[] {}
     }});
 });
-builder.Services.AddCors();
 
 var app = builder.Build();
 
-// ----- NYT: KALD DIN DATABASE SEEDER HER -----
 await DataSeeder.InitializeDatabaseAsync(app);
-// ------------------------------------------
 
 if (app.Environment.IsDevelopment())
 {
@@ -99,6 +113,11 @@ else
     app.UseHsts();
 }
 
+app.UseHttpsRedirection();
+app.UseSerilogRequestLogging();
+
+app.UseRouting();
+
 app.UseCors(policy => policy
     .SetIsOriginAllowed(origin => {
         if (string.IsNullOrEmpty(origin)) return false;
@@ -107,12 +126,16 @@ app.UseCors(policy => policy
         return false;
     })
     .AllowAnyMethod()
-    .AllowAnyHeader());
-app.UseHttpsRedirection();
-app.UseSerilogRequestLogging();
+    .AllowAnyHeader()
+    .AllowCredentials());
+
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapControllers();
-app.MapHub<TicketHub>("/ticketHub");
+
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapControllers();
+    endpoints.MapHub<TicketHub>("/ticketHub");
+});
 
 app.Run();

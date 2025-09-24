@@ -3,8 +3,9 @@
     public enum TicketStatus
     {
         Open,
-        InProgress,
+        PendingSupportReply,
         PendingCustomerReply,
+        PendingClosure, // NY STATUS TILFØJET
         Closed
     }
 }

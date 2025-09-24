@@ -9,7 +9,7 @@
 
 <div class="page-section">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="section-title">Åbne Sager</h2>
+        <h2 class="section-title">Oversigt over sager</h2>
         <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
     </div>
 
@@ -19,7 +19,7 @@
     }
     else if (!_tickets.Any())
     {
-        <p>Der er ingen sager i din kø.</p>
+        <p>Der er ingen sager at vise endnu.</p>
     }
     else
     {
@@ -56,18 +56,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await SignalRService.StartConnectionAsync();
+        await SignalRService.StartConnectionAsync(await ApiService.GetAuthTokenAsync());
         SignalRService.OnNewTicketReceived += HandleNewTicket;
 
-        // RETTELSE: Vi kalder nu den nye metode
-        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+        _tickets = await ApiService.GetOpenTicketsForMyRoleAsync();
     }
 
     private async void HandleNewTicket(TicketSummaryDto newTicket)
     {
-        // For at sikre, at live-opdateringen kun viser relevante sager,
-        // genindlæser vi listen. Dette er den simpleste og mest robuste løsning.
-        _tickets = await ApiService.GetTicketsForMyRoleAsync();
+        _tickets = await ApiService.GetOpenTicketsForMyRoleAsync();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -79,7 +76,7 @@
     private string GetStatusClass(DomainModels.Enums.TicketStatus status) => status switch
     {
         DomainModels.Enums.TicketStatus.Open => "bg-success",
-        DomainModels.Enums.TicketStatus.InProgress => "bg-info",
+        DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info",
         DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
         DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
         _ => "bg-dark"

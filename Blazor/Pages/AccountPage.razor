@@ -2,42 +2,19 @@
 @attribute [Authorize]
 @using DomainModels.DTOs
 @using System.Security.Claims
+@inject NavigationManager Navigation
+@inject APIService ApiService
 
 <PageTitle>Min Konto</PageTitle>
 
 <div class="page-section">
     <h2 class="section-title">Min Konto</h2>
-    <p class="section-subtitle">Velkommen, @user?.Identity?.Name! Her kan du administrere dine oplysninger og bookinger.</p>
+    <p class="section-subtitle">Velkommen, @user?.Identity?.Name! Her kan du administrere dine oplysninger, bookinger og supportsager.</p>
 
     <div class="account-grid">
         <div class="account-card">
-            <h3 class="card-title">Mine Bookinger</h3>
-            @if (_isLoading)
-            {
-                <p>Henter bookinger...</p>
-            }
-            else if (_myBookings != null && _myBookings.Any())
-            {
-                <ul class="booking-list">
-                    @foreach (var booking in _myBookings.OrderBy(b => b.CheckInDate))
-                    {
-                        <li>
-                            <span class="booking-room">@booking.RoomTypeName</span>
-                            <span class="booking-dates">@booking.CheckInDate.ToString("dd/MM/yyyy") - @booking.CheckOutDate.ToString("dd/MM/yyyy")</span>
-                            <span class="booking-status">@booking.Status</span>
-                        </li>
-                    }
-                </ul>
-            }
-            else
-            {
-                <p>Du har ingen bookinger endnu.</p>
-            }
-        </div>
-
-        <div class="account-card">
             <h3 class="card-title">Mine Oplysninger</h3>
-            @if (_isLoading)
+            @if (_isLoadingBookings)
             {
                 <p>Henter oplysninger...</p>
             }
@@ -116,6 +93,56 @@
                 </EditForm>
             </div>
         </AuthorizeView>
+
+        <div class="account-card full-width">
+            <h3 class="card-title">Mine Sager</h3>
+            @if (_isLoadingTickets)
+            {
+                <p>Henter sager...</p>
+            }
+            else if (_myTickets != null && _myTickets.Any())
+            {
+                <ul class="booking-list">
+                    @foreach (var ticket in _myTickets.OrderByDescending(t => t.CreatedAt))
+                    {
+                        <li @onclick="@(() => Navigation.NavigateTo($"/support/ticket/{ticket.Id}"))" style="cursor: pointer;">
+                            <span class="booking-room">@ticket.Title</span>
+                            <span class="booking-dates">@ticket.CreatedAt.ToString("dd-MM-yyyy HH:mm")</span>
+                            <span class="badge @GetTicketStatusClass(ticket.Status)">@ticket.Status</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Du har ingen supportsager endnu. <a href="/support/new">Opret en ny sag</a></p>
+            }
+        </div>
+
+        <div class="account-card full-width">
+            <h3 class="card-title">Mine Bookinger</h3>
+            @if (_isLoadingBookings)
+            {
+                <p>Henter bookinger...</p>
+            }
+            else if (_myBookings != null && _myBookings.Any())
+            {
+                <ul class="booking-list">
+                    @foreach (var booking in _myBookings.OrderBy(b => b.CheckInDate))
+                    {
+                        <li>
+                            <span class="booking-room">@booking.RoomTypeName</span>
+                            <span class="booking-dates">@booking.CheckInDate.ToString("dd/MM/yyyy") - @booking.CheckOutDate.ToString("dd/MM/yyyy")</span>
+                            <span class="booking-status">@booking.Status</span>
+                        </li>
+                    }
+                </ul>
+            }
+            else
+            {
+                <p>Du har ingen bookinger endnu.</p>
+            }
+        </div>
     </div>
 </div>
 
@@ -123,12 +150,13 @@
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
-    [Inject]
-    private APIService ApiService { get; set; } = default!;
-
     private ClaimsPrincipal? user;
+
     private List<BookingGetDto> _myBookings = new();
-    private bool _isLoading = true;
+    private bool _isLoadingBookings = true;
+
+    private List<TicketSummaryDto> _myTickets = new();
+    private bool _isLoadingTickets = true;
 
     private bool _isEditingInfo = false;
     private UserDetailDto? _userDetailDto;
@@ -149,10 +177,13 @@
         {
             var bookingsTask = ApiService.GetMyBookingsAsync();
             var userDetailsTask = ApiService.GetMyDetailsAsync();
-            await Task.WhenAll(bookingsTask, userDetailsTask);
+            var ticketsTask = ApiService.GetMyTicketsAsync();
+
+            await Task.WhenAll(bookingsTask, userDetailsTask, ticketsTask);
 
             _myBookings = bookingsTask.Result ?? new();
             _userDetailDto = userDetailsTask.Result;
+            _myTickets = ticketsTask.Result ?? new();
 
             if (_userDetailDto != null)
             {
@@ -165,8 +196,18 @@
                 };
             }
         }
-        _isLoading = false;
+        _isLoadingBookings = false;
+        _isLoadingTickets = false;
     }
+
+    private string GetTicketStatusClass(DomainModels.Enums.TicketStatus status) => status switch
+    {
+        DomainModels.Enums.TicketStatus.Open => "bg-success",
+        DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info",
+        DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
+        DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
+        _ => "bg-dark"
+    };
 
     private void ToggleEditMode()
     {
@@ -194,7 +235,6 @@
 
         var (success, errorMessage) = await ApiService.UpdateMyDetailsAsync(userId, _userUpdateDto);
         _updateInfoSuccess = success;
-
         if (success)
         {
             _updateInfoMessage = "Dine oplysninger er blevet opdateret.";
@@ -202,7 +242,6 @@
             _userDetailDto.LastName = _userUpdateDto.LastName;
             _userDetailDto.Email = _userUpdateDto.Email;
             _userDetailDto.PhoneNumber = _userUpdateDto.PhoneNumber ?? string.Empty;
-
             _isEditingInfo = false;
         }
         else
@@ -218,7 +257,6 @@
 
         var (success, errorMessage) = await ApiService.ChangePasswordAsync(_changePasswordDto);
         _passwordChangeSuccess = success;
-
         if (success)
         {
             _passwordChangeMessage = "Din adgangskode er blevet ændret.";
