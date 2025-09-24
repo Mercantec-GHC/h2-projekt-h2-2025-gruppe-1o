@@ -17,20 +17,23 @@ namespace API.Controllers
         private readonly JwtService _jwtService;
         private readonly ILogger<UsersController> _logger;
         private readonly LoginAttemptService _loginAttemptService;
-        private readonly ActiveDirectoryTesting.ActiveDirectoryService _adService; // TILFØJ DENNE
+        private readonly ActiveDirectoryTesting.ActiveDirectoryService _adService;
+        private readonly MailService _mailService; // NY TILFØJELSE
 
         public UsersController(
             AppDBContext context,
             JwtService jwtService,
             ILogger<UsersController> logger,
             LoginAttemptService loginAttemptService,
-            ActiveDirectoryTesting.ActiveDirectoryService adService) // TILFØJ DENNE
+            ActiveDirectoryTesting.ActiveDirectoryService adService,
+            MailService mailService) // NY TILFØJELSE
         {
             _context = context;
             _jwtService = jwtService;
             _logger = logger;
             _loginAttemptService = loginAttemptService;
-            _adService = adService; // TILFØJ DENNE
+            _adService = adService;
+            _mailService = mailService; // NY TILFØJELSE
         }
 
         [Authorize]
@@ -99,6 +102,18 @@ namespace API.Controllers
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
+
+            // ----- NY TILFØJELSE: AFSENDELSE AF VELKOMSTMAIL -----
+            var subject = "Velkommen til Flyhigh Hotel";
+            var body = $"<h1>Hej {user.FirstName}!</h1><p>Tak fordi du har oprettet en konto hos Flyhigh Hotel. Vi glæder os til at byde dig velkommen.</p>";
+
+            bool emailSent = await _mailService.SendEmailAsync(user.Email, subject, body);
+            if (!emailSent)
+            {
+                _logger.LogWarning("Bruger {UserId} blev oprettet, men velkomstmailen kunne ikke sendes til {Email}.", user.Id, user.Email);
+            }
+            // --------------------------------------------------
+
             return Ok(new { message = "Bruger oprettet!", userId = user.Id });
         }
 
@@ -106,28 +121,24 @@ namespace API.Controllers
         [HttpPost("staff-login")]
         public async Task<IActionResult> StaffLogin(StaffLoginDto dto)
         {
-            // 1. Valider mod Active Directory med det direkte brugernavn
             var isValidAdUser = _adService.ValidateUserCredentials(dto.Username, dto.Password);
             if (!isValidAdUser)
             {
                 return Unauthorized("Forkert medarbejder-login eller adgangskode.");
             }
 
-            // 2. Hent brugeroplysninger (inkl. telefonnummer) og grupper fra AD
             var adUser = _adService.GetUserWithGroups(dto.Username);
             if (adUser == null || string.IsNullOrWhiteSpace(adUser.Email))
             {
                 return StatusCode(500, "Brugeren mangler en email i Active Directory og kan ikke logges ind.");
             }
 
-            // 3. Find eller opret bruger i lokal database
             var localUser = await _context.Users
                                           .Include(u => u.Role)
                                           .FirstOrDefaultAsync(u => u.Email.ToLower() == adUser.Email.ToLower());
 
             if (localUser == null)
             {
-                // Brugeren oprettes
                 localUser = new User
                 {
                     Id = Guid.NewGuid().ToString(),
@@ -141,30 +152,23 @@ namespace API.Controllers
             }
             else
             {
-                // Brugeren opdateres
                 localUser.FirstName = adUser.FirstName;
                 localUser.LastName = adUser.LastName;
-                localUser.PhoneNumber = adUser.Phone; 
+                localUser.PhoneNumber = adUser.Phone;
             }
 
-            // 4. Synkroniser roller
-            Console.WriteLine($"--- DEBUG: AD Groups for {dto.Username}: {string.Join(", ", adUser.Groups)} ---");
-            
             var roleNameFromAd = adUser.Groups.FirstOrDefault(g =>
-            string.Equals(g, "Admin", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(g, "Manager", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(g, "Receptionist", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(g, "Housekeeping", StringComparison.OrdinalIgnoreCase)
-            ) ?? "Housekeeping"; 
-
-            Console.WriteLine($"--- DEBUG: Assigned role for {dto.Username}: {roleNameFromAd} ---");
+                string.Equals(g, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(g, "Manager", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(g, "Receptionist", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(g, "Housekeeping", StringComparison.OrdinalIgnoreCase)
+            ) ?? "Housekeeping";
 
             var localRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == roleNameFromAd);
             if (localRole == null)
             {
                 localRole = new Role { Id = Guid.NewGuid().ToString(), Name = roleNameFromAd };
                 _context.Roles.Add(localRole);
-                Console.WriteLine($"--- DEBUG: Created new role: {roleNameFromAd} ---");
             }
             localUser.Role = localRole;
 
@@ -172,13 +176,6 @@ namespace API.Controllers
             await _context.SaveChangesAsync();
 
             var token = _jwtService.GenerateToken(localUser);
-
-            // Add debugging information
-            Console.WriteLine($"--- DEBUG: Successfully authenticated user '{dto.Username}' ---");
-            Console.WriteLine($"User ID: {localUser.Id}");
-            Console.WriteLine($"Email: {localUser.Email}");
-            Console.WriteLine($"Role: {localUser.Role.Name}");
-            Console.WriteLine($"Token generated successfully");
 
             return Ok(new
             {
