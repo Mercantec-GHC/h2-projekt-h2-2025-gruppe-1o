@@ -18,7 +18,7 @@ namespace API.Controllers
         private readonly ILogger<UsersController> _logger;
         private readonly LoginAttemptService _loginAttemptService;
         private readonly ActiveDirectoryTesting.ActiveDirectoryService _adService;
-        private readonly MailService _mailService; // NY TILFØJELSE
+        private readonly MailService _mailService;
 
         public UsersController(
             AppDBContext context,
@@ -26,14 +26,14 @@ namespace API.Controllers
             ILogger<UsersController> logger,
             LoginAttemptService loginAttemptService,
             ActiveDirectoryTesting.ActiveDirectoryService adService,
-            MailService mailService) // NY TILFØJELSE
+            MailService mailService)
         {
             _context = context;
             _jwtService = jwtService;
             _logger = logger;
             _loginAttemptService = loginAttemptService;
             _adService = adService;
-            _mailService = mailService; // NY TILFØJELSE
+            _mailService = mailService;
         }
 
         [Authorize]
@@ -103,7 +103,6 @@ namespace API.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            // ----- NY TILFØJELSE: AFSENDELSE AF VELKOMSTMAIL -----
             var subject = "Velkommen til Flyhigh Hotel";
             var body = $"<h1>Hej {user.FirstName}!</h1><p>Tak fordi du har oprettet en konto hos Flyhigh Hotel. Vi glæder os til at byde dig velkommen.</p>";
 
@@ -112,7 +111,6 @@ namespace API.Controllers
             {
                 _logger.LogWarning("Bruger {UserId} blev oprettet, men velkomstmailen kunne ikke sendes til {Email}.", user.Id, user.Email);
             }
-            // --------------------------------------------------
 
             return Ok(new { message = "Bruger oprettet!", userId = user.Id });
         }

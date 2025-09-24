@@ -27,12 +27,15 @@ builder.Services.AddSingleton<LoginAttemptService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
 
+// Registrering af MailService og dens Settings
 builder.Services.Configure<SendGridSettings>(builder.Configuration.GetSection("SendGridSettings"));
 builder.Services.AddScoped<MailService>();
 
+// Registrering af Repositories fra din backup
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
+
 builder.Services.AddSignalR();
 builder.Services.AddCors();
 builder.Services.AddRouting();
@@ -118,24 +121,18 @@ else
 
 app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
-
 app.UseRouting();
 
-// ----- OPDATERET CORS-POLITIK MED PRODUKTIONS-URL -----
 app.UseCors(policy => policy
     .WithOrigins("https://localhost:7285", "http://localhost:5085", "https://h2.mercantec.tech")
     .AllowAnyMethod()
     .AllowAnyHeader()
     .AllowCredentials());
-// ----------------------------------------------------
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseEndpoints(endpoints =>
-{
-    endpoints.MapControllers();
-    endpoints.MapHub<TicketHub>("/ticketHub");
-});
+app.MapControllers();
+app.MapHub<TicketHub>("/ticketHub");
 
 app.Run();

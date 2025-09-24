@@ -38,56 +38,50 @@ else
             {
                 if (!message.IsInternalNote || IsStaff)
                 {
-                    <div class="message @(IsOwnMessage(message.SenderId) ? "own-message" : "other-message")">
-                        @if (message.IsInternalNote)
-                        {
-                            <div class="message-header internal-note">
-                                <strong>@message.SenderName (Internt Notat)</strong>
-                                <span class="message-time">@message.CreatedAt.ToString("g")</span>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="message-header">
-                                <strong>@message.SenderName</strong>
-                                <span class="message-time">@message.CreatedAt.ToString("g")</span>
-                            </div>
-                        }
+                    <div class="message @(IsOwnMessage(message.SenderId) ? "own-message" : "other-message") @(message.IsInternalNote ? "internal-note-message" : "")">
+                        <div class="message-header">
+                            <strong>@message.SenderName @(message.IsInternalNote ? "(Internt Notat)" : "")</strong>
+                            <span class="message-time">@message.CreatedAt.ToString("g")</span>
+                        </div>
                         <div class="message-content">@message.Content</div>
                     </div>
                 }
             }
         </div>
 
-        <div class="chat-input">
-            <EditForm Model="_newMessage" OnValidSubmit="HandleSendMessage">
-                <InputTextArea @bind-Value="_newMessage.Content" class="form-control" placeholder="Skriv din besked her..." />
-                @if (IsStaff)
-                {
-                    <div class="form-check internal-note-toggle">
-                        <InputCheckbox id="isInternal" @bind-Value="_newMessage.IsInternalNote" />
-                        <label for="isInternal">Internt notat</label>
-                    </div>
-                }
-                <button type="submit" class="btn btn-primary" disabled="@(!SignalRService.IsConnected || _isSending)">
-                    @if (_isSending)
+        @if (_ticket.Status != TicketStatus.Closed && _ticket.Status != TicketStatus.PendingClosure)
+        {
+            <div class="chat-input">
+                <EditForm Model="_newMessage" OnValidSubmit="HandleSendMessage">
+                    <InputTextArea @bind-Value="_newMessage.Content" class="form-control" placeholder="Skriv din besked her..." />
+                    @if (IsStaff)
                     {
-                        <span class="spinner-border spinner-border-sm"></span>
+                        <div class="form-check internal-note-toggle">
+                            <InputCheckbox id="isInternal" @bind-Value="_newMessage.IsInternalNote" />
+                            <label for="isInternal">Internt notat</label>
+                        </div>
                     }
-                    else
-                    {
-                        <span>Send</span>
-                    }
-                </button>
-            </EditForm>
-        </div>
+                    <button type="submit" class="btn btn-primary" disabled="@(!SignalRService.IsConnected || _isSending)">
+                        @if (_isSending)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <span>Send</span>
+                        }
+                    </button>
+                </EditForm>
+            </div>
+        }
     </div>
 
-    <AuthorizeView Roles="Manager,Receptionist,Housekeeping">
+    @if (IsStaff && _ticket.Status != TicketStatus.Closed && _ticket.Status != TicketStatus.PendingClosure)
+    {
         <div class="staff-actions">
             <ActionButton OnClick="RequestClosure">Anmod om at Lukke Sag</ActionButton>
         </div>
-    </AuthorizeView>
+    }
 }
 
 @code {
@@ -102,7 +96,8 @@ else
     private ClaimsPrincipal? _user;
     private bool _isSending = false;
 
-    private bool IsStaff => _user?.IsInRole("Manager") == true || _user?.IsInRole("Receptionist") == true || _user?.IsInRole("Housekeeping") == true;
+    // ----- RETTELSE HER: Parenteser sikrer korrekt rækkefølge -----
+    private bool IsStaff => (_user?.IsInRole("Manager") ?? false) || (_user?.IsInRole("Receptionist") ?? false) || (_user?.IsInRole("Housekeeping") ?? false);
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,7 +109,7 @@ else
         SignalRService.OnMessageReceived += HandleMessageReceived;
         SignalRService.OnStatusChanged += HandleStatusChanged;
 
-        await LoadTicket();
+        _ticket = await ApiService.GetTicketByIdAsync(TicketId);
 
         if (_ticket != null)
         {
@@ -122,18 +117,12 @@ else
         }
     }
 
-    private async Task LoadTicket()
-    {
-        _ticket = await ApiService.GetTicketByIdAsync(TicketId);
-        StateHasChanged();
-    }
-
     private async Task HandleSendMessage()
     {
         if (string.IsNullOrWhiteSpace(_newMessage.Content) || _isSending) return;
 
         _isSending = true;
-        StateHasChanged(); // Opdater UI til at vise spinner
+        StateHasChanged();
 
         var result = await ApiService.PostMessageAsync(TicketId, _newMessage);
         if (result != null)
@@ -143,7 +132,7 @@ else
         }
 
         _isSending = false;
-        StateHasChanged(); // RETTELSE: Opdater UI for at genaktivere knappen
+        StateHasChanged();
     }
 
     private async void HandleMessageReceived(TicketMessageDto message)
@@ -152,7 +141,6 @@ else
         {
             _ticket.Messages.Add(message);
         }
-
         await InvokeAsync(StateHasChanged);
         await JSRuntime.InvokeVoidAsync("scrollToEnd", "chat-messages");
     }
@@ -181,8 +169,7 @@ else
 
     private bool IsOwnMessage(string senderId)
     {
-        if (_user == null) return false;
-        var currentUserId = _user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var currentUserId = _user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return senderId == currentUserId;
     }
 
