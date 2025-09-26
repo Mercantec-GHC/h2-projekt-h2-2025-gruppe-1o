@@ -1,15 +1,10 @@
 ﻿using DomainModels;
 using DomainModels.DTOs;
-using DomainModels.Enums;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Blazor.Services
 {
@@ -207,64 +202,22 @@ namespace Blazor.Services
             return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TicketSummaryDto>() : null;
         }
 
-<<<<<<< HEAD
-        // DENNE METODE ER UDSKIFTET MED DE TO NYE HERUNDER
-        // public async Task<List<TicketSummaryDto>?> GetTicketsForMyRoleAsync() { ... }
-
-        public async Task<List<TicketSummaryDto>?> GetOpenTicketsForMyRoleAsync()
-        {
-            await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/open");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af åbne rolle-baserede tickets: {ex.Message}");
-                return new List<TicketSummaryDto>();
-            }
-=======
         public async Task<List<TicketSummaryDto>?> GetOpenTicketsForMyRoleAsync()
         {
             await EnsureAuthHeaderAsync();
             return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/open");
->>>>>>> Dev
         }
 
         public async Task<List<TicketSummaryDto>?> GetClosedTicketsForMyRoleAsync()
         {
             await EnsureAuthHeaderAsync();
-<<<<<<< HEAD
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/closed");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af lukkede rolle-baserede tickets: {ex.Message}");
-                return new List<TicketSummaryDto>();
-            }
-=======
             return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/closed");
->>>>>>> Dev
         }
 
         public async Task<List<TicketSummaryDto>?> GetMyTicketsAsync()
         {
             await EnsureAuthHeaderAsync();
-<<<<<<< HEAD
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-tickets");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af mine sager: {ex.Message}");
-                return new List<TicketSummaryDto>();
-            }
-=======
             return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-tickets");
->>>>>>> Dev
         }
 
         public async Task<TicketDetailDto?> GetTicketByIdAsync(string id)

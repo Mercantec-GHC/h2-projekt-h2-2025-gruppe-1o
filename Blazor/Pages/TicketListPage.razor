@@ -60,19 +60,12 @@
 
     protected override async Task OnInitializedAsync()
     {
-<<<<<<< HEAD
-        await SignalRService.StartConnectionAsync(await ApiService.GetAuthTokenAsync());
-        SignalRService.OnNewTicketReceived += HandleNewTicket;
-
-        _tickets = await ApiService.GetOpenTicketsForMyRoleAsync();
-=======
         var authState = await AuthStateTask;
         var user = authState.User;
 
         await SignalRService.StartConnectionAsync(await ApiService.GetAuthTokenAsync());
         SignalRService.OnNewTicketReceived += HandleNewTicket;
 
-        // ----- OPDATERET LOGIK: TJEKKER BRUGERENS ROLLE -----
         bool isStaff = user.IsInRole("Manager") || user.IsInRole("Receptionist") || user.IsInRole("Housekeeping");
 
         if (isStaff)
@@ -83,16 +76,10 @@
         {
             _tickets = await ApiService.GetMyTicketsAsync();
         }
-        // ----------------------------------------------------
->>>>>>> Dev
     }
 
     private async void HandleNewTicket(TicketSummaryDto newTicket)
     {
-<<<<<<< HEAD
-        _tickets = await ApiService.GetOpenTicketsForMyRoleAsync();
-=======
-        // Genindlæs den korrekte liste baseret på rolle
         var authState = await AuthStateTask;
         var user = authState.User;
         bool isStaff = user.IsInRole("Manager") || user.IsInRole("Receptionist") || user.IsInRole("Housekeeping");
@@ -106,7 +93,6 @@
             _tickets = await ApiService.GetMyTicketsAsync();
         }
 
->>>>>>> Dev
         await InvokeAsync(StateHasChanged);
     }
 
@@ -118,11 +104,7 @@
     private string GetStatusClass(DomainModels.Enums.TicketStatus status) => status switch
     {
         DomainModels.Enums.TicketStatus.Open => "bg-success",
-<<<<<<< HEAD
-        DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info",
-=======
         DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info text-dark",
->>>>>>> Dev
         DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
         DomainModels.Enums.TicketStatus.PendingClosure => "bg-danger",
         DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
