@@ -33,44 +33,18 @@ namespace Blazor.Services
         // --- Booking & Room Metoder ---
         public async Task<List<RoomTypeGetDto>?> GetAvailableRoomTypesAsync(DateTime checkIn, DateTime checkOut, int guestCount)
         {
-            await EnsureAuthHeaderAsync();
             var url = $"api/rooms/availability?checkInDate={checkIn:yyyy-MM-dd}&checkOutDate={checkOut:yyyy-MM-dd}&numberOfGuests={guestCount}";
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>(url);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af ledige værelser: {ex.Message}");
-                return new List<RoomTypeGetDto>();
-            }
+            return await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>(url);
         }
 
         public async Task<RoomTypeDetailDto?> GetRoomTypeByIdAsync(int id)
         {
-            await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/rooms/types/{id}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af værelsestype {id}: {ex.Message}");
-                return null;
-            }
+            return await _httpClient.GetFromJsonAsync<RoomTypeDetailDto>($"api/rooms/types/{id}");
         }
 
         public async Task<List<RoomTypeGetDto>?> GetAllRoomTypesAsync()
         {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>("api/rooms/types");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af alle værelsestyper: {ex.Message}");
-                return new List<RoomTypeGetDto>();
-            }
+            return await _httpClient.GetFromJsonAsync<List<RoomTypeGetDto>>("api/rooms/types");
         }
 
         public async Task<bool> CreateBookingAsync(BookingCreateDto bookingDetails)
@@ -80,31 +54,28 @@ namespace Blazor.Services
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<List<RoomGetDto>> GetAllRoomsAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            return await _httpClient.GetFromJsonAsync<List<RoomGetDto>>("api/rooms");
+        }
+
+        public async Task<bool> RequestRoomCleaningAsync(int roomId)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsync($"api/rooms/{roomId}/request-cleaning", null);
+            return response.IsSuccessStatusCode;
+        }
+
         // --- Mødelokale Metoder ---
         public async Task<List<MeetingRoomGetDto>?> GetMeetingRoomsAsync()
         {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<MeetingRoomGetDto>>("api/meetingrooms");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af mødelokaler: {ex.Message}");
-                return null;
-            }
+            return await _httpClient.GetFromJsonAsync<List<MeetingRoomGetDto>>("api/meetingrooms");
         }
 
         public async Task<List<TimeSlotDto>?> GetMeetingRoomAvailabilityAsync(int roomId, DateTime date)
         {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<TimeSlotDto>>($"api/meetingrooms/availability/{roomId}?date={date:yyyy-MM-dd}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af ledighed for mødelokale {roomId}: {ex.Message}");
-                return null;
-            }
+            return await _httpClient.GetFromJsonAsync<List<TimeSlotDto>>($"api/meetingrooms/availability/{roomId}?date={date:yyyy-MM-dd}");
         }
 
         public async Task<(bool Success, string Message)> BookMeetingRoomAsync(MeetingRoomBookingCreateDto dto)
@@ -122,50 +93,22 @@ namespace Blazor.Services
         public async Task<List<BookingGetDto>?> GetMyBookingsAsync()
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<BookingGetDto>>("api/Bookings/my-bookings");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting bookings: {ex.Message}");
-                return new List<BookingGetDto>();
-            }
+            return await _httpClient.GetFromJsonAsync<List<BookingGetDto>>("api/Bookings/my-bookings");
         }
 
         public async Task<UserDetailDto?> GetMyDetailsAsync()
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                var response = await _httpClient.GetAsync("api/Users/me");
-                if (response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NoContent)
-                {
-                    var content = await response.Content.ReadAsStringAsync();
-                    if (!string.IsNullOrEmpty(content))
-                    {
-                        return JsonSerializer.Deserialize<UserDetailDto>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    }
-                }
-                return null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[API] Exception: {ex.Message}");
-                return null;
-            }
+            return await _httpClient.GetFromJsonAsync<UserDetailDto>("api/Users/me");
         }
 
         public async Task<(bool Success, string ErrorMessage)> UpdateMyDetailsAsync(string userId, UserUpdateDto userDetails)
         {
             await EnsureAuthHeaderAsync();
             var response = await _httpClient.PutAsJsonAsync($"api/Users/{userId}", userDetails);
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, string.Empty);
-            }
+            if (response.IsSuccessStatusCode) return (true, string.Empty);
             var errorContent = await response.Content.ReadAsStringAsync();
-            return (false, errorContent ?? "Der opstod en ukendt fejl under opdatering.");
+            return (false, errorContent ?? "Ukendt fejl.");
         }
 
         // --- Autentificerings-metoder ---
@@ -179,18 +122,13 @@ namespace Blazor.Services
         {
             var response = await _httpClient.PostAsJsonAsync("api/Users/login", loginModel);
             if (!response.IsSuccessStatusCode) return null;
+            var loginResult = await response.Content.ReadFromJsonAsync<LoginResult>();
+            if (string.IsNullOrEmpty(loginResult?.Token)) return null;
 
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var loginResult = JsonSerializer.Deserialize<LoginResult>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            var token = loginResult?.Token;
-
-            if (string.IsNullOrEmpty(token)) return null;
-
-            await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", token);
-            ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(token);
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-            return token;
+            await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", loginResult.Token);
+            ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(loginResult.Token);
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult.Token);
+            return loginResult.Token;
         }
 
         public async Task<StaffLoginResult?> StaffLoginAsync(StaffLoginDto loginModel)
@@ -198,14 +136,12 @@ namespace Blazor.Services
             var response = await _httpClient.PostAsJsonAsync("api/Users/staff-login", loginModel);
             if (!response.IsSuccessStatusCode) return null;
 
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var loginResult = JsonSerializer.Deserialize<StaffLoginResult>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var loginResult = await response.Content.ReadFromJsonAsync<StaffLoginResult>();
             if (loginResult?.Token == null) return null;
 
             await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", "authToken", loginResult.Token);
             ((CustomAuthenticationStateProvider)_authenticationStateProvider).NotifyUserAuthentication(loginResult.Token);
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", loginResult.Token);
-
             return loginResult;
         }
 
@@ -220,44 +156,38 @@ namespace Blazor.Services
         {
             await EnsureAuthHeaderAsync();
             var response = await _httpClient.PostAsJsonAsync("api/Users/change-password", dto);
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, string.Empty);
-            }
+            if (response.IsSuccessStatusCode) return (true, string.Empty);
             var errorContent = await response.Content.ReadAsStringAsync();
-            return (false, errorContent ?? "Der opstod en ukendt fejl.");
+            return (false, errorContent ?? "Ukendt fejl.");
         }
 
-        // --- Dashboard Metoder ---
+        // --- Dashboard & Admin Metoder ---
+        public async Task<HealthCheckResponse?> GetHealthCheckAsync()
+        {
+            return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/Status/healthcheck");
+        }
+
+        public async Task<List<BookingSummaryDto>?> GetBookingsForAdminAsync(string? guestName = null, DateTime? date = null)
+        {
+            await EnsureAuthHeaderAsync();
+            var queryParams = new Dictionary<string, string?>();
+            if (!string.IsNullOrEmpty(guestName)) queryParams["guestName"] = guestName;
+            if (date.HasValue) queryParams["date"] = date.Value.ToString("yyyy-MM-dd");
+            var url = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("api/Bookings", queryParams);
+            return await _httpClient.GetFromJsonAsync<List<BookingSummaryDto>>(url);
+        }
+
         public async Task<DailyStatsDto?> GetDashboardStatsAsync()
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<DailyStatsDto>("api/Dashboard/stats");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af dashboard-statistik: {ex.Message}");
-                return new DailyStatsDto();
-            }
+            return await _httpClient.GetFromJsonAsync<DailyStatsDto>("api/Dashboard/stats");
         }
 
-        // ----- NY METODE TILFØJET HER -----
         public async Task<ReceptionistDashboardDto?> GetReceptionistDashboardDataAsync()
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<ReceptionistDashboardDto>("api/Dashboard/receptionist");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af receptionist dashboard data: {ex.Message}");
-                return null;
-            }
+            return await _httpClient.GetFromJsonAsync<ReceptionistDashboardDto>("api/Dashboard/receptionist");
         }
-        // ------------------------------------
 
         // --- TICKET METODER ---
         public async Task<string?> GetAuthTokenAsync()
@@ -265,72 +195,42 @@ namespace Blazor.Services
             return await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
         }
 
+        public async Task<TicketSummaryDto?> CreateTicketAsync(TicketCreateDto ticket)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync("api/tickets", ticket);
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TicketSummaryDto>() : null;
+        }
+
         public async Task<List<TicketSummaryDto>?> GetOpenTicketsForMyRoleAsync()
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/open");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af åbne rolle-baserede tickets: {ex.Message}");
-                return new List<TicketSummaryDto>();
-            }
+            return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/open");
         }
 
         public async Task<List<TicketSummaryDto>?> GetClosedTicketsForMyRoleAsync()
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/closed");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af lukkede rolle-baserede tickets: {ex.Message}");
-                return new List<TicketSummaryDto>();
-            }
+            return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-role/closed");
         }
 
         public async Task<List<TicketSummaryDto>?> GetMyTicketsAsync()
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-tickets");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af mine sager: {ex.Message}");
-                return new List<TicketSummaryDto>();
-            }
+            return await _httpClient.GetFromJsonAsync<List<TicketSummaryDto>>("api/tickets/my-tickets");
         }
 
         public async Task<TicketDetailDto?> GetTicketByIdAsync(string id)
         {
             await EnsureAuthHeaderAsync();
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<TicketDetailDto>($"api/tickets/{id}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af ticket {id}: {ex.Message}");
-                return null;
-            }
+            return await _httpClient.GetFromJsonAsync<TicketDetailDto>($"api/tickets/{id}");
         }
 
         public async Task<TicketMessageDto?> PostMessageAsync(string ticketId, TicketMessageCreateDto message)
         {
             await EnsureAuthHeaderAsync();
             var response = await _httpClient.PostAsJsonAsync($"api/tickets/{ticketId}/messages", message);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<TicketMessageDto>();
-            }
-            return null;
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<TicketMessageDto>() : null;
         }
 
         public async Task<bool> UpdateTicketStatusAsync(string ticketId, TicketStatusUpdateDto statusUpdate)
@@ -341,22 +241,7 @@ namespace Blazor.Services
         }
     }
 
-    public class LoginResult
-    {
-        public string? Token { get; set; }
-    }
-
-    public class StaffLoginResult
-    {
-        public string? Token { get; set; }
-        public StaffUser? User { get; set; }
-    }
-
-    public class StaffUser
-    {
-        public string? Id { get; set; }
-        public string? Email { get; set; }
-        public string? FirstName { get; set; }
-        public string? Role { get; set; }
-    }
+    public class LoginResult { public string? Token { get; set; } }
+    public class StaffLoginResult { public string? Token { get; set; } public StaffUser? User { get; set; } }
+    public class StaffUser { public string? Id { get; set; } public string? Email { get; set; } public string? FirstName { get; set; } public string? Role { get; set; } }
 }

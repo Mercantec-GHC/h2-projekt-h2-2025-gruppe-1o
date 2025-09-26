@@ -30,11 +30,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // We call the one valid health check endpoint
+        
         healthCheck = await ApiService.GetHealthCheckAsync();
 
-        // We reuse the same result for the DB status card for simplicity.
-        // This assumes the API's health check also verifies the database connection.
+       
         dbHealthCheck = healthCheck;
     }
 }
