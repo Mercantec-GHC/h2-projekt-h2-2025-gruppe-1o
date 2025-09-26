@@ -1,15 +1,10 @@
 ﻿using DomainModels;
 using DomainModels.DTOs;
-using DomainModels.Enums;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.JSInterop;
-using System;
-using System.Collections.Generic;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Blazor.Services
 {
@@ -233,34 +228,7 @@ namespace Blazor.Services
             return (false, errorContent ?? "Der opstod en ukendt fejl.");
         }
 
-        // --- Andre Metoder ---
-        public async Task<HealthCheckResponse?> GetHealthCheckAsync()
-        {
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<HealthCheckResponse>("api/Status/healthcheck");
-            }
-            catch { return new HealthCheckResponse { status = "Error", message = "Kunne ikke forbinde til API." }; }
-        }
-
-        public async Task<List<BookingSummaryDto>?> GetBookingsForAdminAsync(string? guestName = null, DateTime? date = null)
-        {
-            await EnsureAuthHeaderAsync();
-            var queryParams = new Dictionary<string, string?>();
-            if (!string.IsNullOrEmpty(guestName)) queryParams["guestName"] = guestName;
-            if (date.HasValue) queryParams["date"] = date.Value.ToString("yyyy-MM-dd");
-            var url = Microsoft.AspNetCore.WebUtilities.QueryHelpers.AddQueryString("api/Bookings", queryParams);
-            try
-            {
-                return await _httpClient.GetFromJsonAsync<List<BookingSummaryDto>>(url);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Fejl ved hentning af admin-bookinger: {ex.Message}");
-                return new List<BookingSummaryDto>();
-            }
-        }
-
+        // --- Dashboard Metoder ---
         public async Task<DailyStatsDto?> GetDashboardStatsAsync()
         {
             await EnsureAuthHeaderAsync();
@@ -275,26 +243,27 @@ namespace Blazor.Services
             }
         }
 
+        // ----- NY METODE TILFØJET HER -----
+        public async Task<ReceptionistDashboardDto?> GetReceptionistDashboardDataAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<ReceptionistDashboardDto>("api/Dashboard/receptionist");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl ved hentning af receptionist dashboard data: {ex.Message}");
+                return null;
+            }
+        }
+        // ------------------------------------
+
         // --- TICKET METODER ---
         public async Task<string?> GetAuthTokenAsync()
         {
             return await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", "authToken");
         }
-
-        public async Task<TicketSummaryDto?> CreateTicketAsync(TicketCreateDto ticket)
-        {
-            await EnsureAuthHeaderAsync();
-            var response = await _httpClient.PostAsJsonAsync("api/tickets", ticket);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<TicketSummaryDto>();
-            }
-            return null;
-        }
-
-        // DENNE METODE ER UDSKIFTET MED DE TO NYE HERUNDER
-        // public async Task<List<TicketSummaryDto>?> GetTicketsForMyRoleAsync() { ... }
 
         public async Task<List<TicketSummaryDto>?> GetOpenTicketsForMyRoleAsync()
         {
