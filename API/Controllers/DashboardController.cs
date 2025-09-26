@@ -3,12 +3,14 @@ using DomainModels.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    // Vi fjerner Authorize herfra for at styre det på hver enkelt metode.
     public class DashboardController : ControllerBase
     {
         private readonly AppDBContext _context;
@@ -22,7 +24,7 @@ namespace API.Controllers
         /// Henter daglige statistikker. Er nu kun tilgængelig for Managere.
         /// </summary>
         [HttpGet("stats")]
-        [Authorize(Roles = "Manager")] // <-- KUN brugere med "Manager"-rollen kan kalde dette.
+        [Authorize(Roles = "Manager")]
         public async Task<ActionResult<DailyStatsDto>> GetDailyStats()
         {
             var today = DateTime.UtcNow.Date;
@@ -52,18 +54,68 @@ namespace API.Controllers
             return Ok(stats);
         }
 
-        //
-        // --- ▼▼▼ NY METODE TILFØJET HER ▼▼▼ ---
-        //
+        // ----- NY METODE TIL RECEPTIONIST DASHBOARD -----
+        /// <summary>
+        /// Henter samlet data til receptionistens dashboard.
+        /// </summary>
+        [HttpGet("receptionist")]
+        [Authorize(Roles = "Receptionist, Manager")]
+        public async Task<ActionResult<ReceptionistDashboardDto>> GetReceptionistDashboardData()
+        {
+            var today = DateTime.UtcNow.Date;
+            var tomorrow = today.AddDays(1);
+
+            var arrivals = await _context.Bookings
+                .Where(b => b.CheckInDate.Date == today && b.Status != "Cancelled")
+                .Include(b => b.User)
+                .Include(b => b.RoomType)
+                .Select(b => new BookingSummaryDto
+                {
+                    Id = b.Id,
+                    GuestFullName = $"{b.User.FirstName} {b.User.LastName}",
+                    RoomTypeName = b.RoomType.Name,
+                    CheckInDate = b.CheckInDate,
+                    CheckOutDate = b.CheckOutDate,
+                    Status = b.Status
+                }).ToListAsync();
+
+            var departures = await _context.Bookings
+                .Where(b => b.CheckOutDate.Date == today && b.Status != "Cancelled")
+                .Include(b => b.User)
+                .Include(b => b.RoomType)
+                .Select(b => new BookingSummaryDto
+                {
+                    Id = b.Id,
+                    GuestFullName = $"{b.User.FirstName} {b.User.LastName}",
+                    RoomTypeName = b.RoomType.Name,
+                    CheckInDate = b.CheckInDate,
+                    CheckOutDate = b.CheckOutDate,
+                    Status = b.Status
+                }).ToListAsync();
+
+            var totalRoomsCount = await _context.Rooms.CountAsync();
+            var occupiedRoomsCount = await _context.Bookings
+                .CountAsync(b => b.CheckInDate.Date <= today && b.CheckOutDate.Date > today && b.Status != "Cancelled");
+
+            var dashboardData = new ReceptionistDashboardDto
+            {
+                TodaysArrivals = arrivals,
+                TodaysDepartures = departures,
+                OccupiedRoomsCount = occupiedRoomsCount,
+                AvailableRoomsCount = totalRoomsCount - occupiedRoomsCount
+            };
+
+            return Ok(dashboardData);
+        }
+        // ---------------------------------------------------
 
         /// <summary>
         /// Henter dagens rengøringsplan. For flere medarbejdertyper.
         /// </summary>
         [HttpGet("cleaning-schedule")]
-        [Authorize(Roles = "Manager,Receptionist,Staff")] // Roller adskilles med komma.
+        [Authorize(Roles = "Manager,Receptionist,Staff")]
         public IActionResult GetCleaningSchedule()
         {
-            // Alle medarbejdere med en af disse roller kan se planen.
             // Her ville du normalt hente data fra databasen.
             return Ok(new
             {

@@ -1,15 +1,19 @@
 ﻿using API.Data;
+using API.Hubs;
 using DomainModels;
 using DomainModels.DTOs;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace API.Controllers
 {
-    /// <summary>
-    /// Håndterer offentligt tilgængelige informationer om værelsestyper og deres ledighed.
-    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class RoomsController : ControllerBase
@@ -17,32 +21,16 @@ namespace API.Controllers
         private readonly AppDBContext _context;
         private readonly ILogger<RoomsController> _logger;
         private readonly IMemoryCache _cache;
+        private readonly IHubContext<TicketHub> _hubContext;
 
-        /// <summary>
-        /// Initialiserer en ny instans af RoomsController.
-        /// </summary>
-        /// <param name="context">Database context for at interagere med databasen.</param>
-        /// <param name="logger">Logger til at logge information og fejl.</param>
-        /// <param name="cache">Memory cache til at forbedre performance ved gentagne kald.</param>
-        public RoomsController(AppDBContext context, ILogger<RoomsController> logger, IMemoryCache cache)
+        public RoomsController(AppDBContext context, ILogger<RoomsController> logger, IMemoryCache cache, IHubContext<TicketHub> hubContext)
         {
             _context = context;
             _logger = logger;
             _cache = cache;
+            _hubContext = hubContext;
         }
 
-        /// <summary>
-        /// Henter en liste over alle tilgængelige værelsestyper på hotellet.
-        /// </summary>
-        /// <remarks>
-        /// Resultatet af dette kald caches for at forbedre ydeevnen.
-        /// Gyldige værdier for 'sortBy' er 'price' og 'capacity'.
-        /// Hvis 'sortBy' ikke angives, sorteres der som standard efter navn.
-        /// </remarks>
-        /// <param name="sortBy">Valgfrit. Feltet, der skal sorteres efter ('price' eller 'capacity').</param>
-        /// <param name="desc">Valgfrit. Angiver om sorteringen skal være i faldende rækkefølge. Standard er 'false'.</param>
-        /// <returns>En liste af værelsestyper.</returns>
-        /// <response code="200">Returnerer en liste af værelsestyper, eventuelt sorteret.</response>
         [HttpGet("types")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRoomTypes([FromQuery] string? sortBy, [FromQuery] bool desc = false)
@@ -84,9 +72,6 @@ namespace API.Controllers
             return Ok(roomTypesFromDb);
         }
 
-        /// <summary>
-        /// Henter detaljer for en specifik værelsestype baseret på ID.
-        /// </summary>
         [HttpGet("types/{id}")]
         public async Task<ActionResult<RoomTypeDetailDto>> GetRoomTypeById(int id)
         {
@@ -104,7 +89,7 @@ namespace API.Controllers
                 Id = roomType.Id,
                 Name = roomType.Name,
                 ShortDescription = roomType.ShortDescription,
-                LongDescription = roomType.LongDescription, 
+                LongDescription = roomType.LongDescription,
                 BasePrice = roomType.BasePrice,
                 Capacity = roomType.Capacity,
                 Services = roomType.Services.Select(s => new ServiceGetDto
@@ -120,19 +105,6 @@ namespace API.Controllers
             return Ok(dto);
         }
 
-        /// <summary>
-        /// Finder ledige værelsestyper baseret på ankomst, afrejse og antal gæster.
-        /// </summary>
-        /// <remarks>
-        /// Dette er det primære søge-endpoint for gæster. Det returnerer en liste af værelsestyper,
-        /// hvor der er mindst ét ledigt værelse i den angivne periode, og som har kapacitet til det angivne antal gæster.
-        /// </remarks>
-        /// <param name="checkInDate">Den ønskede ankomstdato.</param>
-        /// <param name="checkOutDate">Den ønskede afrejsedato.</param>
-        /// <param name="numberOfGuests">Antallet af gæster, der skal overnatte.</param>
-        /// <returns>En liste af ledige værelsestyper med antallet af ledige værelser for hver type.</returns>
-        /// <response code="200">Returnerer en liste af ledige værelsestyper.</response>
-        /// <response code="400">Hvis check-ud datoen er før eller samme dag som check-in datoen.</response>
         [HttpGet("availability")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -143,7 +115,6 @@ namespace API.Controllers
         {
             _logger.LogInformation("Søger efter ledige værelser fra {CheckIn} til {CheckOut} for {GuestCount} gæster.", checkInDate, checkOutDate, numberOfGuests);
 
-            // Konverter indkommende datoer til rene datoer uden tid for at undgå tidszone-problemer.
             var checkIn = DateOnly.FromDateTime(checkInDate);
             var checkOut = DateOnly.FromDateTime(checkOutDate);
 
@@ -152,7 +123,6 @@ namespace API.Controllers
                 return BadRequest("Check-ud dato skal være efter check-in dato.");
             }
 
-            // Find antallet af bookinger for hver værelsestype, der overlapper med søgeperioden.
             var bookedCounts = await _context.Bookings
                 .Where(b => b.Status != "Cancelled" &&
                             DateOnly.FromDateTime(b.CheckInDate) < checkOut &&
@@ -164,13 +134,11 @@ namespace API.Controllers
                 })
                 .ToDictionaryAsync(x => x.RoomTypeId, x => x.BookedCount);
 
-            // Find alle værelsestyper, der har kapacitet nok.
             var roomTypes = await _context.RoomTypes
                 .Include(rt => rt.Rooms)
                 .Where(rt => rt.Capacity >= numberOfGuests)
                 .ToListAsync();
 
-            // Sammenlign de to lister og beregn ledighed.
             var availableRoomTypes = roomTypes
                 .Select(rt => new RoomTypeGetDto
                 {
@@ -186,6 +154,26 @@ namespace API.Controllers
 
             _logger.LogInformation("Søgning efter ledighed returnerede {ResultCount} værelsestyper.", availableRoomTypes.Count);
             return Ok(availableRoomTypes);
+        }
+
+        [HttpPut("{roomId}/request-cleaning")]
+        [Authorize(Roles = "Receptionist, Manager")]
+        public async Task<IActionResult> RequestRoomCleaning(int roomId)
+        {
+            var room = await _context.Rooms.FindAsync(roomId);
+            if (room == null)
+            {
+                return NotFound($"Værelse med ID {roomId} blev ikke fundet.");
+            }
+
+            room.Status = "NeedsCleaning";
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Værelse {RoomNumber} (ID: {RoomId}) er blevet sendt til rengøring.", room.RoomNumber, roomId);
+
+            await _hubContext.Clients.All.SendAsync("RoomStatusChanged", roomId, room.Status);
+
+            return NoContent();
         }
     }
 }
