@@ -36,17 +36,12 @@ namespace API.Controllers
         public async Task<IActionResult> GetRoomTypes([FromQuery] string? sortBy, [FromQuery] bool desc = false)
         {
             var cacheKey = $"allRoomTypes_sortBy={sortBy ?? "default"}_desc={desc}";
-            _logger.LogInformation("Forsøger at hente værelsestyper fra cache med nøglen '{CacheKey}'", cacheKey);
-
             if (_cache.TryGetValue(cacheKey, out List<RoomType> cachedRoomTypes))
             {
-                _logger.LogInformation("Cache hit! Returnerer {Count} værelsestyper fra cachen for nøglen '{CacheKey}'.", cachedRoomTypes.Count, cacheKey);
                 return Ok(cachedRoomTypes);
             }
 
-            _logger.LogInformation("Cache miss for '{CacheKey}'. Henter værelsestyper fra databasen.", cacheKey);
             var query = _context.RoomTypes.AsQueryable();
-
             switch (sortBy?.ToLower())
             {
                 case "price":
@@ -59,16 +54,9 @@ namespace API.Controllers
                     query = query.OrderBy(rt => rt.Name);
                     break;
             }
-
             var roomTypesFromDb = await query.ToListAsync();
-
-            var cacheOptions = new MemoryCacheEntryOptions()
-                .SetSlidingExpiration(TimeSpan.FromMinutes(5))
-                .SetAbsoluteExpiration(TimeSpan.FromMinutes(60));
-
+            var cacheOptions = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(5));
             _cache.Set(cacheKey, roomTypesFromDb, cacheOptions);
-            _logger.LogInformation("Gemt {Count} værelsestyper i cachen for nøglen '{CacheKey}'.", roomTypesFromDb.Count, cacheKey);
-
             return Ok(roomTypesFromDb);
         }
 
@@ -113,8 +101,6 @@ namespace API.Controllers
             [FromQuery] DateTime checkOutDate,
             [FromQuery] int numberOfGuests)
         {
-            _logger.LogInformation("Søger efter ledige værelser fra {CheckIn} til {CheckOut} for {GuestCount} gæster.", checkInDate, checkOutDate, numberOfGuests);
-
             var checkIn = DateOnly.FromDateTime(checkInDate);
             var checkOut = DateOnly.FromDateTime(checkOutDate);
 
@@ -152,7 +138,6 @@ namespace API.Controllers
                 .Where(dto => dto.AvailableCount > 0)
                 .ToList();
 
-            _logger.LogInformation("Søgning efter ledighed returnerede {ResultCount} værelsestyper.", availableRoomTypes.Count);
             return Ok(availableRoomTypes);
         }
 
@@ -174,6 +159,41 @@ namespace API.Controllers
             await _hubContext.Clients.All.SendAsync("RoomStatusChanged", roomId, room.Status);
 
             return NoContent();
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Receptionist, Manager")]
+        public async Task<ActionResult<IEnumerable<RoomGetDto>>> GetAllRooms()
+        {
+            return await _context.Rooms
+                .Include(r => r.RoomType)
+                .Select(r => new RoomGetDto
+                {
+                    Id = r.Id,
+                    RoomNumber = r.RoomNumber,
+                    Status = r.Status,
+                    RoomTypeName = r.RoomType.Name
+                })
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
+        }
+
+        [HttpGet("needs-cleaning")]
+        [Authorize(Roles = "Housekeeping, Manager")]
+        public async Task<ActionResult<IEnumerable<RoomGetDto>>> GetRoomsNeedingCleaning()
+        {
+            return await _context.Rooms
+                .Where(r => r.Status == "NeedsCleaning")
+                .Include(r => r.RoomType)
+                .Select(r => new RoomGetDto
+                {
+                    Id = r.Id,
+                    RoomNumber = r.RoomNumber,
+                    Status = r.Status,
+                    RoomTypeName = r.RoomType.Name
+                })
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
         }
     }
 }

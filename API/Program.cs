@@ -27,10 +27,8 @@ builder.Services.AddSingleton<LoginAttemptService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<DataSeederService>();
 
-// ----- TILFØJELSE AF MAILSERVICE STARTER -----
 builder.Services.Configure<SendGridSettings>(builder.Configuration.GetSection("SendGridSettings"));
 builder.Services.AddScoped<MailService>();
-// ----- TILFØJELSE AF MAILSERVICE SLUTTER -----
 
 builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();

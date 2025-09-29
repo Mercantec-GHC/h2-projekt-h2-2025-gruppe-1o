@@ -33,6 +33,16 @@ else
         }
 
         <div class="chat-messages" id="chat-messages">
+            <div class="message other-message">
+                <div class="message-header">
+                    <strong>@_ticket.CreatedByName</strong>
+                    <span class="message-time">@_ticket.CreatedAt.ToString("g")</span>
+                </div>
+                <div class="message-content">
+                    @_ticket.Description
+                </div>
+            </div>
+
             @foreach (var message in _ticket.Messages.OrderBy(m => m.CreatedAt))
             {
                 if (!message.IsInternalNote || IsStaff)
@@ -95,7 +105,7 @@ else
     private ClaimsPrincipal? _user;
     private bool _isSending = false;
 
-    private bool IsStaff => _user?.IsInRole("Manager") == true || _user?.IsInRole("Receptionist") == true || _user?.IsInRole("Housekeeping") == true;
+    private bool IsStaff => (_user?.IsInRole("Manager") ?? false) || (_user?.IsInRole("Receptionist") ?? false) || (_user?.IsInRole("Housekeeping") ?? false);
 
     protected override async Task OnInitializedAsync()
     {

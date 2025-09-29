@@ -82,10 +82,7 @@ namespace Blazor.Services
         {
             var response = await _httpClient.PostAsJsonAsync("api/meetingrooms/book", dto);
             var content = await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, "Booking gennemført!");
-            }
+            if (response.IsSuccessStatusCode) return (true, "Booking gennemført!");
             return (false, content ?? "Ukendt fejl");
         }
 
@@ -187,6 +184,20 @@ namespace Blazor.Services
         {
             await EnsureAuthHeaderAsync();
             return await _httpClient.GetFromJsonAsync<ReceptionistDashboardDto>("api/Dashboard/receptionist");
+        }
+
+        // --- Housekeeping Metoder ---
+        public async Task<List<RoomGetDto>?> GetRoomsNeedingCleaningAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            return await _httpClient.GetFromJsonAsync<List<RoomGetDto>>("api/housekeeping/rooms-to-clean");
+        }
+
+        public async Task<bool> MarkRoomAsCleanAsync(int roomId)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsync($"api/housekeeping/rooms/{roomId}/mark-as-clean", null);
+            return response.IsSuccessStatusCode;
         }
 
         // --- TICKET METODER ---
