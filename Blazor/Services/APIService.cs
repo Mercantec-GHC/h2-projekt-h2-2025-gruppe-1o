@@ -54,6 +54,7 @@ namespace Blazor.Services
             return response.IsSuccessStatusCode;
         }
 
+        // ----- NYE METODER TILFØJET HER -----
         public async Task<List<RoomGetDto>> GetAllRoomsAsync()
         {
             await EnsureAuthHeaderAsync();
@@ -66,6 +67,7 @@ namespace Blazor.Services
             var response = await _httpClient.PutAsync($"api/rooms/{roomId}/request-cleaning", null);
             return response.IsSuccessStatusCode;
         }
+        // ------------------------------------
 
         // --- Mødelokale Metoder ---
         public async Task<List<MeetingRoomGetDto>?> GetMeetingRoomsAsync()
@@ -82,10 +84,7 @@ namespace Blazor.Services
         {
             var response = await _httpClient.PostAsJsonAsync("api/meetingrooms/book", dto);
             var content = await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, "Booking gennemført!");
-            }
+            if (response.IsSuccessStatusCode) return (true, "Booking gennemført!");
             return (false, content ?? "Ukendt fejl");
         }
 
