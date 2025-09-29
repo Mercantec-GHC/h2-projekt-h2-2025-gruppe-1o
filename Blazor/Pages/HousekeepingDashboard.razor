@@ -5,59 +5,67 @@
 
 <PageTitle>Housekeeping Dashboard</PageTitle>
 
-<div class="container-fluid mt-4">
-    <div class="dashboard-header mb-4">
+<div class="housekeeping-dashboard">
+    <div class="dashboard-header">
         <h1>Housekeeping Dashboard</h1>
-        <p class="text-muted">Overblik over værelser, der kræver rengøring.</p>
+        <p>Velkommen til housekeeping dashboardet</p>
     </div>
 
-    @if (_isLoading)
-    {
-        <p><em>Indlæser opgaver...</em></p>
-    }
-    else if (_roomsToClean != null)
-    {
-        <div class="card shadow-sm">
-            <div class="card-header">
-                <h3 class="mb-0">Værelser til Rengøring (@_roomsToClean.Count)</h3>
-            </div>
-            <div class="card-body">
-                @if (!_roomsToClean.Any())
-                {
-                    <p class="text-center text-muted py-4">Godt arbejde! Der er ingen værelser, der afventer rengøring.</p>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Værelse Nr.</th>
-                                    <th>Type</th>
-                                    <th class="text-end">Handlinger</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var room in _roomsToClean)
-                                {
-                                    <tr>
-                                        <td><strong>@room.RoomNumber</strong></td>
-                                        <td>@room.RoomTypeName</td>
-                                        <td class="text-end">
+    <div class="dashboard-content">
+        @if (_isLoading)
+        {
+            <p><em>Indlæser opgaver...</em></p>
+        }
+        else if (_roomsToClean != null)
+        {
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Dagens Opgaver</h3>
+                        </div>
+                        <div class="card-body">
+                            @if (!_roomsToClean.Any())
+                            {
+                                <p class="text-center text-muted py-3">Godt arbejde! Der er ingen værelser, der afventer rengøring.</p>
+                            }
+                            else
+                            {
+                                <div class="task-list">
+                                    @foreach (var room in _roomsToClean)
+                                    {
+                                        <div class="task-item">
+                                            <span class="task-room">Værelse @room.RoomNumber (@room.RoomTypeName)</span>
                                             <button class="btn btn-sm btn-success" @onclick="() => MarkAsClean(room.Id)">
-                                                <i class="bi bi-check-lg me-1"></i> Markér som Ren
+                                                <i class="bi bi-check-lg"></i> Markér som Færdig
                                             </button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
                     </div>
-                }
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Status Oversigt</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="status-grid">
+                                <div class="status-item">
+                                    <div class="status-number">@_roomsToClean.Count</div>
+                                    <div class="status-label">Værelser at rengøre</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-    }
+        }
+    </div>
 </div>
+
 
 @code {
     private List<RoomGetDto>? _roomsToClean;
@@ -74,7 +82,7 @@
 
     private async Task LoadRooms()
     {
-        _roomsToClean = await ApiService.GetRoomsNeedingCleaningAsync();
+        _roomsToClean = await ApiService.GetRoomsNeedingCleaningAsync() ?? new List<RoomGetDto>();
         StateHasChanged();
     }
 

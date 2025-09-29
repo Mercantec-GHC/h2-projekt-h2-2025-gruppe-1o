@@ -16,7 +16,7 @@ namespace Blazor.Services
         public event Action<TicketSummaryDto>? OnNewTicketReceived;
         public event Action<TicketMessageDto>? OnMessageReceived;
         public event Action<string, TicketStatus>? OnStatusChanged;
-        public event Action<int, string>? OnRoomStatusChanged; // NYT EVENT
+        public event Action<int, string>? OnRoomStatusChanged; // Event for værelsesstatus
 
         public TicketSignalRService(NavigationManager navigationManager)
         {
@@ -39,17 +39,23 @@ namespace Blazor.Services
                     .WithAutomaticReconnect()
                     .Build();
 
-                // Eksisterende event handlers
                 _hubConnection.On<TicketSummaryDto>("NewTicketCreated", (ticket) => OnNewTicketReceived?.Invoke(ticket));
                 _hubConnection.On<TicketMessageDto>("ReceiveMessage", (message) => OnMessageReceived?.Invoke(message));
                 _hubConnection.On<string, TicketStatus>("TicketStatusChanged",
                     (ticketId, newStatus) => OnStatusChanged?.Invoke(ticketId, newStatus));
 
-                // NY EVENT HANDLER FOR VÆRELSESSTATUS
+                // TILFØJET: Lytter efter ændringer i værelsesstatus
                 _hubConnection.On<int, string>("RoomStatusChanged",
                     (roomId, newStatus) => OnRoomStatusChanged?.Invoke(roomId, newStatus));
 
-                await _hubConnection.StartAsync();
+                try
+                {
+                    await _hubConnection.StartAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"SignalR Connection failed: {ex.Message}");
+                }
             }
         }
 
