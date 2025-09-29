@@ -96,10 +96,11 @@
     }
 
     <AuthorizeView Roles="Manager">
-        <h2 class="mt-5 mb-3">Dagens Statistik</h2>
+        <h2 class="mt-5 mb-3">Manager Oversigt</h2>
+
         @if (_stats != null)
         {
-            <div class="row">
+            <div class="row mb-4">
                 <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-in-right fs-1 text-primary"></i><h4 class="mt-2">@_stats.ArrivalsCount</h4><p class="text-muted mb-0">Ankomster</p></div></div></div>
                 <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-left fs-1 text-primary"></i><h4 class="mt-2">@_stats.DeparturesCount</h4><p class="text-muted mb-0">Afrejser</p></div></div></div>
                 <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-building fs-1 text-primary"></i><h4 class="mt-2">@_stats.OccupancyPercentage %</h4><p class="text-muted mb-0">Belægning</p></div></div></div>
@@ -107,15 +108,34 @@
             </div>
         }
 
-        <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
-            <h2 class="mb-0">Support Sager</h2>
-            <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
-        </div>
         <div class="row">
             <div class="col-md-6">
                 <OpenTicketsList />
             </div>
             <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">Lukkede Support Sager</div>
+                    <div class="card-body">
+                        @if (_closedTickets == null)
+                        {
+                            <p><em>Indlæser...</em></p>
+                        }
+                        else if (!_closedTickets.Any())
+                        {
+
+                            <p>Ingen lukkede sager.</p>
+                        }
+                        else
+                        {
+                            <ul class="list-group list-group-flush">
+                                @foreach (var ticket in _closedTickets)
+                                {
+                                    <li class="list-group-item">#@ticket.Id.Substring(0, 6).ToUpper() - @ticket.Title</li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     </AuthorizeView>
@@ -128,6 +148,8 @@
     private List<BookingSummaryDto> _allBookings = new();
     private List<BookingSummaryDto> _arrivals = new();
     private List<BookingSummaryDto> _departures = new();
+
+    // Manager-specifik data
     private DailyStatsDto? _stats;
     private List<TicketSummaryDto>? _openTickets;
     private List<TicketSummaryDto>? _closedTickets;
@@ -141,35 +163,28 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateTask;
+        var user = authState.User;
+
         var token = await ApiService.GetAuthTokenAsync();
         await SignalRService.StartConnectionAsync(token);
         SignalRService.OnNewTicketReceived += HandleNewTicketReceived;
         SignalRService.OnStatusChanged += HandleStatusChanged;
 
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
         _isLoading = true;
-        var authState = await AuthStateTask;
-        var user = authState.User;
 
         var allBookingsTask = ApiService.GetBookingsForAdminAsync();
         Task<DailyStatsDto?>? statsTask = null;
-        Task<List<TicketSummaryDto>?>? openTicketsTask = null;
         Task<List<TicketSummaryDto>?>? closedTicketsTask = null;
 
         if (user.IsInRole("Manager"))
         {
             statsTask = ApiService.GetDashboardStatsAsync();
-            openTicketsTask = ApiService.GetOpenTicketsForMyRoleAsync();
             closedTicketsTask = ApiService.GetClosedTicketsForMyRoleAsync();
         }
 
         _allBookings = await allBookingsTask ?? new();
         if (statsTask != null) _stats = await statsTask;
-        if (openTicketsTask != null) _openTickets = await openTicketsTask ?? new();
         if (closedTicketsTask != null) _closedTickets = await closedTicketsTask ?? new();
 
         FilterLocalLists();
