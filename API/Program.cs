@@ -14,6 +14,20 @@ using System.Threading.Tasks;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Definer en navngiven CORS-politik for præcis kontrol
+var MyAllowSpecificOrigins = "SignalRCorsPolicy";
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: MyAllowSpecificOrigins,
+                      policy =>
+                      {
+                          policy.WithOrigins("https://localhost:7285", "http://localhost:5085", "https://h2.mercantec.tech")
+                                .AllowAnyHeader()
+                                .AllowAnyMethod()
+                                .AllowCredentials();
+                      });
+});
+
 builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
 
@@ -34,7 +48,6 @@ builder.Services.AddScoped<IBookingRepository, BookingRepository>();
 builder.Services.AddScoped<ITicketRepository, TicketRepository>();
 builder.Services.AddScoped<ActiveDirectoryTesting.ActiveDirectoryService>();
 builder.Services.AddSignalR();
-builder.Services.AddCors();
 builder.Services.AddRouting();
 
 var jwtSecretKey = Configuration["Jwt:SecretKey"] ?? "MyVerySecureSecretKeyThatIsAtLeast32CharactersLong123456789";
@@ -93,14 +106,18 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement {
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        new OpenApiSecurityScheme {
-            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-        },
-        new string[] {}
-    }});
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            new string[] {}
+        }
+    });
 });
+
 var app = builder.Build();
 
 await DataSeeder.InitializeDatabaseAsync(app);
@@ -120,16 +137,12 @@ app.UseHttpsRedirection();
 app.UseSerilogRequestLogging();
 app.UseRouting();
 
-app.UseCors(policy => policy
-    .WithOrigins("https://localhost:7285", "http://localhost:5085", "https://h2.mercantec.tech")
-    .AllowAnyMethod()
-    .AllowAnyHeader()
-    .AllowCredentials());
+app.UseCors(MyAllowSpecificOrigins);
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-app.MapHub<TicketHub>("/ticketHub");
+app.MapHub<TicketHub>("/ticketHub").RequireCors(MyAllowSpecificOrigins);
 
 app.Run();
