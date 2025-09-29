@@ -8,181 +8,251 @@
 
 <PageTitle>Management Dashboard</PageTitle>
 
-<div class="container-fluid mt-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h1 class="h3">Management Dashboard</h1>
-            <p class="text-muted">Overblik over dagens aktivitet og hotelstatus.</p>
+<div class="booking-management-page">
+    <h1 class="page-title">Booking Management</h1>
+    <p class="page-subtitle">Oversigt over bookinger, gæsteaktivitet og support.</p>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Søg i bookinger</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Booking ID, gæstenavn..." @bind="_searchTerm" @oninput="ApplyFilters" />
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Vis dato</label>
+                    <InputDate class="form-control" @bind-Value="_dateFilter" @bind-Value:after="ApplyFilters" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Status</label>
+                    <select class="form-select" @bind="_statusFilter" @bind:after="ApplyFilters">
+                        <option value="">Alle status</option>
+                        <option value="Confirmed">Bekræftet</option>
+                        <option value="CheckedIn">Checket Ind</option>
+                        <option value="CheckedOut">Checket Ud</option>
+                        <option value="Cancelled">Annulleret</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-secondary w-100" @onclick="ClearFilters">Nulstil</button>
+                </div>
+            </div>
         </div>
     </div>
 
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "arrivals" ? "active" : "")" @onclick='() => SetActiveTab("arrivals")'>Dagens Ankomster (@_arrivals.Count)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "departures" ? "active" : "")" @onclick='() => SetActiveTab("departures")'>Dagens Afrejser (@_departures.Count)</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link @(_activeTab == "all" ? "active" : "")" @onclick='() => SetActiveTab("all")'>Alle Bookinger (@GetVisibleBookings().Count)</button>
+        </li>
+    </ul>
+
     @if (_isLoading)
     {
-        <p><em>Indlæser data...</em></p>
+        <p><em>Henter data...</em></p>
     }
     else
     {
-        @if (_dashboardData != null)
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>Gæstenavn</th>
+                        <th>Værelse</th>
+                        <th>Check-in</th>
+                        <th>Check-ud</th>
+                        <th>Status</th>
+                        <th class="text-end">Handlinger</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var booking in GetVisibleBookings())
+                    {
+                        <tr>
+                            <td>#@booking.Id.Substring(0, 6).ToUpper()</td>
+                            <td>@booking.GuestFullName</td>
+                            <td>@booking.RoomTypeName</td>
+                            <td>@booking.CheckInDate.ToString("dd/MM/yyyy")</td>
+                            <td>@booking.CheckOutDate.ToString("dd/MM/yyyy")</td>
+                            <td><span class="badge @GetStatusClass(booking.Status)">@booking.Status</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-icon"><i class="bi bi-eye-fill"></i></button>
+                                <button class="btn btn-sm btn-icon"><i class="bi bi-pencil-fill"></i></button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <AuthorizeView Roles="Manager">
+        <h2 class="mt-5 mb-3">Dagens Statistik</h2>
+        @if (_stats != null)
         {
-            <div class="row mb-4">
-                <div class="col-md-6 col-xl-3 mb-3"><div class="card text-center h-100"><div class="card-body"><i class="bi bi-box-arrow-in-right fs-1 text-primary"></i><h4 class="mt-2">@_dashboardData.TodaysArrivals.Count</h4><p class="text-muted mb-0">Dagens Ankomster</p></div></div></div>
-                <div class="col-md-6 col-xl-3 mb-3"><div class="card text-center h-100"><div class="card-body"><i class="bi bi-box-arrow-left fs-1 text-primary"></i><h4 class="mt-2">@_dashboardData.TodaysDepartures.Count</h4><p class="text-muted mb-0">Dagens Afrejser</p></div></div></div>
-                <div class="col-md-6 col-xl-3 mb-3"><div class="card text-center h-100"><div class="card-body"><i class="bi bi-door-closed-fill fs-1 text-danger"></i><h4 class="mt-2">@_dashboardData.OccupiedRoomsCount</h4><p class="text-muted mb-0">Optagede Værelser</p></div></div></div>
-                <div class="col-md-6 col-xl-3 mb-3"><div class="card text-center h-100"><div class="card-body"><i class="bi bi-door-open-fill fs-1 text-success"></i><h4 class="mt-2">@_dashboardData.AvailableRoomsCount</h4><p class="text-muted mb-0">Ledige Værelser</p></div></div></div>
+            <div class="row">
+                <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-in-right fs-1 text-primary"></i><h4 class="mt-2">@_stats.ArrivalsCount</h4><p class="text-muted mb-0">Ankomster</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-left fs-1 text-primary"></i><h4 class="mt-2">@_stats.DeparturesCount</h4><p class="text-muted mb-0">Afrejser</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-building fs-1 text-primary"></i><h4 class="mt-2">@_stats.OccupancyPercentage %</h4><p class="text-muted mb-0">Belægning</p></div></div></div>
+                <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-cash-stack fs-1 text-primary"></i><h4 class="mt-2">@_stats.TodaysRevenue.ToString("N0") kr.</h4><p class="text-muted mb-0">Omsætning</p></div></div></div>
             </div>
         }
 
-        <div class="card mb-4">
-            <div class="card-header">Værelsesoversigt</div>
-            <div class="card-body">
-                @if (_allRooms == null)
-                {
-                    <p><em>Indlæser værelser...</em></p>
-                }
-                else
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead><tr><th>Værelse Nr.</th><th>Type</th><th>Status</th><th class="text-end">Handlinger</th></tr></thead>
-                            <tbody>
-                                @foreach (var room in _allRooms)
-                                {
-                                    <tr>
-                                        <td>@room.RoomNumber</td>
-                                        <td>@room.RoomTypeName</td>
-                                        <td>@room.Status</td>
-                                        <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-primary" disabled="@(room.Status == "NeedsCleaning")" @onclick="() => SendForCleaning(room.Id)">
-                                                Send til rengøring
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
+        <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
+            <h2 class="mb-0">Support Sager</h2>
+            <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <OpenTicketsList />
+            </div>
+            <div class="col-md-6">
             </div>
         </div>
-
-        <AuthorizeView Roles="Manager">
-            <h2 class="mt-5 mb-3">Manager Oversigt</h2>
-            <div class="card mb-4">
-                <div class="card-header">Dagens Finansielle Statistik</div>
-                <div class="card-body">
-                    @if (_stats == null)
-                    {
-                        <p><em>Indlæser statistik...</em></p>
-                    }
-                    else
-                    {
-                        <div class="row">
-                            <div class="col-md-6"><p><strong>Belægningsprocent:</strong> @_stats.OccupancyPercentage %</p></div>
-                            <div class="col-md-6"><p><strong>Dagens Omsætning:</strong> @_stats.TodaysRevenue.ToString("N0") kr.</p></div>
-                        </div>
-                    }
-                </div>
-            </div>
-            <div class="card">
-                <div class="card-header">Lukkede Support Sager</div>
-                <div class="card-body">
-                    @if (_closedTickets == null)
-                    {
-                        <p><em>Indlæser lukkede sager...</em></p>
-                    }
-                    else if (!_closedTickets.Any())
-                    {
-
-                        <p>Ingen lukkede sager fundet.</p>
-                    }
-                    else
-                    {
-                        <ul class="list-group list-group-flush">
-                            @foreach (var ticket in _closedTickets)
-                            {
-                                <li class="list-group-item">#@ticket.Id.Substring(0, 6).ToUpper() - @ticket.Title</li>
-                            }
-                        </ul>
-                    }
-                </div>
-            </div>
-        </AuthorizeView>
-    }
+    </AuthorizeView>
 </div>
 
 @code {
     private bool _isLoading = true;
-    private ReceptionistDashboardDto? _dashboardData;
-    private List<RoomGetDto>? _allRooms;
+    private string _activeTab = "arrivals";
 
+    private List<BookingSummaryDto> _allBookings = new();
+    private List<BookingSummaryDto> _arrivals = new();
+    private List<BookingSummaryDto> _departures = new();
     private DailyStatsDto? _stats;
+    private List<TicketSummaryDto>? _openTickets;
     private List<TicketSummaryDto>? _closedTickets;
+
+    private string _searchTerm = "";
+    private DateTime? _dateFilter;
+    private string _statusFilter = "";
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        _isLoading = true;
-
         var token = await ApiService.GetAuthTokenAsync();
         await SignalRService.StartConnectionAsync(token);
-        SignalRService.OnRoomStatusChanged += HandleRoomStatusChanged;
+        SignalRService.OnNewTicketReceived += HandleNewTicketReceived;
+        SignalRService.OnStatusChanged += HandleStatusChanged;
 
-        var dashboardTask = ApiService.GetReceptionistDashboardDataAsync();
-        var roomsTask = ApiService.GetAllRoomsAsync();
+        await LoadData();
+    }
 
+    private async Task LoadData()
+    {
+        _isLoading = true;
         var authState = await AuthStateTask;
         var user = authState.User;
+
+        var allBookingsTask = ApiService.GetBookingsForAdminAsync();
         Task<DailyStatsDto?>? statsTask = null;
+        Task<List<TicketSummaryDto>?>? openTicketsTask = null;
         Task<List<TicketSummaryDto>?>? closedTicketsTask = null;
 
         if (user.IsInRole("Manager"))
         {
             statsTask = ApiService.GetDashboardStatsAsync();
+            openTicketsTask = ApiService.GetOpenTicketsForMyRoleAsync();
             closedTicketsTask = ApiService.GetClosedTicketsForMyRoleAsync();
         }
 
-        await Task.WhenAll(dashboardTask, roomsTask);
-        _dashboardData = await dashboardTask;
-        _allRooms = await roomsTask ?? new();
+        _allBookings = await allBookingsTask ?? new();
+        if (statsTask != null) _stats = await statsTask;
+        if (openTicketsTask != null) _openTickets = await openTicketsTask ?? new();
+        if (closedTicketsTask != null) _closedTickets = await closedTicketsTask ?? new();
 
-        if (statsTask != null && closedTicketsTask != null)
-        {
-            await Task.WhenAll(statsTask, closedTicketsTask);
-            _stats = await statsTask;
-            _closedTickets = await closedTicketsTask ?? new();
-        }
-
+        FilterLocalLists();
         _isLoading = false;
     }
 
-    private async Task SendForCleaning(int roomId)
+    private async Task ReloadTickets()
     {
-        var success = await ApiService.RequestRoomCleaningAsync(roomId);
-        if (success)
-        {
-            var room = _allRooms?.FirstOrDefault(r => r.Id == roomId);
-            if (room != null)
-            {
-                room.Status = "NeedsCleaning";
-                StateHasChanged();
-            }
-        }
+        _openTickets = await ApiService.GetOpenTicketsForMyRoleAsync();
+        _closedTickets = await ApiService.GetClosedTicketsForMyRoleAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
-    private async void HandleRoomStatusChanged(int roomId, string newStatus)
+    private async void HandleNewTicketReceived(TicketSummaryDto newTicket) => await ReloadTickets();
+    private async void HandleStatusChanged(string ticketId, DomainModels.Enums.TicketStatus newStatus) => await ReloadTickets();
+
+    private void SetActiveTab(string tabName) => _activeTab = tabName;
+
+    private List<BookingSummaryDto> GetVisibleBookings()
     {
-        var room = _allRooms?.FirstOrDefault(r => r.Id == roomId);
-        if (room != null)
+        var sourceList = _activeTab switch
         {
-            room.Status = newStatus;
-            await InvokeAsync(StateHasChanged);
+            "arrivals" => _arrivals,
+            "departures" => _departures,
+            _ => _allBookings
+        };
+
+        var filtered = sourceList.AsEnumerable();
+        if (!string.IsNullOrEmpty(_searchTerm))
+        {
+            filtered = filtered.Where(b => b.GuestFullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) || b.Id.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
         }
+        if (!string.IsNullOrEmpty(_statusFilter))
+        {
+            filtered = filtered.Where(b => b.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
+        }
+        if (_dateFilter.HasValue)
+        {
+            filtered = filtered.Where(b => b.CheckInDate.Date <= _dateFilter.Value.Date && b.CheckOutDate.Date > _dateFilter.Value.Date);
+        }
+
+        return filtered.ToList();
     }
+
+    private void FilterLocalLists()
+    {
+        var today = DateTime.UtcNow.Date;
+        _arrivals = _allBookings.Where(b => b.CheckInDate.Date == today).ToList();
+        _departures = _allBookings.Where(b => b.CheckOutDate.Date == today).ToList();
+    }
+
+    private async Task ApplyFilters() => await Task.CompletedTask;
+
+    private async Task ClearFilters()
+    {
+        _searchTerm = "";
+        _dateFilter = null;
+        _statusFilter = "";
+        await ApplyFilters();
+    }
+
+    private string GetStatusClass(string status) => status.ToLower() switch
+    {
+        "confirmed" => "bg-success",
+        "checkedin" => "bg-info text-dark",
+        "checkedout" => "bg-secondary",
+        "cancelled" => "bg-danger",
+        _ => "bg-dark"
+    };
+
+    private string GetTicketStatusClass(DomainModels.Enums.TicketStatus status) => status switch
+    {
+        DomainModels.Enums.TicketStatus.Open => "bg-success",
+        DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info text-dark",
+        DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
+        DomainModels.Enums.TicketStatus.PendingClosure => "bg-danger",
+        DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
+        _ => "bg-dark"
+    };
 
     public void Dispose()
     {
-        SignalRService.OnRoomStatusChanged -= HandleRoomStatusChanged;
+        SignalRService.OnNewTicketReceived -= HandleNewTicketReceived;
+        SignalRService.OnStatusChanged -= HandleStatusChanged;
     }
 }
