@@ -161,6 +161,77 @@ namespace API.Controllers
             return CreatedAtAction(nameof(GetMyBookings), new { id = resultDto.Id }, resultDto);
         }
 
+
+        [HttpPost("walk-in")]
+        [Authorize(Roles = "Receptionist, Manager")]
+        public async Task<ActionResult<BookingGetDto>> CreateWalkInBooking(WalkInBookingDto walkInDto)
+        {
+            // Start en databasetransaktion for at sikre, at enten alt eller intet bliver gemt
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // 1. Tjek om brugeren allerede eksisterer
+                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == walkInDto.Email);
+                if (existingUser != null)
+                {
+                    return BadRequest("En bruger med denne email findes allerede i systemet.");
+                }
+
+                // 2. Opret den nye bruger
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
+                if (userRole == null) throw new InvalidOperationException("Systemfejl: 'User'-rollen mangler.");
+
+                var newUser = new User
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    FirstName = walkInDto.FirstName,
+                    LastName = walkInDto.LastName,
+                    Email = walkInDto.Email,
+                    PhoneNumber = walkInDto.PhoneNumber,
+                    HashedPassword = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")), // Generer et tilfældigt, sikkert password
+                    RoleId = userRole.Id,
+                };
+                _context.Users.Add(newUser);
+                await _context.SaveChangesAsync();
+
+                // Send velkomstmail
+                var welcomeSubject = "Velkommen til Flyhigh Hotel";
+                var welcomeBody = $"<h1>Hej {newUser.FirstName}!</h1><p>En konto er blevet oprettet til dig hos Flyhigh Hotel. Du kan nulstille din adgangskode via 'Glemt adgangskode' på login-siden.</p>";
+                await _mailService.SendEmailAsync(newUser.Email, welcomeSubject, welcomeBody);
+
+                // 3. Efterlign en normal bookingproces med den nye brugers ID
+                // Vi opretter et ClaimsPrincipal manuelt for at kunne kalde den eksisterende CreateBooking-metode
+                var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, newUser.Id) };
+                var identity = new ClaimsIdentity(claims);
+                var principal = new ClaimsPrincipal(identity);
+                ControllerContext.HttpContext.User = principal; // Sæt den nye bruger som den "autentificerede" bruger for dette ene kald
+
+                var bookingCreateDto = new BookingCreateDto
+                {
+                    RoomTypeId = walkInDto.RoomTypeId,
+                    CheckInDate = walkInDto.CheckInDate,
+                    CheckOutDate = walkInDto.CheckOutDate,
+                    GuestCount = walkInDto.GuestCount,
+                    ServiceIds = walkInDto.ServiceIds
+                };
+
+                var result = await CreateBooking(bookingCreateDto);
+
+                // 4. Hvis alt gik godt, commit transaktionen
+                await transaction.CommitAsync();
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                // Hvis noget fejler, rul alle ændringer tilbage
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Fejl under oprettelse af walk-in booking.");
+                return StatusCode(500, "Der opstod en intern fejl under bookingprocessen.");
+            }
+        }
+
         [HttpGet]
         [Authorize(Roles = "Receptionist, Manager")]
         public async Task<ActionResult<IEnumerable<BookingSummaryDto>>> GetAllBookings([FromQuery] string? guestName, [FromQuery] DateTime? date)
