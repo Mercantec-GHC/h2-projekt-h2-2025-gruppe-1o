@@ -96,11 +96,10 @@
     }
 
     <AuthorizeView Roles="Manager">
-        <h2 class="mt-5 mb-3">Manager Oversigt</h2>
-
+        <h2 class="mt-5 mb-3">Dagens Statistik</h2>
         @if (_stats != null)
         {
-            <div class="row mb-4">
+            <div class="row">
                 <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-in-right fs-1 text-primary"></i><h4 class="mt-2">@_stats.ArrivalsCount</h4><p class="text-muted mb-0">Ankomster</p></div></div></div>
                 <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-box-arrow-left fs-1 text-primary"></i><h4 class="mt-2">@_stats.DeparturesCount</h4><p class="text-muted mb-0">Afrejser</p></div></div></div>
                 <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-building fs-1 text-primary"></i><h4 class="mt-2">@_stats.OccupancyPercentage %</h4><p class="text-muted mb-0">Belægning</p></div></div></div>
@@ -108,6 +107,10 @@
             </div>
         }
 
+        <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
+            <h2 class="mb-0">Support Sager</h2>
+            <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
+        </div>
         <div class="row">
             <div class="col-md-6">
                 <OpenTicketsList />
@@ -130,7 +133,9 @@
                             <ul class="list-group list-group-flush">
                                 @foreach (var ticket in _closedTickets)
                                 {
-                                    <li class="list-group-item">#@ticket.Id.Substring(0, 6).ToUpper() - @ticket.Title</li>
+                                    <li class="list-group-item">
+                                        <a href="@($"/support/ticket/{ticket.Id}")">#@ticket.Id.Substring(0, 6).ToUpper() - @ticket.Title</a>
+                                    </li>
                                 }
                             </ul>
                         }
@@ -149,7 +154,6 @@
     private List<BookingSummaryDto> _arrivals = new();
     private List<BookingSummaryDto> _departures = new();
 
-    // Manager-specifik data
     private DailyStatsDto? _stats;
     private List<TicketSummaryDto>? _openTickets;
     private List<TicketSummaryDto>? _closedTickets;
@@ -168,10 +172,17 @@
 
         var token = await ApiService.GetAuthTokenAsync();
         await SignalRService.StartConnectionAsync(token);
-        SignalRService.OnNewTicketReceived += HandleNewTicketReceived;
-        SignalRService.OnStatusChanged += HandleStatusChanged;
+        SignalRService.OnNewTicketReceived += HandleTicketUpdate;
+        SignalRService.OnStatusChanged += HandleTicketUpdate;
 
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
         _isLoading = true;
+        var authState = await AuthStateTask;
+        var user = authState.User;
 
         var allBookingsTask = ApiService.GetBookingsForAdminAsync();
         Task<DailyStatsDto?>? statsTask = null;
@@ -191,15 +202,16 @@
         _isLoading = false;
     }
 
-    private async Task ReloadTickets()
+    private async void HandleTicketUpdate(params object[] args)
     {
-        _openTickets = await ApiService.GetOpenTicketsForMyRoleAsync();
-        _closedTickets = await ApiService.GetClosedTicketsForMyRoleAsync();
-        await InvokeAsync(StateHasChanged);
+        // Denne metode kaldes af to forskellige events. Vi genindlæser bare dataen.
+        var authState = await AuthStateTask;
+        if (authState.User.IsInRole("Manager"))
+        {
+            _closedTickets = await ApiService.GetClosedTicketsForMyRoleAsync() ?? new();
+            await InvokeAsync(StateHasChanged);
+        }
     }
-
-    private async void HandleNewTicketReceived(TicketSummaryDto newTicket) => await ReloadTickets();
-    private async void HandleStatusChanged(string ticketId, DomainModels.Enums.TicketStatus newStatus) => await ReloadTickets();
 
     private void SetActiveTab(string tabName) => _activeTab = tabName;
 
@@ -267,7 +279,7 @@
 
     public void Dispose()
     {
-        SignalRService.OnNewTicketReceived -= HandleNewTicketReceived;
-        SignalRService.OnStatusChanged -= HandleStatusChanged;
+        SignalRService.OnNewTicketReceived -= HandleTicketUpdate;
+        SignalRService.OnStatusChanged -= HandleTicketUpdate;
     }
 }
