@@ -57,7 +57,7 @@ namespace Blazor.Services
         public async Task<List<RoomGetDto>> GetAllRoomsAsync()
         {
             await EnsureAuthHeaderAsync();
-            return await _httpClient.GetFromJsonAsync<List<RoomGetDto>>("api/rooms");
+            return await _httpClient.GetFromJsonAsync<List<RoomGetDto>>("api/rooms") ?? new List<RoomGetDto>();
         }
 
         public async Task<bool> RequestRoomCleaningAsync(int roomId)
@@ -80,6 +80,7 @@ namespace Blazor.Services
 
         public async Task<(bool Success, string Message)> BookMeetingRoomAsync(MeetingRoomBookingCreateDto dto)
         {
+            await EnsureAuthHeaderAsync();
             var response = await _httpClient.PostAsJsonAsync("api/meetingrooms/book", dto);
             var content = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode) return (true, "Booking gennemført!");
@@ -185,6 +186,26 @@ namespace Blazor.Services
             await EnsureAuthHeaderAsync();
             return await _httpClient.GetFromJsonAsync<ReceptionistDashboardDto>("api/Dashboard/receptionist");
         }
+
+        // **START: MANGLENDE METODER TILFØJET HER**
+        public async Task<List<RoomTypeCardDto>?> GetRoomTypeAvailabilitySummaryAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            return await _httpClient.GetFromJsonAsync<List<RoomTypeCardDto>>("api/rooms/types/availability-summary");
+        }
+
+        public async Task<(bool Success, string Message)> CreateWalkInBookingAsync(WalkInBookingDto bookingDetails)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync("api/bookings/walk-in", bookingDetails);
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, "Walk-in booking oprettet succesfuldt.");
+            }
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            return (false, errorMessage ?? "Der opstod en ukendt fejl under oprettelse af booking.");
+        }
+        // **SLUT: MANGLENDE METODER TILFØJET HER**
 
         // --- Housekeeping Metoder ---
         public async Task<List<RoomGetDto>?> GetRoomsNeedingCleaningAsync()

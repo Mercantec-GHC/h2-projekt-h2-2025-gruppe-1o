@@ -31,6 +31,53 @@ namespace API.Controllers
             _hubContext = hubContext;
         }
 
+        // --- START: NYT ENDPOINT TILFØJET HER ---
+        /// <summary>
+        /// Henter en oversigt over antallet af ledige værelser for hver værelsestype for den aktuelle dag.
+        /// </summary>
+        /// <returns>En liste med værelsestyper og antallet af ledige værelser.</returns>
+        [HttpGet("types/availability-summary")]
+        [Authorize(Roles = "Receptionist, Manager")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<IEnumerable<RoomTypeCardDto>>> GetRoomTypeAvailabilitySummary()
+        {
+            var today = DateTime.UtcNow.Date;
+
+            // Trin 1: Hent det samlede antal fysiske rum for hver værelsestype.
+            var totalRoomsPerType = await _context.RoomTypes
+                .Select(rt => new {
+                    rt.Id,
+                    rt.Name,
+                    TotalCount = rt.Rooms.Count()
+                })
+                .ToListAsync();
+
+            // Trin 2: Hent antallet af bookede rum i dag, grupperet efter værelsestype.
+            var occupiedRoomsPerType = await _context.Bookings
+                .Where(b => b.Status != "Cancelled" && b.CheckInDate.Date <= today && b.CheckOutDate.Date > today)
+                .GroupBy(b => b.RoomTypeId)
+                .Select(g => new {
+                    RoomTypeId = g.Key,
+                    OccupiedCount = g.Count()
+                })
+                .ToDictionaryAsync(x => x.RoomTypeId, x => x.OccupiedCount);
+
+            // Trin 3: Kombiner resultaterne i hukommelsen for at beregne de ledige rum.
+            // Denne metode er hurtig og undgår komplekse SQL-oversættelser, der kan fejle.
+            var result = totalRoomsPerType.Select(rt => new RoomTypeCardDto
+            {
+                Id = rt.Id,
+                Name = rt.Name,
+                AvailableCount = rt.TotalCount - occupiedRoomsPerType.GetValueOrDefault(rt.Id, 0)
+            }).ToList();
+
+            return Ok(result);
+        }
+        // --- SLUT: NYT ENDPOINT TILFØJET HER ---
+
+
         [HttpGet("types")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRoomTypes([FromQuery] string? sortBy, [FromQuery] bool desc = false)
