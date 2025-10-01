@@ -187,25 +187,28 @@ namespace Blazor.Services
             return await _httpClient.GetFromJsonAsync<ReceptionistDashboardDto>("api/Dashboard/receptionist");
         }
 
-        // **START: MANGLENDE METODER TILFØJET HER**
         public async Task<List<RoomTypeCardDto>?> GetRoomTypeAvailabilitySummaryAsync()
         {
             await EnsureAuthHeaderAsync();
             return await _httpClient.GetFromJsonAsync<List<RoomTypeCardDto>>("api/rooms/types/availability-summary");
         }
 
-        public async Task<(bool Success, string Message)> CreateWalkInBookingAsync(WalkInBookingDto bookingDetails)
+        // --- START: OPDATERET RETURTYPE ---
+        public async Task<(bool Success, string Message, BookingGetDto? Booking)> CreateWalkInBookingAsync(WalkInBookingDto bookingDetails)
         {
             await EnsureAuthHeaderAsync();
             var response = await _httpClient.PostAsJsonAsync("api/bookings/walk-in", bookingDetails);
+
             if (response.IsSuccessStatusCode)
             {
-                return (true, "Walk-in booking oprettet succesfuldt.");
+                var createdBooking = await response.Content.ReadFromJsonAsync<BookingGetDto>();
+                return (true, "Walk-in booking oprettet succesfuldt.", createdBooking);
             }
+
             var errorMessage = await response.Content.ReadAsStringAsync();
-            return (false, errorMessage ?? "Der opstod en ukendt fejl under oprettelse af booking.");
+            return (false, errorMessage ?? "Der opstod en ukendt fejl under oprettelse af booking.", null);
         }
-        // **SLUT: MANGLENDE METODER TILFØJET HER**
+        // --- SLUT: OPDATERET RETURTYPE ---
 
         // --- Housekeeping Metoder ---
         public async Task<List<RoomGetDto>?> GetRoomsNeedingCleaningAsync()

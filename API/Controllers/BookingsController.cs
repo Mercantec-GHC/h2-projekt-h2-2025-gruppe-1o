@@ -7,6 +7,7 @@ using DomainModels.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Security.Claims;
 
 namespace API.Controllers
@@ -19,14 +20,14 @@ namespace API.Controllers
         private readonly IBookingRepository _bookingRepository;
         private readonly ILogger<BookingsController> _logger;
         private readonly AppDBContext _context;
-        private readonly MailService _mailService; // TILFØJET
+        private readonly MailService _mailService;
 
-        public BookingsController(IBookingRepository bookingRepository, ILogger<BookingsController> logger, AppDBContext context, MailService mailService) // TILFØJET
+        public BookingsController(IBookingRepository bookingRepository, ILogger<BookingsController> logger, AppDBContext context, MailService mailService)
         {
             _bookingRepository = bookingRepository;
             _logger = logger;
             _context = context;
-            _mailService = mailService; // TILFØJET
+            _mailService = mailService;
         }
 
         [HttpGet("my-bookings")]
@@ -125,6 +126,8 @@ namespace API.Controllers
 
             var createdBooking = await _bookingRepository.CreateAsync(booking);
 
+            // --- START: RETTELSE AF VALUTA ---
+            var danishCulture = new CultureInfo("da-DK");
             var subject = $"Din booking hos Flyhigh Hotel er bekræftet (ID: {createdBooking.Id.Substring(0, 8).ToUpper()})";
             var body = $@"
                 <h1>Tak for din booking, {user.FirstName}!</h1>
@@ -132,12 +135,13 @@ namespace API.Controllers
                 <h3>Booking Detaljer:</h3>
                 <ul>
                     <li><strong>Værelsestype:</strong> {roomType.Name}</li>
-                    <li><strong>Check-in:</strong> {createdBooking.CheckInDate:D}</li>
-                    <li><strong>Check-ud:</strong> {createdBooking.CheckOutDate:D}</li>
+                    <li><strong>Check-in:</strong> {createdBooking.CheckInDate.ToLocalTime():D}</li>
+                    <li><strong>Check-ud:</strong> {createdBooking.CheckOutDate.ToLocalTime():D}</li>
                     <li><strong>Antal nætter:</strong> {nights}</li>
-                    <li><strong>Totalpris:</strong> {createdBooking.TotalPrice:C}</li>
+                    <li><strong>Totalpris:</strong> {createdBooking.TotalPrice.ToString("C", danishCulture)}</li>
                 </ul>
                 <p>Med venlig hilsen,<br>Flyhigh Hotel</p>";
+            // --- SLUT: RETTELSE AF VALUTA ---
 
             bool emailSent = await _mailService.SendEmailAsync(user.Email, subject, body);
             if (!emailSent)
@@ -161,51 +165,49 @@ namespace API.Controllers
             return CreatedAtAction(nameof(GetMyBookings), new { id = resultDto.Id }, resultDto);
         }
 
-
         [HttpPost("walk-in")]
         [Authorize(Roles = "Receptionist, Manager")]
         public async Task<ActionResult<BookingGetDto>> CreateWalkInBooking(WalkInBookingDto walkInDto)
         {
-            // Start en databasetransaktion for at sikre, at enten alt eller intet bliver gemt
             using var transaction = await _context.Database.BeginTransactionAsync();
-
             try
             {
-                // 1. Tjek om brugeren allerede eksisterer
-                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == walkInDto.Email);
-                if (existingUser != null)
+                var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == walkInDto.Email.ToLower());
+
+                if (user == null)
                 {
-                    return BadRequest("En bruger med denne email findes allerede i systemet.");
+                    _logger.LogInformation("Walk-in kunde med email {Email} blev ikke fundet. Opretter ny bruger.", walkInDto.Email);
+                    var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
+                    if (userRole == null) throw new InvalidOperationException("Systemfejl: 'User'-rollen mangler.");
+
+                    var newUser = new User
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        FirstName = walkInDto.FirstName,
+                        LastName = walkInDto.LastName,
+                        Email = walkInDto.Email,
+                        PhoneNumber = walkInDto.PhoneNumber,
+                        HashedPassword = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+                        RoleId = userRole.Id,
+                    };
+                    _context.Users.Add(newUser);
+                    await _context.SaveChangesAsync();
+
+                    user = newUser;
+
+                    var welcomeSubject = "Velkommen til Flyhigh Hotel";
+                    var welcomeBody = $"<h1>Hej {user.FirstName}!</h1><p>En konto er blevet oprettet til dig hos Flyhigh Hotel. Du kan nulstille din adgangskode via 'Glemt adgangskode' på login-siden.</p>";
+                    await _mailService.SendEmailAsync(user.Email, welcomeSubject, welcomeBody);
+                }
+                else
+                {
+                    _logger.LogInformation("Walk-in kunde med email {Email} blev fundet (UserID: {UserId}). Genbruger eksisterende bruger.", user.Email, user.Id);
                 }
 
-                // 2. Opret den nye bruger
-                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.Name == "User");
-                if (userRole == null) throw new InvalidOperationException("Systemfejl: 'User'-rollen mangler.");
-
-                var newUser = new User
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    FirstName = walkInDto.FirstName,
-                    LastName = walkInDto.LastName,
-                    Email = walkInDto.Email,
-                    PhoneNumber = walkInDto.PhoneNumber,
-                    HashedPassword = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")), // Generer et tilfældigt, sikkert password
-                    RoleId = userRole.Id,
-                };
-                _context.Users.Add(newUser);
-                await _context.SaveChangesAsync();
-
-                // Send velkomstmail
-                var welcomeSubject = "Velkommen til Flyhigh Hotel";
-                var welcomeBody = $"<h1>Hej {newUser.FirstName}!</h1><p>En konto er blevet oprettet til dig hos Flyhigh Hotel. Du kan nulstille din adgangskode via 'Glemt adgangskode' på login-siden.</p>";
-                await _mailService.SendEmailAsync(newUser.Email, welcomeSubject, welcomeBody);
-
-                // 3. Efterlign en normal bookingproces med den nye brugers ID
-                // Vi opretter et ClaimsPrincipal manuelt for at kunne kalde den eksisterende CreateBooking-metode
-                var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, newUser.Id) };
+                var claims = new List<Claim> { new Claim(ClaimTypes.NameIdentifier, user.Id) };
                 var identity = new ClaimsIdentity(claims);
                 var principal = new ClaimsPrincipal(identity);
-                ControllerContext.HttpContext.User = principal; // Sæt den nye bruger som den "autentificerede" bruger for dette ene kald
+                ControllerContext.HttpContext.User = principal;
 
                 var bookingCreateDto = new BookingCreateDto
                 {
@@ -218,19 +220,18 @@ namespace API.Controllers
 
                 var result = await CreateBooking(bookingCreateDto);
 
-                // 4. Hvis alt gik godt, commit transaktionen
                 await transaction.CommitAsync();
 
                 return result;
             }
             catch (Exception ex)
             {
-                // Hvis noget fejler, rul alle ændringer tilbage
                 await transaction.RollbackAsync();
                 _logger.LogError(ex, "Fejl under oprettelse af walk-in booking.");
                 return StatusCode(500, "Der opstod en intern fejl under bookingprocessen.");
             }
         }
+
 
         [HttpGet]
         [Authorize(Roles = "Receptionist, Manager")]

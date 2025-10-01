@@ -2,6 +2,8 @@
 @layout MainLayout
 @attribute [Authorize(Roles = "Receptionist, Manager")]
 @using DomainModels.DTOs
+@using System.Globalization
+@using DomainModels.Enums
 @inject APIService ApiService
 @inject TicketSignalRService SignalRService
 @inject NavigationManager Navigation
@@ -96,7 +98,6 @@
         </div>
     }
 
-
     <AuthorizeView Roles="Receptionist" Context="receptionistAuthContext">
         <div class="receptionist-section">
             <hr class="my-5" />
@@ -114,11 +115,14 @@
                     @foreach (var roomType in _roomTypeAvailability)
                     {
                         <div class="col-md-4">
-                            <div class="room-type-card-reception" @onclick="() => SelectRoomTypeForWalkIn(roomType)">
-                                <img src="@GetRoomImagePath(roomType.Name)" class="room-type-image" />
-                                <div class="room-type-overlay">
-                                    <h3>@roomType.Name</h3>
-                                    <p class="available-count">@roomType.AvailableCount ledige</p>
+                            <div class="card h-100 shadow-sm admin-room-card" @onclick="() => SelectRoomTypeForWalkIn(roomType)">
+                                <img src="@GetRoomImagePath(roomType.Name)" class="card-img-top" alt="@roomType.Name" />
+                                <div class="card-body">
+                                    <h5 class="card-title">@roomType.Name</h5>
+                                    <p class="card-text text-success fw-bold">@roomType.AvailableCount ledige værelser</p>
+                                </div>
+                                <div class="card-footer">
+                                    <small class="text-muted">Klik for at oprette walk-in booking</small>
                                 </div>
                             </div>
                         </div>
@@ -136,28 +140,72 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <EditForm Model="_walkInBooking" OnValidSubmit="HandleWalkInSubmit">
-                            <DataAnnotationsValidator />
-                            <ValidationSummary class="text-danger" />
-
-                            @if (!string.IsNullOrEmpty(_walkInStatusMessage))
-                            {
-                                <div class="alert @(_walkInSuccess ? "alert-success" : "alert-danger")">@_walkInStatusMessage</div>
-                            }
-
-                            <div class="row g-3">
-                                <div class="col-md-6"><div class="form-group"><label>Fornavn</label><InputText class="form-control" @bind-Value="_walkInBooking.FirstName" /></div></div>
-                                <div class="col-md-6"><div class="form-group"><label>Efternavn</label><InputText class="form-control" @bind-Value="_walkInBooking.LastName" /></div></div>
-                                <div class="col-md-6"><div class="form-group"><label>Email</label><InputText type="email" class="form-control" @bind-Value="_walkInBooking.Email" /></div></div>
-                                <div class="col-md-6"><div class="form-group"><label>Telefon</label><InputText class="form-control" @bind-Value="_walkInBooking.PhoneNumber" /></div></div>
-                                <div class="col-md-4"><div class="form-group"><label>Check-in</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckInDate" /></div></div>
-                                <div class="col-md-4"><div class="form-group"><label>Check-ud</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckOutDate" /></div></div>
-                                <div class="col-md-4"><div class="form-group"><label>Antal Gæster</label><InputNumber class="form-control" @bind-Value="_walkInBooking.GuestCount" min="1" /></div></div>
+                        @* --- START: OPDATERET LOGIK FOR BEKRÆFTELSES-SKÆRM --- *@
+                        @if (_lastCreatedBooking is not null)
+                        {
+                            <div class="text-center p-4">
+                                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                                <h3 class="mt-3">Booking Gennemført!</h3>
+                                <p>Booking til <strong>@_lastCreatedBooking.UserFullName</strong> er nu oprettet.</p>
+                                <p>Booking ID: <strong>#@_lastCreatedBooking.Id.Substring(0, 6).ToUpper()</strong></p>
+                                <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="ResetWalkInForm">Opret ny walk-in booking</ActionButton>
                             </div>
-                            <div class="mt-3">
-                                <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Opret Booking</ActionButton>
-                            </div>
-                        </EditForm>
+                        }
+                        else
+                        {
+                            <EditForm Model="_walkInBooking" OnValidSubmit="HandleWalkInSubmit">
+                                <DataAnnotationsValidator />
+                                <ValidationSummary class="text-danger" />
+
+                                @if (!string.IsNullOrEmpty(_walkInStatusMessage))
+                                {
+                                    <div class="alert @(_walkInSuccess ? "alert-success" : "alert-danger")">@_walkInStatusMessage</div>
+                                }
+
+                                <div class="row g-3">
+                                    <div class="col-md-6"><div class="form-group"><label>Fornavn</label><InputText class="form-control" @bind-Value="_walkInBooking.FirstName" /></div></div>
+                                    <div class="col-md-6"><div class="form-group"><label>Efternavn</label><InputText class="form-control" @bind-Value="_walkInBooking.LastName" /></div></div>
+                                    <div class="col-md-6"><div class="form-group"><label>Email</label><InputText type="email" class="form-control" @bind-Value="_walkInBooking.Email" /></div></div>
+                                    <div class="col-md-6"><div class="form-group"><label>Telefon</label><InputText class="form-control" @bind-Value="_walkInBooking.PhoneNumber" /></div></div>
+                                    <div class="col-md-4"><div class="form-group"><label>Check-in</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckInDate" /></div></div>
+                                    <div class="col-md-4"><div class="form-group"><label>Check-ud</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckOutDate" /></div></div>
+                                    <div class="col-md-4"><div class="form-group"><label>Antal Gæster</label><InputNumber class="form-control" @bind-Value="_walkInBooking.GuestCount" min="1" /></div></div>
+                                </div>
+
+                                @if (_selectedRoomTypeDetails?.Services?.Any() == true)
+                                {
+                                    <hr class="my-4" />
+                                    <h3 class="h5">Tilføj Ekstra Luksus</h3>
+                                    @foreach (var group in _selectedRoomTypeDetails.Services.GroupBy(s => s.Category))
+                                    {
+                                        <details class="service-category-dropdown" open>
+                                            <summary>@group.Key</summary>
+                                            <div class="services-checklist">
+                                                @foreach (var service in group)
+                                                {
+                                                    <div class="service-check-item">
+                                                        <input type="checkbox" class="form-check-input" id="service-@service.Id" @onchange="(e) => ToggleServiceSelection(service.Id, (bool)e.Value)" />
+                                                        <label class="form-check-label" for="service-@service.Id">
+                                                            <div class="service-details">
+                                                                <span class="service-name">@service.Name</span>
+                                                                <span class="service-price">@service.Price.ToString("C0", _danishCulture)</span>
+                                                            </div>
+                                                            <small class="service-description">@service.Description</small>
+                                                        </label>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </details>
+                                    }
+                                }
+
+                                <div class="d-flex justify-content-between align-items-center mt-4">
+                                    <h4 class="mb-0">Totalpris: <strong>@CalculateTotalPrice().ToString("C0", _danishCulture)</strong></h4>
+                                    <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Opret Booking</ActionButton>
+                                </div>
+                            </EditForm>
+                        }
+                        @* --- SLUT: OPDATERET LOGIK FOR BEKRÆFTELSES-SKÆRM --- *@
                     </div>
                 </div>
             }
@@ -212,6 +260,7 @@
             }
         </div>
     </AuthorizeView>
+
     <AuthorizeView Roles="Manager">
         <h2 class="mt-5 mb-3">Dagens Statistik</h2>
         @if (_stats != null)
@@ -262,6 +311,22 @@
     </AuthorizeView>
 </div>
 
+@* --- START: NY CSS-BLOK TIL HOVER-EFFEKT --- *@
+<style>
+    .admin-room-card {
+        border: 1px solid #dee2e6;
+        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        cursor: pointer;
+    }
+
+        .admin-room-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            border-color: #0d6efd;
+        }
+</style>
+@* --- SLUT: NY CSS-BLOK TIL HOVER-EFFEKT --- *@
+
 @code {
     private bool _isLoading = true;
     private string _activeTab = "arrivals";
@@ -284,6 +349,12 @@
     private string? _walkInStatusMessage;
     private bool _walkInSuccess;
     private string _housekeepingSearchTerm = "";
+
+    private RoomTypeDetailDto? _selectedRoomTypeDetails;
+    private readonly CultureInfo _danishCulture = new("da-DK");
+
+    // NY STATE-VARIABEL TIL BEKRÆFTELSES-SKÆRM
+    private BookingGetDto? _lastCreatedBooking;
 
     private IEnumerable<RoomGetDto> FilteredPhysicalRooms =>
         _allPhysicalRooms?.Where(r => string.IsNullOrWhiteSpace(_housekeepingSearchTerm) ||
@@ -343,36 +414,98 @@
         _isLoading = false;
     }
 
-    private void SelectRoomTypeForWalkIn(RoomTypeCardDto roomType)
+    private async Task SelectRoomTypeForWalkIn(RoomTypeCardDto roomType)
     {
+        ResetWalkInForm(); // Nulstil altid først
         _selectedRoomTypeForWalkIn = roomType;
+        _selectedRoomTypeDetails = await ApiService.GetRoomTypeByIdAsync(roomType.Id);
+
         _walkInBooking = new WalkInBookingDto
         {
             RoomTypeId = roomType.Id,
             CheckInDate = DateTime.Today,
             CheckOutDate = DateTime.Today.AddDays(1),
-            GuestCount = 1
+            GuestCount = 1,
+            ServiceIds = new List<int>()
         };
-        _walkInStatusMessage = null;
     }
 
-    private void CancelWalkIn() => _selectedRoomTypeForWalkIn = null;
+    private void CancelWalkIn()
+    {
+        _selectedRoomTypeForWalkIn = null;
+        _selectedRoomTypeDetails = null;
+        _lastCreatedBooking = null;
+    }
+
+    // NY METODE TIL AT NULSTILLE FORMULAREN
+    private void ResetWalkInForm()
+    {
+        _walkInBooking = new();
+        _walkInStatusMessage = null;
+        _lastCreatedBooking = null;
+    }
+
+    private void ToggleServiceSelection(int serviceId, bool isChecked)
+    {
+        if (isChecked)
+        {
+            if (!_walkInBooking.ServiceIds.Contains(serviceId))
+            {
+                _walkInBooking.ServiceIds.Add(serviceId);
+            }
+        }
+        else
+        {
+            _walkInBooking.ServiceIds.Remove(serviceId);
+        }
+        StateHasChanged();
+    }
 
     private async Task HandleWalkInSubmit()
     {
         _walkInStatusMessage = "Opretter booking...";
-        var (success, message) = await ApiService.CreateWalkInBookingAsync(_walkInBooking);
-        _walkInSuccess = success;
-        _walkInStatusMessage = message;
+        StateHasChanged();
 
-        if (success)
+        var (success, message, newBooking) = await ApiService.CreateWalkInBookingAsync(_walkInBooking);
+        _walkInSuccess = success;
+
+        if (success && newBooking != null)
         {
-            _walkInBooking = new();
-            await Task.Delay(2000);
-            _selectedRoomTypeForWalkIn = null;
+            _lastCreatedBooking = newBooking; // Sæt den nye booking for at vise bekræftelse
+            _walkInStatusMessage = null;
             var authState = await AuthStateTask;
-            await LoadData(authState.User);
+            await LoadData(authState.User); // Genindlæs data i baggrunden
         }
+        else
+        {
+            _walkInStatusMessage = message;
+        }
+    }
+
+    private decimal CalculateTotalPrice()
+    {
+        if (_selectedRoomTypeDetails == null) return 0;
+
+        var nights = (_walkInBooking.CheckOutDate - _walkInBooking.CheckInDate).Days;
+        if (nights <= 0) return 0;
+
+        var roomPrice = _selectedRoomTypeDetails.BasePrice * nights;
+
+        var servicesPrice = _selectedRoomTypeDetails.Services
+            .Where(s => _walkInBooking.ServiceIds.Contains(s.Id))
+            .Sum(s =>
+            {
+                Enum.TryParse(s.BillingType, out BillingType billingType);
+                return billingType switch
+                {
+                    BillingType.PerNight => s.Price * nights,
+                    BillingType.PerPerson => s.Price * _walkInBooking.GuestCount,
+                    BillingType.PerPersonPerNight => s.Price * nights * _walkInBooking.GuestCount,
+                    _ => s.Price
+                };
+            });
+
+        return roomPrice + servicesPrice;
     }
 
     private async Task RequestCleaning(int roomId)
