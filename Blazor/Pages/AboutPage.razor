@@ -1,0 +1,119 @@
+﻿@page "/about"
+
+<PageTitle>Om Os - Flyhigh Hotel</PageTitle>
+
+<div class="about-us-container">
+    <div class="about-us-header">
+        <h1>Vores Historie: Fra Vision til Virkelighed</h1>
+        <p class="lead-paragraph">
+            Højt over byens pulserende liv, hvor skyerne møder horisonten, finder du Flyhigh Hotel – et sted født ud af en drøm om at skabe en enestående destination, der kombinerer kompromisløs luksus med personlig service og en betagende udsigt.
+        </p>
+    </div>
+
+    <article class="about-us-content">
+        <h3>Rejsen Begynder</h3>
+        <p>
+            Flyhigh Hotel er mere end blot et hotel; det er kulminationen på en livslang passion for hoteldrift og design, delt af grundlæggerne Helene og Marcus Vinter. Med årtiers erfaring fra den internationale hotelbranche så de en mulighed for at skabe noget unikt i hjertet af Skandinavien: et fristed i skyerne, hvor gæster kunne trække sig tilbage fra hverdagens travlhed og opleve ægte velvære.
+        </p>
+        <p>
+            Idéen opstod på en rejse, hvor de fra toppen af en skyskraber betragtede byens lys under sig. Det var her, visionen om Flyhigh Hotel tog form – et hotel, der ikke kun skulle tilbyde en seng at sove i, men en fuldendt oplevelse, hvor hver eneste detalje var omhyggeligt gennemtænkt for at fortrylle og forkæle.
+        </p>
+
+        <h3>Mød Vores Grundlæggere: Helene og Marcus Vinter</h3>
+        <p>
+            <strong>Helene Vinter</strong> er den kreative sjæl bag hotellets æstetik. Med en baggrund som anerkendt indretningsarkitekt har hun personligt kurateret hvert eneste rum, fra de storslåede suiter til de intime hjørner i vores lounge. Hendes filosofi er, at ægte luksus ligger i detaljen – i teksturen af et stof, i varmen fra belysningen og i kunsten på væggene. Det er Helenes øje for skønhed og kvalitet, der sikrer, at et ophold på Flyhigh Hotel er en fryd for alle sanser.
+        </p>
+        <p>
+            <strong>Marcus Vinter</strong> er hjertet i vores servicekultur. Som en erfaren hotelier, der har ledet nogle af verdens mest prestigefyldte hoteller, ved han, at ekstraordinær service er proaktiv, ikke reaktiv. Marcus har bygget et team af dedikerede medarbejdere, der deler hans passion for at skabe uforglemmelige øjeblikke. Hans mission er klar: enhver gæst skal føle sig set, værdsat og fuldstændig afslappet fra det øjeblik, de træder ind i vores lobby.
+        </p>
+
+        <h3>Vores Vision for Fremtiden</h3>
+        <p>
+            Hos Flyhigh Hotel ser vi os selv som mere end blot et sted at overnatte. Vi stræber efter at være en destination, der konstant udvikler sig og sætter nye standarder for luksus og bæredygtighed.
+        </p>
+        <p>
+            Vores vision er tredelt:
+        </p>
+        <ol>
+            <li>
+                <strong>At levere en uovertruffen gæsteoplevelse:</strong> Vi vil fortsat innovere og forfine vores service for at imødekomme og overgå vores gæsters forventninger. Vi tror på, at teknologi kan forbedre komforten, men aldrig erstatte den varme og det nærvær, som kun mennesker kan give.
+            </li>
+            <li>
+                <strong>At være en ansvarlig og bæredygtig virksomhed:</strong> Vi er dybt engagerede i at beskytte vores miljø. Fra at hente lokale, økologiske råvarer til vores restauranter til at implementere energibesparende løsninger i hele bygningen, arbejder vi målrettet på at minimere vores fodaftryk.
+            </li>
+            <li>
+                <strong>At være en integreret del af vores by:</strong> Vi samarbejder med lokale kunstnere, designere og producenter for at hylde den rige kultur, der omgiver os. Vi ønsker, at vores gæster ikke kun skal opleve vores hotel, men også det bedste, vores by har at byde på.
+            </li>
+        </ol>
+
+        <h3>Vores Løfte til Dig</h3>
+        <p>
+            Et ophold på Flyhigh Hotel er et løfte. Et løfte om ro, forkælelse og en service, der kommer fra hjertet. Vores team er dedikeret til at gøre dit ophold perfekt, uanset om du er her for forretning, en romantisk weekend eller en velfortjent ferie.
+        </p>
+        <p>
+            Vi inviterer dig til at opleve forskellen. Velkommen til Flyhigh Hotel – dit luksuriøse hjem i skyerne.
+        </p>
+    </article>
+</div>
+
+@code {  
+}
+
+<style>
+    .about-us-container {
+        max-width: 900px;
+        margin: 2rem auto 4rem auto;
+        padding: 2rem 3rem;
+        background-color: var(--card-bg-color, #ffffff);
+        border-radius: 8px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.07);
+    }
+
+    .about-us-header h1 {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 2.8rem;
+        color: var(--primary-text-color, #2c3e50);
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .lead-paragraph {
+        font-size: 1.25rem;
+        color: var(--secondary-text-color, #555);
+        text-align: center;
+        margin-bottom: 3rem;
+        font-style: italic;
+    }
+
+    .about-us-content h3 {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 1.9rem;
+        color: var(--primary-text-color, #2c3e50);
+        margin-top: 3rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid var(--accent-color, #e74c3c);
+        padding-bottom: 0.5rem;
+    }
+
+    .about-us-content p, .about-us-content li {
+        font-size: 1.1rem;
+        line-height: 1.9;
+        color: var(--secondary-text-color, #444);
+        margin-bottom: 1.2rem;
+    }
+
+    .about-us-content strong {
+        color: var(--primary-text-color, #2c3e50);
+        font-weight: 600;
+    }
+
+    .about-us-content ol {
+        padding-left: 2rem;
+        list-style-type: decimal;
+    }
+
+    .about-us-content li::marker {
+        font-weight: bold;
+        color: var(--accent-color, #e74c3c);
+    }
+</style>

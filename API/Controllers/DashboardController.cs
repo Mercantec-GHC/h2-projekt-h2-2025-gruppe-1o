@@ -31,17 +31,21 @@ namespace API.Controllers
             var totalRooms = await _context.Rooms.CountAsync();
             if (totalRooms == 0) return Ok(new DailyStatsDto());
 
-            var arrivals = await _context.Bookings.CountAsync(b => b.CheckInDate.Date == today);
-            var departures = await _context.Bookings.CountAsync(b => b.CheckOutDate.Date == today);
+            var arrivals = await _context.Bookings.CountAsync(b => b.CheckInDate.Date == today && b.Status != "Cancelled");
+            var departures = await _context.Bookings.CountAsync(b => b.CheckOutDate.Date == today && b.Status != "Cancelled");
 
+            // --- START: RETTELSE AF LOGIK ---
+            // Belægning baseres nu på alle bookede (ikke-annullerede) værelser, der er aktive i dag.
             var occupiedRooms = await _context.Bookings
-                .CountAsync(b => b.CheckInDate.Date <= today && b.CheckOutDate.Date > today && b.Status == "CheckedIn");
+                .CountAsync(b => b.CheckInDate.Date <= today && b.CheckOutDate.Date > today && b.Status != "Cancelled");
 
             var occupancy = (double)occupiedRooms / totalRooms * 100;
 
+            // Omsætning baseres nu på alle ikke-annullerede bookinger med check-ud i dag.
             var revenue = await _context.Bookings
-                .Where(b => b.CheckOutDate.Date == today && b.Status == "CheckedOut")
+                .Where(b => b.CheckOutDate.Date == today && b.Status != "Cancelled")
                 .SumAsync(b => b.TotalPrice);
+            // --- SLUT: RETTELSE AF LOGIK ---
 
             var stats = new DailyStatsDto
             {
@@ -63,7 +67,6 @@ namespace API.Controllers
         public async Task<ActionResult<ReceptionistDashboardDto>> GetReceptionistDashboardData()
         {
             var today = DateTime.UtcNow.Date;
-            var tomorrow = today.AddDays(1);
 
             var arrivals = await _context.Bookings
                 .Where(b => b.CheckInDate.Date == today && b.Status != "Cancelled")
