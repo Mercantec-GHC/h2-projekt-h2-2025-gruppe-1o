@@ -1,0 +1,136 @@
+﻿@page "/admin/activedirectory"
+@attribute [Authorize(Roles = "Manager")]
+@inject APIService ApiService
+
+<PageTitle>Active Directory Dashboard</PageTitle>
+
+<div class="ad-dashboard-page">
+    <h1 class="page-title">Active Directory Dashboard</h1>
+    <p class="page-subtitle">Oversigt over brugere og grupper i organisationens Active Directory.</p>
+
+    @if (_isLoading)
+    {
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2"><em>Indlæser data fra Active Directory...</em></p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header">
+                        <h3><i class="bi bi-people-fill me-2"></i>Brugere (@FilteredUsers.Count())</h3>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <input type="text" class="form-control mb-3" placeholder="Søg efter navn, brugernavn eller email..." @bind="_userSearchTerm" @bind:event="oninput" />
+                        <div class="table-responsive flex-grow-1" style="min-height: 400px; max-height: 60vh;">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Fulde Navn</th>
+                                        <th>Brugernavn</th>
+                                        <th>Email</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in FilteredUsers)
+                                    {
+                                        <tr>
+                                            <td>@user.DisplayName</td>
+                                            <td>@user.Username</td>
+                                            <td>@user.Email</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header">
+                        <h3><i class="bi bi-collection-fill me-2"></i>Grupper (@FilteredGroups.Count())</h3>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <input type="text" class="form-control mb-3" placeholder="Søg efter gruppenavn..." @bind="_groupSearchTerm" @bind:event="oninput" />
+                        <div class="table-responsive flex-grow-1" style="min-height: 400px; max-height: 60vh;">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Gruppenavn</th>
+                                        <th class="text-center">Medlemmer</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var group in FilteredGroups)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @group.Name
+                                                @if (!string.IsNullOrWhiteSpace(group.Description))
+                                                {
+                                                    <small class="d-block text-muted">@group.Description</small>
+                                                }
+                                            </td>
+                                            <td class="text-center">@group.Members.Count</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string _userSearchTerm = string.Empty;
+    private string _groupSearchTerm = string.Empty;
+
+    private List<ADUserDto> _adUsers = new();
+    private List<ADGroupDto> _adGroups = new();
+
+    private IEnumerable<ADUserDto> FilteredUsers =>
+        _adUsers.Where(u => string.IsNullOrWhiteSpace(_userSearchTerm) ||
+                              u.DisplayName.Contains(_userSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                              u.Username.Contains(_userSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                              u.Email.Contains(_userSearchTerm, StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<ADGroupDto> FilteredGroups =>
+        _adGroups.Where(g => string.IsNullOrWhiteSpace(_groupSearchTerm) ||
+                               g.Name.Contains(_groupSearchTerm, StringComparison.OrdinalIgnoreCase) ||
+                               (g.Description != null && g.Description.Contains(_groupSearchTerm, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var usersTask = ApiService.GetAdUsersAsync();
+        var groupsTask = ApiService.GetAdGroupsAsync();
+
+        // Kør begge kald parallelt for bedre performance
+        await Task.WhenAll(usersTask, groupsTask);
+
+        _adUsers = await usersTask ?? new List<ADUserDto>();
+        _adGroups = await groupsTask ?? new List<ADGroupDto>();
+
+        if (usersTask.Result == null || groupsTask.Result == null)
+        {
+            _errorMessage = "Kunne ikke hente data fra Active Directory. Kontroller API-forbindelsen og at du har de nødvendige rettigheder.";
+        }
+
+        _isLoading = false;
+    }
+}

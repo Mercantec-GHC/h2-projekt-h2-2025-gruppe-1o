@@ -20,53 +20,53 @@
 
         <AuthorizeView>
             <Authorized>
-                <!-- Role-specific navigation for Housekeeping staff -->
+                @* --- START RETTELSE: 'Context' er tilføjet til alle indre AuthorizeView-komponenter --- *@
+
                 <AuthorizeView Roles="Housekeeping" Context="housekeepingContext">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="housekeeping-dashboard">
-                            <span class="bi bi-house-gear-fill" aria-hidden="true"></span> Housekeeping Dashboard
-                        </NavLink>
-                    </div>
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="account">
-                            <span class="bi bi-person-circle-nav-menu" aria-hidden="true"></span> Min Profil
+                            <span class="bi bi-house-gear-fill" aria-hidden="true"></span> Housekeeping
                         </NavLink>
                     </div>
                 </AuthorizeView>
 
-                <!-- Role-specific navigation for Admin/Manager/Receptionist -->
-                <AuthorizeView Roles="Admin,Manager,Receptionist" Context="adminContext">
+                <AuthorizeView Roles="Admin,Manager,Receptionist" Context="staffContext">
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="admin">
-                            <span class="bi bi-speedometer2" aria-hidden="true"></span> Admin Dashboard
-                        </NavLink>
-                    </div>
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="account">
-                            <span class="bi bi-person-circle-nav-menu" aria-hidden="true"></span> Min Profil
+                            <span class="bi bi-calendar-check" aria-hidden="true"></span> Booking Management
                         </NavLink>
                     </div>
                 </AuthorizeView>
+
+                <AuthorizeView Roles="Manager" Context="managerContext">
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="admin/activedirectory">
+                            <span class="bi bi-microsoft" aria-hidden="true"></span> AD Management
+                        </NavLink>
+                    </div>
+                </AuthorizeView>
+
+                @* --- SLUT RETTELSE --- *@
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="account">
+                        <span class="bi bi-person-circle-nav-menu" aria-hidden="true"></span> Min Konto
+                    </NavLink>
+                </div>
 
                 <AuthorizeView Roles="User" Context="userContext">
                     <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="account">
-                            <span class="bi bi-person-circle-nav-menu" aria-hidden="true"></span> Min Konto
-                        </NavLink>
-                    </div>
-                    <div class="nav-item px-3">
                         <NavLink class="nav-link" href="my-bookings">
-                            <span class="bi bi-calendar-check" aria-hidden="true"></span> Mine Bookinger
+                            <span class="bi bi-calendar-week" aria-hidden="true"></span> Mine Bookinger
                         </NavLink>
                     </div>
-
                     <div class="nav-item px-3">
                         <NavLink class="nav-link" href="support/tickets">
                             <span class="bi bi-patch-question-fill" aria-hidden="true"></span> Support
                         </NavLink>
                     </div>
                 </AuthorizeView>
-                <!-- Logout button for all authenticated users -->
+
                 <div class="nav-item px-3">
                     <button class="nav-link btn btn-link" @onclick="Logout">
                         <span class="bi bi-box-arrow-right-nav-menu" aria-hidden="true"></span> Log ud

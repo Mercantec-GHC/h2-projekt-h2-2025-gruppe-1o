@@ -193,7 +193,6 @@ namespace Blazor.Services
             return await _httpClient.GetFromJsonAsync<List<RoomTypeCardDto>>("api/rooms/types/availability-summary");
         }
 
-        // --- START: OPDATERET RETURTYPE ---
         public async Task<(bool Success, string Message, BookingGetDto? Booking)> CreateWalkInBookingAsync(WalkInBookingDto bookingDetails)
         {
             await EnsureAuthHeaderAsync();
@@ -208,7 +207,6 @@ namespace Blazor.Services
             var errorMessage = await response.Content.ReadAsStringAsync();
             return (false, errorMessage ?? "Der opstod en ukendt fejl under oprettelse af booking.", null);
         }
-        // --- SLUT: OPDATERET RETURTYPE ---
 
         // --- Housekeeping Metoder ---
         public async Task<List<RoomGetDto>?> GetRoomsNeedingCleaningAsync()
@@ -274,7 +272,66 @@ namespace Blazor.Services
             var response = await _httpClient.PutAsJsonAsync($"api/tickets/{ticketId}/status", statusUpdate);
             return response.IsSuccessStatusCode;
         }
+
+        // --- START: NYE METODER TILFØJET HER ---
+
+        // --- Active Directory Metoder ---
+        public async Task<List<ADUserDto>?> GetAdUsersAsync()
+        {
+            try
+            {
+                await EnsureAuthHeaderAsync();
+                return await _httpClient.GetFromJsonAsync<List<ADUserDto>>("api/activedirectory/users");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl under hentning af AD-brugere: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<List<ADGroupDto>?> GetAdGroupsAsync()
+        {
+            try
+            {
+                await EnsureAuthHeaderAsync();
+                return await _httpClient.GetFromJsonAsync<List<ADGroupDto>>("api/activedirectory/groups");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl under hentning af AD-grupper: {ex.Message}");
+                return null;
+            }
+        }
+
+        // --- SLUT: NYE METODER TILFØJET HER ---
     }
+
+    // --- START: NYE DTO-KLASSER TILFØJET HER ---
+
+    /// <summary>
+    /// DTO til at modtage Active Directory brugerinformation i Blazor-klienten.
+    /// </summary>
+    public class ADUserDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public List<string> Groups { get; set; } = new List<string>();
+    }
+
+    /// <summary>
+    /// DTO til at modtage Active Directory gruppeinformation i Blazor-klienten.
+    /// </summary>
+    public class ADGroupDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public List<string> Members { get; set; } = new List<string>();
+    }
+
+    // --- SLUT: NYE DTO-KLASSER TILFØJET HER ---
 
     public class LoginResult { public string? Token { get; set; } }
     public class StaffLoginResult { public string? Token { get; set; } public StaffUser? User { get; set; } }
