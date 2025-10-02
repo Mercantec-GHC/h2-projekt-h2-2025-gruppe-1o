@@ -273,9 +273,7 @@ namespace Blazor.Services
             return response.IsSuccessStatusCode;
         }
 
-        // --- START: NYE METODER TILFØJET HER ---
-
-        // --- Active Directory Metoder ---
+        // --- Active Directory Læse-Metoder ---
         public async Task<List<ADUserDto>?> GetAdUsersAsync()
         {
             try
@@ -304,14 +302,49 @@ namespace Blazor.Services
             }
         }
 
-        // --- SLUT: NYE METODER TILFØJET HER ---
+        // --- Active Directory Admin Metoder ---
+        public async Task<(bool Success, string Message)> CreateAdUserAsync(CreateUserDto userDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync("api/activedirectory/users", userDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> ResetAdUserPasswordAsync(string username, ResetPasswordDto passwordDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsJsonAsync($"api/activedirectory/users/{username}/reset-password", passwordDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> SetAdUserStatusAsync(string username, SetUserStatusDto statusDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsJsonAsync($"api/activedirectory/users/{username}/status", statusDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> AddUserToGroupAsync(string groupName, GroupMemberDto memberDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync($"api/activedirectory/groups/{groupName}/members", memberDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> RemoveUserFromGroupAsync(string groupName, string username)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.DeleteAsync($"api/activedirectory/groups/{groupName}/members/{username}");
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
     }
 
-    // --- START: NYE DTO-KLASSER TILFØJET HER ---
-
-    /// <summary>
-    /// DTO til at modtage Active Directory brugerinformation i Blazor-klienten.
-    /// </summary>
+    // DTO-klasser til Active Directory Læsning
     public class ADUserDto
     {
         public string Name { get; set; } = string.Empty;
@@ -319,11 +352,9 @@ namespace Blazor.Services
         public string Email { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public List<string> Groups { get; set; } = new List<string>();
+        // Tilføjet for at kunne vise status i UI
+        public bool IsEnabled { get; set; }
     }
-
-    /// <summary>
-    /// DTO til at modtage Active Directory gruppeinformation i Blazor-klienten.
-    /// </summary>
     public class ADGroupDto
     {
         public string Name { get; set; } = string.Empty;
@@ -331,8 +362,21 @@ namespace Blazor.Services
         public List<string> Members { get; set; } = new List<string>();
     }
 
-    // --- SLUT: NYE DTO-KLASSER TILFØJET HER ---
+    // DTO-klasser til Active Directory Administration
+    public class CreateUserDto
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+    }
+    public class ResetPasswordDto { public string NewPassword { get; set; } = string.Empty; }
+    public class SetUserStatusDto { public bool IsEnabled { get; set; } }
+    public class GroupMemberDto { public string Username { get; set; } = string.Empty; }
 
+    // Interne hjælpe-klasser
+    internal class ApiResponse { public string? Message { get; set; } }
     public class LoginResult { public string? Token { get; set; } }
     public class StaffLoginResult { public string? Token { get; set; } public StaffUser? User { get; set; } }
     public class StaffUser { public string? Id { get; set; } public string? Email { get; set; } public string? FirstName { get; set; } public string? Role { get; set; } }
