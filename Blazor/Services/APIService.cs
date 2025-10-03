@@ -54,10 +54,19 @@ namespace Blazor.Services
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<(bool Success, string Message)> UpdateBookingStatusAsync(string bookingId, string newStatus)
+        {
+            await EnsureAuthHeaderAsync();
+            var updateDto = new BookingStatusUpdateDto { NewStatus = newStatus };
+            var response = await _httpClient.PutAsJsonAsync($"api/bookings/{bookingId}/status", updateDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
         public async Task<List<RoomGetDto>> GetAllRoomsAsync()
         {
             await EnsureAuthHeaderAsync();
-            return await _httpClient.GetFromJsonAsync<List<RoomGetDto>>("api/rooms");
+            return await _httpClient.GetFromJsonAsync<List<RoomGetDto>>("api/rooms") ?? new List<RoomGetDto>();
         }
 
         public async Task<bool> RequestRoomCleaningAsync(int roomId)
@@ -80,12 +89,10 @@ namespace Blazor.Services
 
         public async Task<(bool Success, string Message)> BookMeetingRoomAsync(MeetingRoomBookingCreateDto dto)
         {
+            await EnsureAuthHeaderAsync();
             var response = await _httpClient.PostAsJsonAsync("api/meetingrooms/book", dto);
             var content = await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode)
-            {
-                return (true, "Booking gennemført!");
-            }
+            if (response.IsSuccessStatusCode) return (true, "Booking gennemført!");
             return (false, content ?? "Ukendt fejl");
         }
 
@@ -189,6 +196,41 @@ namespace Blazor.Services
             return await _httpClient.GetFromJsonAsync<ReceptionistDashboardDto>("api/Dashboard/receptionist");
         }
 
+        public async Task<List<RoomTypeCardDto>?> GetRoomTypeAvailabilitySummaryAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            return await _httpClient.GetFromJsonAsync<List<RoomTypeCardDto>>("api/rooms/types/availability-summary");
+        }
+
+        public async Task<(bool Success, string Message, BookingGetDto? Booking)> CreateWalkInBookingAsync(WalkInBookingDto bookingDetails)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync("api/bookings/walk-in", bookingDetails);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var createdBooking = await response.Content.ReadFromJsonAsync<BookingGetDto>();
+                return (true, "Walk-in booking oprettet succesfuldt.", createdBooking);
+            }
+
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            return (false, errorMessage ?? "Der opstod en ukendt fejl under oprettelse af booking.", null);
+        }
+
+        // --- Housekeeping Metoder ---
+        public async Task<List<RoomGetDto>?> GetRoomsNeedingCleaningAsync()
+        {
+            await EnsureAuthHeaderAsync();
+            return await _httpClient.GetFromJsonAsync<List<RoomGetDto>>("api/housekeeping/rooms-to-clean");
+        }
+
+        public async Task<bool> MarkRoomAsCleanAsync(int roomId)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsync($"api/housekeeping/rooms/{roomId}/mark-as-clean", null);
+            return response.IsSuccessStatusCode;
+        }
+
         // --- TICKET METODER ---
         public async Task<string?> GetAuthTokenAsync()
         {
@@ -239,8 +281,107 @@ namespace Blazor.Services
             var response = await _httpClient.PutAsJsonAsync($"api/tickets/{ticketId}/status", statusUpdate);
             return response.IsSuccessStatusCode;
         }
+
+        // --- Active Directory Læse-Metoder ---
+        public async Task<List<ADUserDto>?> GetAdUsersAsync()
+        {
+            try
+            {
+                await EnsureAuthHeaderAsync();
+                return await _httpClient.GetFromJsonAsync<List<ADUserDto>>("api/activedirectory/users");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl under hentning af AD-brugere: {ex.Message}");
+                return null;
+            }
+        }
+
+        public async Task<List<ADGroupDto>?> GetAdGroupsAsync()
+        {
+            try
+            {
+                await EnsureAuthHeaderAsync();
+                return await _httpClient.GetFromJsonAsync<List<ADGroupDto>>("api/activedirectory/groups");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fejl under hentning af AD-grupper: {ex.Message}");
+                return null;
+            }
+        }
+
+        // --- Active Directory Admin Metoder ---
+        public async Task<(bool Success, string Message)> CreateAdUserAsync(CreateUserDto userDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync("api/activedirectory/users", userDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> ResetAdUserPasswordAsync(string username, ResetPasswordDto passwordDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsJsonAsync($"api/activedirectory/users/{username}/reset-password", passwordDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> SetAdUserStatusAsync(string username, SetUserStatusDto statusDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PutAsJsonAsync($"api/activedirectory/users/{username}/status", statusDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> AddUserToGroupAsync(string groupName, GroupMemberDto memberDto)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.PostAsJsonAsync($"api/activedirectory/groups/{groupName}/members", memberDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
+        public async Task<(bool Success, string Message)> RemoveUserFromGroupAsync(string groupName, string username)
+        {
+            await EnsureAuthHeaderAsync();
+            var response = await _httpClient.DeleteAsync($"api/activedirectory/groups/{groupName}/members/{username}");
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
     }
 
+    // DTOs og hjælpeklasser
+    public class BookingStatusUpdateDto { public string NewStatus { get; set; } = string.Empty; }
+    public class ADUserDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public List<string> Groups { get; set; } = new List<string>();
+        public bool IsEnabled { get; set; }
+    }
+    public class ADGroupDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public List<string> Members { get; set; } = new List<string>();
+    }
+    public class CreateUserDto
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+    }
+    public class ResetPasswordDto { public string NewPassword { get; set; } = string.Empty; }
+    public class SetUserStatusDto { public bool IsEnabled { get; set; } }
+    public class GroupMemberDto { public string Username { get; set; } = string.Empty; }
+    internal class ApiResponse { public string? Message { get; set; } }
     public class LoginResult { public string? Token { get; set; } }
     public class StaffLoginResult { public string? Token { get; set; } public StaffUser? User { get; set; } }
     public class StaffUser { public string? Id { get; set; } public string? Email { get; set; } public string? FirstName { get; set; } public string? Role { get; set; } }

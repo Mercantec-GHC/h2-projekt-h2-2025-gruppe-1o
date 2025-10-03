@@ -30,6 +30,15 @@
                         </button>
                     }
 
+                    @* --- START ÆNDRING --- *@
+                    @if (context.User.IsInRole("Manager"))
+                    {
+                        <button class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/admin/activedirectory")'>
+                            AD Management
+                        </button>
+                    }
+                    @* --- SLUT ÆNDRING --- *@
+
                     <button class="btn btn-secondary" @onclick="GoToAccount">
                         Min Konto
                     </button>

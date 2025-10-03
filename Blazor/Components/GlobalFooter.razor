@@ -10,7 +10,14 @@
                 <li><a href="/rooms">Værelser</a></li>
                 <li><a href="/facilities">Faciliteter</a></li>
                 <li><a href="/about">Om Os</a></li>
-                <li><a href="/contact">Kontakt</a></li>
+
+                <AuthorizeView>
+                    <NotAuthorized>
+                        <li><a href="/staff-login">Medarbejder Login</a></li>
+                    </NotAuthorized>
+                </AuthorizeView>
+
+
             </ul>
         </div>
         <div class="footer-column contact">

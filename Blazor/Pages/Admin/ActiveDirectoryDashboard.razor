@@ -1,0 +1,388 @@
+﻿@page "/admin/activedirectory"
+@attribute [Authorize(Roles = "Manager")]
+@using System.ComponentModel.DataAnnotations
+@inject APIService ApiService
+
+<PageTitle>Active Directory Dashboard</PageTitle>
+
+<div class="ad-dashboard-page">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="page-title">Active Directory Dashboard</h1>
+            <p class="page-subtitle">Oversigt over brugere og grupper i organisationens Active Directory.</p>
+        </div>
+        <div>
+            <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="OpenCreateUserModal">
+                <i class="bi bi-plus-circle-fill me-2"></i>Opret Ny Bruger
+            </ActionButton>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert @(_isStatusSuccess ? "alert-success" : "alert-danger")" role="alert">
+            @_statusMessage
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2"><em>Indlæser data fra Active Directory...</em></p>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <div class="alert alert-danger">@_errorMessage</div>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3><i class="bi bi-people-fill me-2"></i>Brugere (@FilteredUsers.Count())</h3>
+                    </div>
+                    <div class="card-body d-flex flex-column">
+                        <input type="text" class="form-control mb-3" placeholder="Søg efter navn, brugernavn eller email..." @bind="_userSearchTerm" @bind:event="oninput" />
+                        <div class="table-responsive flex-grow-1" style="min-height: 400px; max-height: 60vh;">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Fulde Navn</th>
+                                        <th>Brugernavn</th>
+                                        <th>Email</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Handlinger</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var user in FilteredUsers)
+                                    {
+                                        <tr>
+                                            <td>@user.DisplayName</td>
+                                            <td>@user.Username</td>
+                                            <td>@user.Email</td>
+                                            <td>
+                                                <span class="badge @(user.IsEnabled ? "bg-success" : "bg-secondary")">
+                                                    @(user.IsEnabled ? "Aktiv" : "Deaktiveret")
+                                                </span>
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                        Handlinger
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li><button class="dropdown-item" @onclick="() => OpenResetPasswordModal(user)">Nulstil Adgangskode</button></li>
+                                                        <li><button class="dropdown-item" @onclick="() => OpenUserStatusModal(user)">@(user.IsEnabled ? "Deaktivér" : "Aktivér") Bruger</button></li>
+                                                        <li><button class="dropdown-item" @onclick="() => OpenManageGroupsModal(user)">Administrér Grupper</button></li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header"><h3><i class="bi bi-collection-fill me-2"></i>Grupper (@FilteredGroups.Count())</h3></div>
+                    <div class="card-body d-flex flex-column">
+                        <input type="text" class="form-control mb-3" placeholder="Søg efter gruppenavn..." @bind="_groupSearchTerm" @bind:event="oninput" />
+                        <div class="table-responsive flex-grow-1" style="min-height: 400px; max-height: 60vh;">
+                            <table class="table table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Gruppenavn</th>
+                                        <th class="text-center">Medlemmer</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var group in FilteredGroups)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @group.Name
+                                                @if (!string.IsNullOrWhiteSpace(group.Description))
+                                                {
+                                                    <small class="d-block text-muted">@group.Description</small>
+                                                }
+                                            </td>
+                                            <td class="text-center">@group.Members.Count</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@* --- MODALS FOR ADMINISTRATIVE ACTIONS (STYRET AF C# OG CSS) --- *@
+@if (_showCreateUserModal || _showResetPasswordModal || _showUserStatusModal || _showManageGroupsModal)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
+<div class="modal fade @(_showCreateUserModal ? "show d-block" : "")" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Opret Ny Bruger</h5>
+                <button type="button" class="btn-close" @onclick="CloseModals"></button>
+            </div>
+            <div class="modal-body">
+                <EditForm Model="_createUserDto" OnValidSubmit="HandleCreateUserSubmit">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger mb-3" />
+                    <div class="mb-3"><label class="form-label">Fornavn</label><InputText class="form-control" @bind-Value="_createUserDto.FirstName" /></div>
+                    <div class="mb-3"><label class="form-label">Efternavn</label><InputText class="form-control" @bind-Value="_createUserDto.LastName" /></div>
+                    <div class="mb-3"><label class="form-label">Brugernavn</label><InputText class="form-control" @bind-Value="_createUserDto.Username" /></div>
+                    <div class="mb-3"><label class="form-label">Email</label><InputText type="email" class="form-control" @bind-Value="_createUserDto.Email" /></div>
+                    <div class="mb-3"><label class="form-label">Adgangskode</label><InputText type="password" class="form-control" @bind-Value="_createUserDto.Password" /></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+                        <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">
+                            @if (_isSubmitting)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            else
+                            {
+
+                                <span>Opret Bruger</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade @(_showResetPasswordModal ? "show d-block" : "")" tabindex="-1">
+    @if (_selectedUser != null)
+    {
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Nulstil Adgangskode for @_selectedUser.DisplayName</h5><button type="button" class="btn-close" @onclick="CloseModals"></button></div>
+                <div class="modal-body">
+                    <EditForm Model="_resetPasswordDto" OnValidSubmit="HandleResetPasswordSubmit">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Ny Adgangskode</label>
+                            <InputText type="password" class="form-control" @bind-Value="_resetPasswordDto.NewPassword" />
+                            <ValidationMessage For="@(() => _resetPasswordDto.NewPassword)" />
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">@if (_isSubmitting) {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+
+                            <span>Gem</span>
+                        }
+</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+        }
+</div>
+
+<div class="modal fade @(_showUserStatusModal ? "show d-block" : "")" tabindex="-1">
+    @if (_selectedUser != null)
+    {
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Bekræft Handling</h5><button type="button" class="btn-close" @onclick="CloseModals"></button></div>
+                <div class="modal-body">Er du sikker på, at du vil <strong>@(_selectedUser.IsEnabled ? "deaktivere" : "aktivere")</strong> brugeren @_selectedUser.DisplayName?</div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+                    <button type="button" class="btn btn-danger" @onclick="HandleUserStatusSubmit" disabled="@_isSubmitting">@if (_isSubmitting) {
+                    <span class="spinner-border spinner-border-sm"></span>
+                }
+                else
+                {
+
+                    <span>Bekræft</span>
+                }
+</button>
+            </div>
+        </div>
+    </div>
+        }
+</div>
+
+<div class="modal fade @(_showManageGroupsModal ? "show d-block" : "")" tabindex="-1">
+    @if (_selectedUser != null)
+    {
+        <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header"><h5 class="modal-title">Administrér Grupper for @_selectedUser.DisplayName</h5><button type="button" class="btn-close" @onclick="CloseModals"></button></div>
+                <div class="modal-body">
+                    @foreach (var group in _adGroups.OrderBy(g => g.Name))
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="group-@group.Name" checked="@_groupManagementState[group.Name]" @onchange="(e) => _groupManagementState[group.Name] = (bool)e.Value" />
+                            <label class="form-check-label" for="group-@group.Name">@group.Name</label>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+                    <button type="button" class="btn btn-primary" @onclick="HandleManageGroupsSubmit" disabled="@_isSubmitting">@if (_isSubmitting) {
+                    <span class="spinner-border spinner-border-sm"></span>
+                }
+                else
+                {
+
+                    <span>Gem Ændringer</span>
+                }
+</button>
+            </div>
+        </div>
+    </div>
+        }
+</div>
+
+@code {
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private string _userSearchTerm = string.Empty;
+    private string _groupSearchTerm = string.Empty;
+
+    private List<ADUserDto> _adUsers = new();
+    private List<ADGroupDto> _adGroups = new();
+
+    // State for modals and actions
+    private bool _isSubmitting = false;
+    private string? _statusMessage;
+    private bool _isStatusSuccess;
+    private ADUserDto? _selectedUser;
+    private CreateUserDto _createUserDto = new();
+    private ResetPasswordDto _resetPasswordDto = new();
+    private Dictionary<string, bool> _groupManagementState = new();
+
+    // Modal visibility flags
+    private bool _showCreateUserModal;
+    private bool _showResetPasswordModal;
+    private bool _showUserStatusModal;
+    private bool _showManageGroupsModal;
+
+    private IEnumerable<ADUserDto> FilteredUsers => _adUsers.OrderBy(u => u.DisplayName).Where(u => string.IsNullOrWhiteSpace(_userSearchTerm) || u.DisplayName.Contains(_userSearchTerm, StringComparison.OrdinalIgnoreCase) || u.Username.Contains(_userSearchTerm, StringComparison.OrdinalIgnoreCase) || u.Email.Contains(_userSearchTerm, StringComparison.OrdinalIgnoreCase));
+    private IEnumerable<ADGroupDto> FilteredGroups => _adGroups.OrderBy(g => g.Name).Where(g => string.IsNullOrWhiteSpace(_groupSearchTerm) || (g.Name != null && g.Name.Contains(_groupSearchTerm, StringComparison.OrdinalIgnoreCase)) || (g.Description != null && g.Description.Contains(_groupSearchTerm, StringComparison.OrdinalIgnoreCase)));
+
+    protected override async Task OnInitializedAsync() => await ReloadDataAsync();
+
+    private async Task ReloadDataAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+        var usersTask = ApiService.GetAdUsersAsync();
+        var groupsTask = ApiService.GetAdGroupsAsync();
+        await Task.WhenAll(usersTask, groupsTask);
+        _adUsers = await usersTask ?? new List<ADUserDto>();
+        _adGroups = await groupsTask ?? new List<ADGroupDto>();
+        if (usersTask.Result == null || groupsTask.Result == null)
+        {
+            _errorMessage = "Kunne ikke hente data fra Active Directory. Kontroller API-forbindelsen og dine rettigheder.";
+        }
+        _isLoading = false;
+        StateHasChanged();
+    }
+
+    // --- Modal Control ---
+    private void OpenCreateUserModal() { _createUserDto = new(); _showCreateUserModal = true; }
+    private void OpenResetPasswordModal(ADUserDto user) { _selectedUser = user; _resetPasswordDto = new(); _showResetPasswordModal = true; }
+    private void OpenUserStatusModal(ADUserDto user) { _selectedUser = user; _showUserStatusModal = true; }
+    private void OpenManageGroupsModal(ADUserDto user) { _selectedUser = user; _groupManagementState = _adGroups.ToDictionary(g => g.Name, g => user.Groups.Contains(g.Name)); _showManageGroupsModal = true; }
+    private void CloseModals()
+    {
+        _showCreateUserModal = false;
+        _showResetPasswordModal = false;
+        _showUserStatusModal = false;
+        _showManageGroupsModal = false;
+        _selectedUser = null;
+        _isSubmitting = false;
+    }
+
+    // --- Form Submit Handlers ---
+    private async Task HandleCreateUserSubmit()
+    {
+        _isSubmitting = true;
+        var (success, message) = await ApiService.CreateAdUserAsync(_createUserDto);
+        await HandleApiResponse(success, message);
+    }
+
+    private async Task HandleResetPasswordSubmit()
+    {
+        if (_selectedUser == null) return;
+        _isSubmitting = true;
+        var (success, message) = await ApiService.ResetAdUserPasswordAsync(_selectedUser.Username, _resetPasswordDto);
+        await HandleApiResponse(success, message);
+    }
+
+    private async Task HandleUserStatusSubmit()
+    {
+        if (_selectedUser == null) return;
+        _isSubmitting = true;
+        var statusDto = new SetUserStatusDto { IsEnabled = !_selectedUser.IsEnabled };
+        var (success, message) = await ApiService.SetAdUserStatusAsync(_selectedUser.Username, statusDto);
+        await HandleApiResponse(success, message);
+    }
+
+    private async Task HandleManageGroupsSubmit()
+    {
+        if (_selectedUser == null) return;
+        _isSubmitting = true;
+        bool overallSuccess = true;
+        string finalMessage = "Gruppemedlemskaber er opdateret.";
+
+        foreach (var groupState in _groupManagementState)
+        {
+            if (!overallSuccess) break;
+            bool isInGroup = groupState.Value;
+            bool wasInGroup = _selectedUser.Groups.Contains(groupState.Key);
+
+            if (isInGroup && !wasInGroup)
+            {
+                var (s, m) = await ApiService.AddUserToGroupAsync(groupState.Key, new GroupMemberDto { Username = _selectedUser.Username });
+                if (!s) { overallSuccess = false; finalMessage = m; }
+            }
+            else if (!isInGroup && wasInGroup)
+            {
+                var (s, m) = await ApiService.RemoveUserFromGroupAsync(groupState.Key, _selectedUser.Username);
+                if (!s) { overallSuccess = false; finalMessage = m; }
+            }
+        }
+        await HandleApiResponse(overallSuccess, finalMessage);
+    }
+
+    private async Task HandleApiResponse(bool success, string message)
+    {
+        _isStatusSuccess = success;
+        _statusMessage = message;
+        _isSubmitting = false;
+        CloseModals();
+        if (success)
+        {
+            await ReloadDataAsync();
+        }
+        StateHasChanged();
+    }
+}

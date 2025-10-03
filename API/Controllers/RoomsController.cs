@@ -31,22 +31,64 @@ namespace API.Controllers
             _hubContext = hubContext;
         }
 
+        // --- START: NYT ENDPOINT TILFØJET HER ---
+        /// <summary>
+        /// Henter en oversigt over antallet af ledige værelser for hver værelsestype for den aktuelle dag.
+        /// </summary>
+        /// <returns>En liste med værelsestyper og antallet af ledige værelser.</returns>
+        [HttpGet("types/availability-summary")]
+        [Authorize(Roles = "Receptionist, Manager")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<ActionResult<IEnumerable<RoomTypeCardDto>>> GetRoomTypeAvailabilitySummary()
+        {
+            var today = DateTime.UtcNow.Date;
+
+            // Trin 1: Hent det samlede antal fysiske rum for hver værelsestype.
+            var totalRoomsPerType = await _context.RoomTypes
+                .Select(rt => new {
+                    rt.Id,
+                    rt.Name,
+                    TotalCount = rt.Rooms.Count()
+                })
+                .ToListAsync();
+
+            // Trin 2: Hent antallet af bookede rum i dag, grupperet efter værelsestype.
+            var occupiedRoomsPerType = await _context.Bookings
+                .Where(b => b.Status != "Cancelled" && b.CheckInDate.Date <= today && b.CheckOutDate.Date > today)
+                .GroupBy(b => b.RoomTypeId)
+                .Select(g => new {
+                    RoomTypeId = g.Key,
+                    OccupiedCount = g.Count()
+                })
+                .ToDictionaryAsync(x => x.RoomTypeId, x => x.OccupiedCount);
+
+            // Trin 3: Kombiner resultaterne i hukommelsen for at beregne de ledige rum.
+            // Denne metode er hurtig og undgår komplekse SQL-oversættelser, der kan fejle.
+            var result = totalRoomsPerType.Select(rt => new RoomTypeCardDto
+            {
+                Id = rt.Id,
+                Name = rt.Name,
+                AvailableCount = rt.TotalCount - occupiedRoomsPerType.GetValueOrDefault(rt.Id, 0)
+            }).ToList();
+
+            return Ok(result);
+        }
+        // --- SLUT: NYT ENDPOINT TILFØJET HER ---
+
+
         [HttpGet("types")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetRoomTypes([FromQuery] string? sortBy, [FromQuery] bool desc = false)
         {
             var cacheKey = $"allRoomTypes_sortBy={sortBy ?? "default"}_desc={desc}";
-            _logger.LogInformation("Forsøger at hente værelsestyper fra cache med nøglen '{CacheKey}'", cacheKey);
-
             if (_cache.TryGetValue(cacheKey, out List<RoomType> cachedRoomTypes))
             {
-                _logger.LogInformation("Cache hit! Returnerer {Count} værelsestyper fra cachen for nøglen '{CacheKey}'.", cachedRoomTypes.Count, cacheKey);
                 return Ok(cachedRoomTypes);
             }
 
-            _logger.LogInformation("Cache miss for '{CacheKey}'. Henter værelsestyper fra databasen.", cacheKey);
             var query = _context.RoomTypes.AsQueryable();
-
             switch (sortBy?.ToLower())
             {
                 case "price":
@@ -59,16 +101,9 @@ namespace API.Controllers
                     query = query.OrderBy(rt => rt.Name);
                     break;
             }
-
             var roomTypesFromDb = await query.ToListAsync();
-
-            var cacheOptions = new MemoryCacheEntryOptions()
-                .SetSlidingExpiration(TimeSpan.FromMinutes(5))
-                .SetAbsoluteExpiration(TimeSpan.FromMinutes(60));
-
+            var cacheOptions = new MemoryCacheEntryOptions().SetSlidingExpiration(TimeSpan.FromMinutes(5));
             _cache.Set(cacheKey, roomTypesFromDb, cacheOptions);
-            _logger.LogInformation("Gemt {Count} værelsestyper i cachen for nøglen '{CacheKey}'.", roomTypesFromDb.Count, cacheKey);
-
             return Ok(roomTypesFromDb);
         }
 
@@ -113,8 +148,6 @@ namespace API.Controllers
             [FromQuery] DateTime checkOutDate,
             [FromQuery] int numberOfGuests)
         {
-            _logger.LogInformation("Søger efter ledige værelser fra {CheckIn} til {CheckOut} for {GuestCount} gæster.", checkInDate, checkOutDate, numberOfGuests);
-
             var checkIn = DateOnly.FromDateTime(checkInDate);
             var checkOut = DateOnly.FromDateTime(checkOutDate);
 
@@ -152,7 +185,6 @@ namespace API.Controllers
                 .Where(dto => dto.AvailableCount > 0)
                 .ToList();
 
-            _logger.LogInformation("Søgning efter ledighed returnerede {ResultCount} værelsestyper.", availableRoomTypes.Count);
             return Ok(availableRoomTypes);
         }
 
@@ -174,6 +206,41 @@ namespace API.Controllers
             await _hubContext.Clients.All.SendAsync("RoomStatusChanged", roomId, room.Status);
 
             return NoContent();
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Receptionist, Manager")]
+        public async Task<ActionResult<IEnumerable<RoomGetDto>>> GetAllRooms()
+        {
+            return await _context.Rooms
+                .Include(r => r.RoomType)
+                .Select(r => new RoomGetDto
+                {
+                    Id = r.Id,
+                    RoomNumber = r.RoomNumber,
+                    Status = r.Status,
+                    RoomTypeName = r.RoomType.Name
+                })
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
+        }
+
+        [HttpGet("needs-cleaning")]
+        [Authorize(Roles = "Housekeeping, Manager")]
+        public async Task<ActionResult<IEnumerable<RoomGetDto>>> GetRoomsNeedingCleaning()
+        {
+            return await _context.Rooms
+                .Where(r => r.Status == "NeedsCleaning")
+                .Include(r => r.RoomType)
+                .Select(r => new RoomGetDto
+                {
+                    Id = r.Id,
+                    RoomNumber = r.RoomNumber,
+                    Status = r.Status,
+                    RoomTypeName = r.RoomType.Name
+                })
+                .OrderBy(r => r.RoomNumber)
+                .ToListAsync();
         }
     }
 }

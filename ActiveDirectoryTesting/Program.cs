@@ -32,9 +32,7 @@ namespace ActiveDirectoryTesting
                         case "4": _adService.SearchUsers(); break;
                         case "5": _adService.SearchGroups(); break;
                         case "6": UpdateConfig(); break;
-                        case "7": _adService.TestConnection(); break;
                         case "8": _adService.ShowAdvancedSearchMenu(); break;
-                        case "9": _adService.ShowCurrentUserInfo(); break;
                         case "0": Console.WriteLine("Farvel!"); return;
                         default: Console.WriteLine("Ugyldigt valg. Prøv igen."); break;
                     }
