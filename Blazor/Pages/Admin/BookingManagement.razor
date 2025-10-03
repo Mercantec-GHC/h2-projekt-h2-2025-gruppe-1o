@@ -4,6 +4,7 @@
 @using DomainModels.DTOs
 @using System.Globalization
 @using DomainModels.Enums
+@using System.Security.Claims
 @inject APIService ApiService
 @inject TicketSignalRService SignalRService
 @inject NavigationManager Navigation
@@ -14,6 +15,13 @@
 <div class="booking-management-page">
     <h1 class="page-title">Booking Management</h1>
     <p class="page-subtitle">Oversigt over bookinger, gæsteaktivitet og support.</p>
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert @(_isStatusSuccess ? "alert-success" : "alert-danger")" role="alert">
+            @_statusMessage
+        </div>
+    }
 
     <div class="card shadow-sm mb-4">
         <div class="card-body">
@@ -88,8 +96,18 @@
                             <td>@booking.CheckOutDate.ToString("dd/MM/yyyy")</td>
                             <td><span class="badge @GetStatusClass(booking.Status)">@booking.Status</span></td>
                             <td class="text-end">
-                                <button class="btn btn-sm btn-icon"><i class="bi bi-eye-fill"></i></button>
-                                <button class="btn btn-sm btn-icon"><i class="bi bi-pencil-fill"></i></button>
+                                @if (booking.Status == "Confirmed" && booking.CheckInDate.Date == DateTime.UtcNow.Date)
+                                {
+                                    <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="@(() => HandleStatusUpdate(booking.Id, "CheckedIn"))" Disabled="@_isSubmitting">
+                                        Check-in
+                                    </ActionButton>
+                                }
+                                else if (booking.Status == "CheckedIn" && booking.CheckOutDate.Date == DateTime.UtcNow.Date)
+                                {
+                                    <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="@(() => HandleStatusUpdate(booking.Id, "CheckedOut"))" Disabled="@_isSubmitting">
+                                        Check-ud
+                                    </ActionButton>
+                                }
                             </td>
                         </tr>
                     }
@@ -98,13 +116,11 @@
         </div>
     }
 
-    <AuthorizeView Roles="Receptionist" Context="receptionistAuthContext">
+    <AuthorizeView Roles="Receptionist">
         <div class="receptionist-section">
             <hr class="my-5" />
-
             <h2 class="section-title">Dagens Status & Walk-in Booking</h2>
             <p class="section-subtitle">Få et hurtigt overblik over ledige værelser og opret bookinger for walk-in gæster.</p>
-
             @if (_roomTypeAvailability == null)
             {
                 <p><em>Indlæser værelsesstatus...</em></p>
@@ -129,7 +145,6 @@
                     }
                 </div>
             }
-
             @if (_selectedRoomTypeForWalkIn is not null)
             {
                 <div class="card shadow-sm mt-4 walk-in-form">
@@ -140,7 +155,6 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        @* --- START: OPDATERET LOGIK FOR BEKRÆFTELSES-SKÆRM --- *@
                         @if (_lastCreatedBooking is not null)
                         {
                             <div class="text-center p-4">
@@ -153,15 +167,13 @@
                         }
                         else
                         {
-                            <EditForm Model="_walkInBooking" OnValidSubmit="HandleWalkInSubmit">
+                            <EditForm Model="_walkInBooking" OnValidSubmit="HandleWalkInSubmit" Context="walkInFormContext">
                                 <DataAnnotationsValidator />
                                 <ValidationSummary class="text-danger" />
-
                                 @if (!string.IsNullOrEmpty(_walkInStatusMessage))
                                 {
                                     <div class="alert @(_walkInSuccess ? "alert-success" : "alert-danger")">@_walkInStatusMessage</div>
                                 }
-
                                 <div class="row g-3">
                                     <div class="col-md-6"><div class="form-group"><label>Fornavn</label><InputText class="form-control" @bind-Value="_walkInBooking.FirstName" /></div></div>
                                     <div class="col-md-6"><div class="form-group"><label>Efternavn</label><InputText class="form-control" @bind-Value="_walkInBooking.LastName" /></div></div>
@@ -171,7 +183,6 @@
                                     <div class="col-md-4"><div class="form-group"><label>Check-ud</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckOutDate" /></div></div>
                                     <div class="col-md-4"><div class="form-group"><label>Antal Gæster</label><InputNumber class="form-control" @bind-Value="_walkInBooking.GuestCount" min="1" /></div></div>
                                 </div>
-
                                 @if (_selectedRoomTypeDetails?.Services?.Any() == true)
                                 {
                                     <hr class="my-4" />
@@ -198,23 +209,18 @@
                                         </details>
                                     }
                                 }
-
                                 <div class="d-flex justify-content-between align-items-center mt-4">
                                     <h4 class="mb-0">Totalpris: <strong>@CalculateTotalPrice().ToString("C0", _danishCulture)</strong></h4>
                                     <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Opret Booking</ActionButton>
                                 </div>
                             </EditForm>
                         }
-                        @* --- SLUT: OPDATERET LOGIK FOR BEKRÆFTELSES-SKÆRM --- *@
                     </div>
                 </div>
             }
-
             <hr class="my-5" />
-
             <h2 class="section-title">Værelsesstatus & Housekeeping</h2>
             <p class="section-subtitle">Se status på alle hotellets værelser og anmod om rengøring.</p>
-
             @if (_allPhysicalRooms == null)
             {
                 <p><em>Indlæser værelsesliste...</em></p>
@@ -272,7 +278,6 @@
                 <div class="col-md-3"><div class="card text-center shadow-sm h-100"><div class="card-body"><i class="bi bi-cash-stack fs-1 text-primary"></i><h4 class="mt-2">@_stats.TodaysRevenue.ToString("N0") kr.</h4><p class="text-muted mb-0">Omsætning</p></div></div></div>
             </div>
         }
-
         <div class="d-flex justify-content-between align-items-center mt-5 mb-3">
             <h2 class="mb-0">Support Sager</h2>
             <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
@@ -311,7 +316,6 @@
     </AuthorizeView>
 </div>
 
-@* --- START: NY CSS-BLOK TIL HOVER-EFFEKT --- *@
 <style>
     .admin-room-card {
         border: 1px solid #dee2e6;
@@ -325,23 +329,21 @@
             border-color: #0d6efd;
         }
 </style>
-@* --- SLUT: NY CSS-BLOK TIL HOVER-EFFEKT --- *@
 
 @code {
     private bool _isLoading = true;
     private string _activeTab = "arrivals";
-
     private List<BookingSummaryDto> _allBookings = new();
     private List<BookingSummaryDto> _arrivals = new();
     private List<BookingSummaryDto> _departures = new();
-
+    private string? _statusMessage;
+    private bool _isStatusSuccess;
+    private bool _isSubmitting;
     private DailyStatsDto? _stats;
     private List<TicketSummaryDto>? _closedTickets;
-
     private string _searchTerm = "";
     private DateTime? _dateFilter;
     private string _statusFilter = "";
-
     private List<RoomTypeCardDto>? _roomTypeAvailability;
     private List<RoomGetDto>? _allPhysicalRooms;
     private WalkInBookingDto _walkInBooking = new();
@@ -349,17 +351,11 @@
     private string? _walkInStatusMessage;
     private bool _walkInSuccess;
     private string _housekeepingSearchTerm = "";
-
     private RoomTypeDetailDto? _selectedRoomTypeDetails;
     private readonly CultureInfo _danishCulture = new("da-DK");
-
-    // NY STATE-VARIABEL TIL BEKRÆFTELSES-SKÆRM
     private BookingGetDto? _lastCreatedBooking;
 
-    private IEnumerable<RoomGetDto> FilteredPhysicalRooms =>
-        _allPhysicalRooms?.Where(r => string.IsNullOrWhiteSpace(_housekeepingSearchTerm) ||
-                                      r.RoomNumber.Contains(_housekeepingSearchTerm, StringComparison.OrdinalIgnoreCase)) ??
-        Enumerable.Empty<RoomGetDto>();
+    private IEnumerable<RoomGetDto> FilteredPhysicalRooms => _allPhysicalRooms?.Where(r => string.IsNullOrWhiteSpace(_housekeepingSearchTerm) || r.RoomNumber.Contains(_housekeepingSearchTerm, StringComparison.OrdinalIgnoreCase)) ?? Enumerable.Empty<RoomGetDto>();
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
@@ -368,58 +364,68 @@
     {
         var authState = await AuthStateTask;
         var user = authState.User;
-
         var token = await ApiService.GetAuthTokenAsync();
         await SignalRService.StartConnectionAsync(token);
-
-        SignalRService.OnNewTicketReceived += async (ticket) => await ReloadManagerTickets();
-        SignalRService.OnStatusChanged += async (ticketId, status) => await ReloadManagerTickets();
+        SignalRService.OnNewTicketReceived += ReloadManagerTicketsWrapper;
+        SignalRService.OnStatusChanged += ReloadManagerTicketsWrapper;
         SignalRService.OnRoomStatusChanged += HandleRoomStatusChanged;
-
         await LoadData(user);
     }
 
     private async Task LoadData(ClaimsPrincipal user)
     {
         _isLoading = true;
-
         var allBookingsTask = ApiService.GetBookingsForAdminAsync();
         Task<DailyStatsDto?>? statsTask = null;
         Task<List<TicketSummaryDto>?>? closedTicketsTask = null;
         Task<List<RoomTypeCardDto>?>? roomAvailabilityTask = null;
         Task<List<RoomGetDto>?>? allRoomsTask = null;
-
         if (user.IsInRole("Manager"))
         {
             statsTask = ApiService.GetDashboardStatsAsync();
             closedTicketsTask = ApiService.GetClosedTicketsForMyRoleAsync();
         }
-
-        if (user.IsInRole("Receptionist"))
+        if (user.IsInRole("Receptionist") || user.IsInRole("Manager"))
         {
             roomAvailabilityTask = ApiService.GetRoomTypeAvailabilitySummaryAsync();
             allRoomsTask = ApiService.GetAllRoomsAsync();
         }
-
         await Task.WhenAll(allBookingsTask, statsTask ?? Task.CompletedTask, closedTicketsTask ?? Task.CompletedTask,
                            roomAvailabilityTask ?? Task.CompletedTask, allRoomsTask ?? Task.CompletedTask);
-
         _allBookings = allBookingsTask.Result ?? new();
         if (statsTask != null) _stats = await statsTask;
         if (closedTicketsTask != null) _closedTickets = await closedTicketsTask ?? new();
         if (roomAvailabilityTask != null) _roomTypeAvailability = await roomAvailabilityTask ?? new();
         if (allRoomsTask != null) _allPhysicalRooms = (await allRoomsTask ?? new()).OrderBy(r => r.RoomNumber).ToList();
-
         FilterLocalLists();
         _isLoading = false;
     }
 
+    private async Task HandleStatusUpdate(string bookingId, string newStatus)
+    {
+        _isSubmitting = true;
+        _statusMessage = null;
+        var (success, message) = await ApiService.UpdateBookingStatusAsync(bookingId, newStatus);
+        _isStatusSuccess = success;
+        _statusMessage = message;
+        if (success)
+        {
+            var booking = _allBookings.FirstOrDefault(b => b.Id == bookingId);
+            if (booking != null)
+            {
+                booking.Status = newStatus;
+            }
+            FilterLocalLists();
+        }
+        _isSubmitting = false;
+        StateHasChanged();
+    }
+
     private async Task SelectRoomTypeForWalkIn(RoomTypeCardDto roomType)
     {
-        ResetWalkInForm(); // Nulstil altid først
+        ResetWalkInForm();
         _selectedRoomTypeForWalkIn = roomType;
         _selectedRoomTypeDetails = await ApiService.GetRoomTypeByIdAsync(roomType.Id);
-
         _walkInBooking = new WalkInBookingDto
         {
             RoomTypeId = roomType.Id,
@@ -437,7 +443,6 @@
         _lastCreatedBooking = null;
     }
 
-    // NY METODE TIL AT NULSTILLE FORMULAREN
     private void ResetWalkInForm()
     {
         _walkInBooking = new();
@@ -447,17 +452,8 @@
 
     private void ToggleServiceSelection(int serviceId, bool isChecked)
     {
-        if (isChecked)
-        {
-            if (!_walkInBooking.ServiceIds.Contains(serviceId))
-            {
-                _walkInBooking.ServiceIds.Add(serviceId);
-            }
-        }
-        else
-        {
-            _walkInBooking.ServiceIds.Remove(serviceId);
-        }
+        if (isChecked) { if (!_walkInBooking.ServiceIds.Contains(serviceId)) { _walkInBooking.ServiceIds.Add(serviceId); } }
+        else { _walkInBooking.ServiceIds.Remove(serviceId); }
         StateHasChanged();
     }
 
@@ -465,16 +461,14 @@
     {
         _walkInStatusMessage = "Opretter booking...";
         StateHasChanged();
-
         var (success, message, newBooking) = await ApiService.CreateWalkInBookingAsync(_walkInBooking);
         _walkInSuccess = success;
-
         if (success && newBooking != null)
         {
-            _lastCreatedBooking = newBooking; // Sæt den nye booking for at vise bekræftelse
+            _lastCreatedBooking = newBooking;
             _walkInStatusMessage = null;
             var authState = await AuthStateTask;
-            await LoadData(authState.User); // Genindlæs data i baggrunden
+            await LoadData(authState.User);
         }
         else
         {
@@ -485,12 +479,9 @@
     private decimal CalculateTotalPrice()
     {
         if (_selectedRoomTypeDetails == null) return 0;
-
         var nights = (_walkInBooking.CheckOutDate - _walkInBooking.CheckInDate).Days;
         if (nights <= 0) return 0;
-
         var roomPrice = _selectedRoomTypeDetails.BasePrice * nights;
-
         var servicesPrice = _selectedRoomTypeDetails.Services
             .Where(s => _walkInBooking.ServiceIds.Contains(s.Id))
             .Sum(s =>
@@ -504,7 +495,6 @@
                     _ => s.Price
                 };
             });
-
         return roomPrice + servicesPrice;
     }
 
@@ -532,6 +522,8 @@
         }
     }
 
+    private async void ReloadManagerTicketsWrapper(TicketSummaryDto ticket) => await ReloadManagerTickets();
+    private async void ReloadManagerTicketsWrapper(string ticketId, TicketStatus status) => await ReloadManagerTickets();
     private async Task ReloadManagerTickets()
     {
         var authState = await AuthStateTask;
@@ -552,21 +544,10 @@
             "departures" => _departures,
             _ => _allBookings
         };
-
         var filtered = sourceList.AsEnumerable();
-        if (!string.IsNullOrEmpty(_searchTerm))
-        {
-            filtered = filtered.Where(b => b.GuestFullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) || b.Id.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
-        }
-        if (!string.IsNullOrEmpty(_statusFilter))
-        {
-            filtered = filtered.Where(b => b.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase));
-        }
-        if (_dateFilter.HasValue)
-        {
-            filtered = filtered.Where(b => b.CheckInDate.Date <= _dateFilter.Value.Date && b.CheckOutDate.Date > _dateFilter.Value.Date);
-        }
-
+        if (!string.IsNullOrEmpty(_searchTerm)) { filtered = filtered.Where(b => b.GuestFullName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) || b.Id.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase)); }
+        if (!string.IsNullOrEmpty(_statusFilter)) { filtered = filtered.Where(b => b.Status.Equals(_statusFilter, StringComparison.OrdinalIgnoreCase)); }
+        if (_dateFilter.HasValue) { filtered = filtered.Where(b => b.CheckInDate.Date <= _dateFilter.Value.Date && b.CheckOutDate.Date > _dateFilter.Value.Date); }
         return filtered.ToList();
     }
 
@@ -614,8 +595,8 @@
 
     public void Dispose()
     {
-        SignalRService.OnNewTicketReceived -= async (ticket) => await ReloadManagerTickets();
-        SignalRService.OnStatusChanged -= async (ticketId, status) => await ReloadManagerTickets();
+        SignalRService.OnNewTicketReceived -= ReloadManagerTicketsWrapper;
+        SignalRService.OnStatusChanged -= ReloadManagerTicketsWrapper;
         SignalRService.OnRoomStatusChanged -= HandleRoomStatusChanged;
     }
 }

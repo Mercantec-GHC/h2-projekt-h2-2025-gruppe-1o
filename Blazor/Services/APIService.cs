@@ -54,6 +54,15 @@ namespace Blazor.Services
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<(bool Success, string Message)> UpdateBookingStatusAsync(string bookingId, string newStatus)
+        {
+            await EnsureAuthHeaderAsync();
+            var updateDto = new BookingStatusUpdateDto { NewStatus = newStatus };
+            var response = await _httpClient.PutAsJsonAsync($"api/bookings/{bookingId}/status", updateDto);
+            var content = await response.Content.ReadFromJsonAsync<ApiResponse>();
+            return (response.IsSuccessStatusCode, content?.Message ?? "Ukendt svar fra server.");
+        }
+
         public async Task<List<RoomGetDto>> GetAllRoomsAsync()
         {
             await EnsureAuthHeaderAsync();
@@ -344,7 +353,8 @@ namespace Blazor.Services
         }
     }
 
-    // DTO-klasser til Active Directory Læsning
+    // DTOs og hjælpeklasser
+    public class BookingStatusUpdateDto { public string NewStatus { get; set; } = string.Empty; }
     public class ADUserDto
     {
         public string Name { get; set; } = string.Empty;
@@ -352,7 +362,6 @@ namespace Blazor.Services
         public string Email { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public List<string> Groups { get; set; } = new List<string>();
-        // Tilføjet for at kunne vise status i UI
         public bool IsEnabled { get; set; }
     }
     public class ADGroupDto
@@ -361,8 +370,6 @@ namespace Blazor.Services
         public string Description { get; set; } = string.Empty;
         public List<string> Members { get; set; } = new List<string>();
     }
-
-    // DTO-klasser til Active Directory Administration
     public class CreateUserDto
     {
         public string Username { get; set; } = string.Empty;
@@ -374,8 +381,6 @@ namespace Blazor.Services
     public class ResetPasswordDto { public string NewPassword { get; set; } = string.Empty; }
     public class SetUserStatusDto { public bool IsEnabled { get; set; } }
     public class GroupMemberDto { public string Username { get; set; } = string.Empty; }
-
-    // Interne hjælpe-klasser
     internal class ApiResponse { public string? Message { get; set; } }
     public class LoginResult { public string? Token { get; set; } }
     public class StaffLoginResult { public string? Token { get; set; } public StaffUser? User { get; set; } }
