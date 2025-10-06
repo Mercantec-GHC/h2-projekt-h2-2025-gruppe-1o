@@ -7,10 +7,7 @@
 
 <div class="ad-dashboard-page">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h1 class="page-title">Active Directory Dashboard</h1>
-            <p class="page-subtitle">Oversigt over brugere og grupper i organisationens Active Directory.</p>
-        </div>
+        <PageHeader Title="Active Directory Dashboard" Subtitle="Oversigt over brugere og grupper i organisationens Active Directory." />
         <div>
             <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="OpenCreateUserModal">
                 <i class="bi bi-plus-circle-fill me-2"></i>Opret Ny Bruger
@@ -129,138 +126,83 @@
     }
 </div>
 
-@* --- MODALS FOR ADMINISTRATIVE ACTIONS (STYRET AF C# OG CSS) --- *@
-@if (_showCreateUserModal || _showResetPasswordModal || _showUserStatusModal || _showManageGroupsModal)
-{
-    <div class="modal-backdrop fade show"></div>
-}
+@* --- MODALS VIA GENBRUGELIG COMPONENT --- *@
+<Modal Title="Opret Ny Bruger" IsVisible="_showCreateUserModal" OnClose="CloseModals">
+    <Body>
+        <EditForm Model="_createUserDto" OnValidSubmit="HandleCreateUserSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary class="text-danger mb-3" />
+            <div class="mb-3"><label class="form-label">Fornavn</label><InputText class="form-control" @bind-Value="_createUserDto.FirstName" /></div>
+            <div class="mb-3"><label class="form-label">Efternavn</label><InputText class="form-control" @bind-Value="_createUserDto.LastName" /></div>
+            <div class="mb-3"><label class="form-label">Brugernavn</label><InputText class="form-control" @bind-Value="_createUserDto.Username" /></div>
+            <div class="mb-3"><label class="form-label">Email</label><InputText type="email" class="form-control" @bind-Value="_createUserDto.Email" /></div>
+            <div class="mb-3"><label class="form-label">Adgangskode</label><InputText type="password" class="form-control" @bind-Value="_createUserDto.Password" /></div>
+        </EditForm>
+    </Body>
+    <Footer>
+        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+        <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="HandleCreateUserSubmit" Disabled="_isSubmitting">Opret Bruger</ActionButton>
+    </Footer>
+</Modal>
 
-<div class="modal fade @(_showCreateUserModal ? "show d-block" : "")" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Opret Ny Bruger</h5>
-                <button type="button" class="btn-close" @onclick="CloseModals"></button>
+<Modal Title="@($"Nulstil Adgangskode for {_selectedUser?.DisplayName}")" IsVisible="_showResetPasswordModal" OnClose="CloseModals">
+    <Body>
+        <EditForm Model="_resetPasswordDto" OnValidSubmit="HandleResetPasswordSubmit">
+            <DataAnnotationsValidator />
+            <div class="mb-3">
+                <label class="form-label">Ny Adgangskode</label>
+                <InputText type="password" class="form-control" @bind-Value="_resetPasswordDto.NewPassword" />
+                <ValidationMessage For="@(() => _resetPasswordDto.NewPassword)" />
             </div>
-            <div class="modal-body">
-                <EditForm Model="_createUserDto" OnValidSubmit="HandleCreateUserSubmit">
-                    <DataAnnotationsValidator />
-                    <ValidationSummary class="text-danger mb-3" />
-                    <div class="mb-3"><label class="form-label">Fornavn</label><InputText class="form-control" @bind-Value="_createUserDto.FirstName" /></div>
-                    <div class="mb-3"><label class="form-label">Efternavn</label><InputText class="form-control" @bind-Value="_createUserDto.LastName" /></div>
-                    <div class="mb-3"><label class="form-label">Brugernavn</label><InputText class="form-control" @bind-Value="_createUserDto.Username" /></div>
-                    <div class="mb-3"><label class="form-label">Email</label><InputText type="email" class="form-control" @bind-Value="_createUserDto.Email" /></div>
-                    <div class="mb-3"><label class="form-label">Adgangskode</label><InputText type="password" class="form-control" @bind-Value="_createUserDto.Password" /></div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
-                        <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">
-                            @if (_isSubmitting)
-                            {
-                                <span class="spinner-border spinner-border-sm"></span>
-                            }
-                            else
-                            {
+        </EditForm>
+    </Body>
+    <Footer>
+        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+        <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="HandleResetPasswordSubmit" Disabled="_isSubmitting">Gem</ActionButton>
+    </Footer>
+</Modal>
 
-                                <span>Opret Bruger</span>
-                            }
-                        </button>
-                    </div>
-                </EditForm>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade @(_showResetPasswordModal ? "show d-block" : "")" tabindex="-1">
-    @if (_selectedUser != null)
-    {
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Nulstil Adgangskode for @_selectedUser.DisplayName</h5><button type="button" class="btn-close" @onclick="CloseModals"></button></div>
-                <div class="modal-body">
-                    <EditForm Model="_resetPasswordDto" OnValidSubmit="HandleResetPasswordSubmit">
-                        <DataAnnotationsValidator />
-                        <div class="mb-3">
-                            <label class="form-label">Ny Adgangskode</label>
-                            <InputText type="password" class="form-control" @bind-Value="_resetPasswordDto.NewPassword" />
-                            <ValidationMessage For="@(() => _resetPasswordDto.NewPassword)" />
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">@if (_isSubmitting) {
-                            <span class="spinner-border spinner-border-sm"></span>
-                        }
-                        else
-                        {
-
-                            <span>Gem</span>
-                        }
-</button>
-                    </div>
-                </EditForm>
-            </div>
-        </div>
-    </div>
+<Modal Title="Bekræft Handling" IsVisible="_showUserStatusModal" OnClose="CloseModals">
+    <Body>
+        @if (_selectedUser != null)
+        {
+            <p>Er du sikker på, at du vil <strong>@(_selectedUser.IsEnabled ? "deaktivere" : "aktivere")</strong> brugeren @_selectedUser.DisplayName?</p>
         }
-</div>
+    </Body>
+    <Footer>
+        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+        <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleUserStatusSubmit" Disabled="_isSubmitting">Bekræft</ActionButton>
+    </Footer>
+</Modal>
 
-<div class="modal fade @(_showUserStatusModal ? "show d-block" : "")" tabindex="-1">
-    @if (_selectedUser != null)
-    {
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Bekræft Handling</h5><button type="button" class="btn-close" @onclick="CloseModals"></button></div>
-                <div class="modal-body">Er du sikker på, at du vil <strong>@(_selectedUser.IsEnabled ? "deaktivere" : "aktivere")</strong> brugeren @_selectedUser.DisplayName?</div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
-                    <button type="button" class="btn btn-danger" @onclick="HandleUserStatusSubmit" disabled="@_isSubmitting">@if (_isSubmitting) {
-                    <span class="spinner-border spinner-border-sm"></span>
-                }
-                else
-                {
-
-                    <span>Bekræft</span>
-                }
-</button>
-            </div>
-        </div>
-    </div>
-        }
-</div>
-
-<div class="modal fade @(_showManageGroupsModal ? "show d-block" : "")" tabindex="-1">
-    @if (_selectedUser != null)
-    {
-        <div class="modal-dialog modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header"><h5 class="modal-title">Administrér Grupper for @_selectedUser.DisplayName</h5><button type="button" class="btn-close" @onclick="CloseModals"></button></div>
-                <div class="modal-body">
-                    @foreach (var group in _adGroups.OrderBy(g => g.Name))
-                    {
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="group-@group.Name" checked="@_groupManagementState[group.Name]" @onchange="(e) => _groupManagementState[group.Name] = (bool)e.Value" />
-                            <label class="form-check-label" for="group-@group.Name">@group.Name</label>
-                        </div>
-                    }
+<Modal Title="@($"Administrér Grupper for {_selectedUser?.DisplayName}")" IsVisible="_showManageGroupsModal" OnClose="CloseModals" Size="Modal.ModalSize.Scrollable">
+    <Body>
+        @if (_selectedUser != null)
+        {
+            @foreach (var group in _adGroups.OrderBy(g => g.Name))
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="group-@group.Name" checked="@_groupManagementState[group.Name]" @onchange="(e) => _groupManagementState[group.Name] = (bool)e.Value" />
+                    <label class="form-check-label" for="group-@group.Name">@group.Name</label>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
-                    <button type="button" class="btn btn-primary" @onclick="HandleManageGroupsSubmit" disabled="@_isSubmitting">@if (_isSubmitting) {
-                    <span class="spinner-border spinner-border-sm"></span>
-                }
-                else
-                {
-
-                    <span>Gem Ændringer</span>
-                }
-</button>
-            </div>
-        </div>
-    </div>
+            }
         }
-</div>
+    </Body>
+    <Footer>
+        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Annuller</button>
+        <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="HandleManageGroupsSubmit" Disabled="_isSubmitting">Gem Ændringer</ActionButton>
+    </Footer>
+</Modal>
+
 
 @code {
+    @* --- FORKLARING ---
+    - Al den duplikerede HTML-markup for de fire modal-dialoger er blevet fjernet.
+    - Siden anvender nu den nye, genbrugelige `<Modal>` component til at vise dialogerne.
+    - Hver modal defineres nu deklarativt ved kun at specificere sit unikke indhold (Title, Body, Footer).
+    - Dette reducerer filstørrelsen markant og gør koden langt mere læsbar og vedligeholdelsesvenlig.
+    --- *@
+
     private bool _isLoading = true;
     private string? _errorMessage;
     private string _userSearchTerm = string.Empty;
@@ -269,7 +211,6 @@
     private List<ADUserDto> _adUsers = new();
     private List<ADGroupDto> _adGroups = new();
 
-    // State for modals and actions
     private bool _isSubmitting = false;
     private string? _statusMessage;
     private bool _isStatusSuccess;
@@ -278,7 +219,6 @@
     private ResetPasswordDto _resetPasswordDto = new();
     private Dictionary<string, bool> _groupManagementState = new();
 
-    // Modal visibility flags
     private bool _showCreateUserModal;
     private bool _showResetPasswordModal;
     private bool _showUserStatusModal;
@@ -306,11 +246,11 @@
         StateHasChanged();
     }
 
-    // --- Modal Control ---
     private void OpenCreateUserModal() { _createUserDto = new(); _showCreateUserModal = true; }
     private void OpenResetPasswordModal(ADUserDto user) { _selectedUser = user; _resetPasswordDto = new(); _showResetPasswordModal = true; }
     private void OpenUserStatusModal(ADUserDto user) { _selectedUser = user; _showUserStatusModal = true; }
     private void OpenManageGroupsModal(ADUserDto user) { _selectedUser = user; _groupManagementState = _adGroups.ToDictionary(g => g.Name, g => user.Groups.Contains(g.Name)); _showManageGroupsModal = true; }
+
     private void CloseModals()
     {
         _showCreateUserModal = false;
@@ -321,7 +261,6 @@
         _isSubmitting = false;
     }
 
-    // --- Form Submit Handlers ---
     private async Task HandleCreateUserSubmit()
     {
         _isSubmitting = true;

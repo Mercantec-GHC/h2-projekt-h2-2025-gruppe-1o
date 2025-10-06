@@ -116,155 +116,55 @@
     }
 
     <AuthorizeView Roles="Receptionist">
-        <div class="receptionist-section">
-            <hr class="my-5" />
-            <PageHeader Title="Dagens Status & Walk-in Booking" Subtitle="Få et hurtigt overblik over ledige værelser og opret bookinger for walk-in gæster." />
+        <hr class="my-5" />
+        <WalkInBooking AvailableRoomTypes="_roomTypeAvailability" OnBookingCreated="ReloadData" />
 
-            @if (_roomTypeAvailability == null)
-            {
-                <p><em>Indlæser værelsesstatus...</em></p>
-            }
-            else
-            {
-                <div class="row g-4">
-                    @foreach (var roomType in _roomTypeAvailability)
-                    {
-                        <div class="col-md-4">
-                            <div class="card h-100 shadow-sm admin-room-card" @onclick="() => SelectRoomTypeForWalkIn(roomType)">
-                                <img src="@ImageHelper.GetRoomImagePath(roomType.Name)" class="card-img-top" alt="@roomType.Name" />
-                                <div class="card-body">
-                                    <h5 class="card-title">@roomType.Name</h5>
-                                    <p class="card-text text-success fw-bold">@roomType.AvailableCount ledige værelser</p>
-                                </div>
-                                <div class="card-footer">
-                                    <small class="text-muted">Klik for at oprette walk-in booking</small>
-                                </div>
-                            </div>
-                        </div>
-                    }
-                </div>
-            }
+        <hr class="my-5" />
+        <PageHeader Title="Værelsesstatus & Housekeeping" Subtitle="Se status på alle hotellets værelser og anmod om rengøring." />
 
-            @if (_selectedRoomTypeForWalkIn is not null)
-            {
-                <div class="card shadow-sm mt-4 walk-in-form">
-                    <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h4 class="mb-0">Opret Walk-in Booking for: @_selectedRoomTypeForWalkIn.Name</h4>
-                            <button class="btn-close" @onclick="CancelWalkIn"></button>
-                        </div>
+        @if (_allPhysicalRooms == null)
+        {
+            <p><em>Indlæser værelsesliste...</em></p>
+        }
+        else
+        {
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input type="text" class="form-control" placeholder="Søg på værelsesnummer..." @bind="_housekeepingSearchTerm" @bind:event="oninput" />
                     </div>
-                    <div class="card-body">
-                        @if (_lastCreatedBooking is not null)
-                        {
-                            <div class="text-center p-4">
-                                <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
-                                <h3 class="mt-3">Booking Gennemført!</h3>
-                                <p>Booking til <strong>@_lastCreatedBooking.UserFullName</strong> er nu oprettet.</p>
-                                <p>Booking ID: <strong>#@_lastCreatedBooking.Id.Substring(0, 6).ToUpper()</strong></p>
-                                <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="ResetWalkInForm">Opret ny walk-in booking</ActionButton>
-                            </div>
-                        }
-                        else
-                        {
-                            <EditForm Model="_walkInBooking" OnValidSubmit="HandleWalkInSubmit" Context="walkInFormContext">
-                                <DataAnnotationsValidator />
-                                <ValidationSummary class="text-danger" />
-                                @if (!string.IsNullOrEmpty(_walkInStatusMessage))
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Værelse</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Handling</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var room in FilteredPhysicalRooms)
                                 {
-                                    <div class="alert @(_walkInSuccess ? "alert-success" : "alert-danger")">@_walkInStatusMessage</div>
-                                }
-                                <div class="row g-3">
-                                    <div class="col-md-6"><div class="form-group"><label>Fornavn</label><InputText class="form-control" @bind-Value="_walkInBooking.FirstName" /></div></div>
-                                    <div class="col-md-6"><div class="form-group"><label>Efternavn</label><InputText class="form-control" @bind-Value="_walkInBooking.LastName" /></div></div>
-                                    <div class="col-md-6"><div class="form-group"><label>Email</label><InputText type="email" class="form-control" @bind-Value="_walkInBooking.Email" /></div></div>
-                                    <div class="col-md-6"><div class="form-group"><label>Telefon</label><InputText class="form-control" @bind-Value="_walkInBooking.PhoneNumber" /></div></div>
-                                    <div class="col-md-4"><div class="form-group"><label>Check-in</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckInDate" /></div></div>
-                                    <div class="col-md-4"><div class="form-group"><label>Check-ud</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckOutDate" /></div></div>
-                                    <div class="col-md-4"><div class="form-group"><label>Antal Gæster</label><InputNumber class="form-control" @bind-Value="_walkInBooking.GuestCount" min="1" /></div></div>
-                                </div>
-                                @if (_selectedRoomTypeDetails?.Services?.Any() == true)
-                                {
-                                    <hr class="my-4" />
-                                    <h3 class="h5">Tilføj Ekstra Luksus</h3>
-                                    @foreach (var group in _selectedRoomTypeDetails.Services.GroupBy(s => s.Category))
-                                    {
-                                        <details class="service-category-dropdown" open>
-                                            <summary>@group.Key</summary>
-                                            <div class="services-checklist">
-                                                @foreach (var service in group)
-                                                {
-                                                    <div class="service-check-item">
-                                                        <input type="checkbox" class="form-check-input" id="service-@service.Id" @onchange="(e) => ToggleServiceSelection(service.Id, (bool)e.Value)" />
-                                                        <label class="form-check-label" for="service-@service.Id">
-                                                            <div class="service-details">
-                                                                <span class="service-name">@service.Name</span>
-                                                                <span class="service-price">@service.Price.ToString("C0", _danishCulture)</span>
-                                                            </div>
-                                                            <small class="service-description">@service.Description</small>
-                                                        </label>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </details>
-                                    }
-                                }
-                                <div class="d-flex justify-content-between align-items-center mt-4">
-                                    <h4 class="mb-0">Totalpris: <strong>@CalculateTotalPrice().ToString("C0", _danishCulture)</strong></h4>
-                                    <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Opret Booking</ActionButton>
-                                </div>
-                            </EditForm>
-                        }
-                    </div>
-                </div>
-            }
-            <hr class="my-5" />
-            <PageHeader Title="Værelsesstatus & Housekeeping" Subtitle="Se status på alle hotellets værelser og anmod om rengøring." />
-
-            @if (_allPhysicalRooms == null)
-            {
-                <p><em>Indlæser værelsesliste...</em></p>
-            }
-            else
-            {
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <input type="text" class="form-control" placeholder="Søg på værelsesnummer..." @bind="_housekeepingSearchTerm" @bind:event="oninput" />
-                        </div>
-                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                            <table class="table table-sm table-striped">
-                                <thead>
                                     <tr>
-                                        <th>Værelse</th>
-                                        <th>Type</th>
-                                        <th>Status</th>
-                                        <th class="text-end">Handling</th>
+                                        <td>@room.RoomNumber</td>
+                                        <td>@room.RoomTypeName</td>
+                                        <td><StatusBadge Status="@room.Status" /></td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    disabled="@(room.Status == "NeedsCleaning")"
+                                                    @onclick="() => RequestCleaning(room.Id)">
+                                                Anmod om Rengøring
+                                            </button>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var room in FilteredPhysicalRooms)
-                                    {
-                                        <tr>
-                                            <td>@room.RoomNumber</td>
-                                            <td>@room.RoomTypeName</td>
-                                            <td><StatusBadge Status="@room.Status" /></td>
-                                            <td class="text-end">
-                                                <button class="btn btn-sm btn-outline-primary"
-                                                        disabled="@(room.Status == "NeedsCleaning")"
-                                                        @onclick="() => RequestCleaning(room.Id)">
-                                                    Anmod om Rengøring
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            }
-        </div>
+            </div>
+        }
     </AuthorizeView>
 
     <AuthorizeView Roles="Manager">
@@ -316,28 +216,7 @@
     </AuthorizeView>
 </div>
 
-<style>
-    .admin-room-card {
-        border: 1px solid #dee2e6;
-        transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        cursor: pointer;
-    }
-
-        .admin-room-card:hover {
-            transform: scale(1.03);
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-            border-color: #0d6efd;
-        }
-</style>
-
 @code {
-    @* --- FORKLARING ---
-    - Fjernet metoderne `GetStatusClass`, `GetRoomStatusClass` og `GetRoomImagePath`.
-    - Anvender nu den genbrugelige `<StatusBadge>` component til at vise status for bookinger og værelser.
-    - Anvender den statiske `ImageHelper.GetRoomImagePath` til at hente stier til værelsesbilleder.
-    - Anvender den nye `<PageHeader>` component til sektionstitler for at sikre et ensartet design.
-    --- *@
-
     private bool _isLoading = true;
     private string _activeTab = "arrivals";
     private List<BookingSummaryDto> _allBookings = new();
@@ -353,30 +232,33 @@
     private string _statusFilter = "";
     private List<RoomTypeCardDto>? _roomTypeAvailability;
     private List<RoomGetDto>? _allPhysicalRooms;
-    private WalkInBookingDto _walkInBooking = new();
-    private RoomTypeCardDto? _selectedRoomTypeForWalkIn;
-    private string? _walkInStatusMessage;
-    private bool _walkInSuccess;
     private string _housekeepingSearchTerm = "";
-    private RoomTypeDetailDto? _selectedRoomTypeDetails;
-    private readonly CultureInfo _danishCulture = new("da-DK");
-    private BookingGetDto? _lastCreatedBooking;
 
     private IEnumerable<RoomGetDto> FilteredPhysicalRooms => _allPhysicalRooms?.Where(r => string.IsNullOrWhiteSpace(_housekeepingSearchTerm) || r.RoomNumber.Contains(_housekeepingSearchTerm, StringComparison.OrdinalIgnoreCase)) ?? Enumerable.Empty<RoomGetDto>();
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthStateTask { get; set; } = default!;
+    private ClaimsPrincipal? _user;
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateTask;
-        var user = authState.User;
+        _user = authState.User;
+
         var token = await ApiService.GetAuthTokenAsync();
         await SignalRService.StartConnectionAsync(token);
         SignalRService.OnNewTicketReceived += ReloadManagerTicketsWrapper;
         SignalRService.OnStatusChanged += ReloadManagerTicketsWrapper;
         SignalRService.OnRoomStatusChanged += HandleRoomStatusChanged;
-        await LoadData(user);
+
+        await ReloadData();
+    }
+
+    private async Task ReloadData()
+    {
+        if (_user is null) return;
+        await LoadData(_user);
+        StateHasChanged();
     }
 
     private async Task LoadData(ClaimsPrincipal user)
@@ -387,6 +269,7 @@
         Task<List<TicketSummaryDto>?>? closedTicketsTask = null;
         Task<List<RoomTypeCardDto>?>? roomAvailabilityTask = null;
         Task<List<RoomGetDto>?>? allRoomsTask = null;
+
         if (user.IsInRole("Manager"))
         {
             statsTask = ApiService.GetDashboardStatsAsync();
@@ -397,13 +280,16 @@
             roomAvailabilityTask = ApiService.GetRoomTypeAvailabilitySummaryAsync();
             allRoomsTask = ApiService.GetAllRoomsAsync();
         }
+
         await Task.WhenAll(allBookingsTask, statsTask ?? Task.CompletedTask, closedTicketsTask ?? Task.CompletedTask,
                            roomAvailabilityTask ?? Task.CompletedTask, allRoomsTask ?? Task.CompletedTask);
+
         _allBookings = allBookingsTask.Result ?? new();
         if (statsTask != null) _stats = await statsTask;
         if (closedTicketsTask != null) _closedTickets = await closedTicketsTask ?? new();
         if (roomAvailabilityTask != null) _roomTypeAvailability = await roomAvailabilityTask ?? new();
         if (allRoomsTask != null) _allPhysicalRooms = (await allRoomsTask ?? new()).OrderBy(r => r.RoomNumber).ToList();
+
         FilterLocalLists();
         _isLoading = false;
     }
@@ -426,83 +312,6 @@
         }
         _isSubmitting = false;
         StateHasChanged();
-    }
-
-    private async Task SelectRoomTypeForWalkIn(RoomTypeCardDto roomType)
-    {
-        ResetWalkInForm();
-        _selectedRoomTypeForWalkIn = roomType;
-        _selectedRoomTypeDetails = await ApiService.GetRoomTypeByIdAsync(roomType.Id);
-        _walkInBooking = new WalkInBookingDto
-        {
-            RoomTypeId = roomType.Id,
-            CheckInDate = DateTime.Today,
-            CheckOutDate = DateTime.Today.AddDays(1),
-            GuestCount = 1,
-            ServiceIds = new List<int>()
-        };
-    }
-
-    private void CancelWalkIn()
-    {
-        _selectedRoomTypeForWalkIn = null;
-        _selectedRoomTypeDetails = null;
-        _lastCreatedBooking = null;
-    }
-
-    private void ResetWalkInForm()
-    {
-        _walkInBooking = new();
-        _walkInStatusMessage = null;
-        _lastCreatedBooking = null;
-    }
-
-    private void ToggleServiceSelection(int serviceId, bool isChecked)
-    {
-        if (isChecked) { if (!_walkInBooking.ServiceIds.Contains(serviceId)) { _walkInBooking.ServiceIds.Add(serviceId); } }
-        else { _walkInBooking.ServiceIds.Remove(serviceId); }
-        StateHasChanged();
-    }
-
-    private async Task HandleWalkInSubmit()
-    {
-        _walkInStatusMessage = "Opretter booking...";
-        StateHasChanged();
-        var (success, message, newBooking) = await ApiService.CreateWalkInBookingAsync(_walkInBooking);
-        _walkInSuccess = success;
-        if (success && newBooking != null)
-        {
-            _lastCreatedBooking = newBooking;
-            _walkInStatusMessage = null;
-            var authState = await AuthStateTask;
-            await LoadData(authState.User);
-        }
-        else
-        {
-            _walkInStatusMessage = message;
-        }
-    }
-
-    private decimal CalculateTotalPrice()
-    {
-        if (_selectedRoomTypeDetails == null) return 0;
-        var nights = (_walkInBooking.CheckOutDate - _walkInBooking.CheckInDate).Days;
-        if (nights <= 0) return 0;
-        var roomPrice = _selectedRoomTypeDetails.BasePrice * nights;
-        var servicesPrice = _selectedRoomTypeDetails.Services
-            .Where(s => _walkInBooking.ServiceIds.Contains(s.Id))
-            .Sum(s =>
-            {
-                Enum.TryParse(s.BillingType, out BillingType billingType);
-                return billingType switch
-                {
-                    BillingType.PerNight => s.Price * nights,
-                    BillingType.PerPerson => s.Price * _walkInBooking.GuestCount,
-                    BillingType.PerPersonPerNight => s.Price * nights * _walkInBooking.GuestCount,
-                    _ => s.Price
-                };
-            });
-        return roomPrice + servicesPrice;
     }
 
     private async Task RequestCleaning(int roomId)
