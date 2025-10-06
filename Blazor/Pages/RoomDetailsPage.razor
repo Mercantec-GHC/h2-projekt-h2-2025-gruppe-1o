@@ -1,11 +1,11 @@
 ﻿@page "/room/{id:int}"
-@attribute [Authorize]
+@using System.Globalization
+@using System.Net
+@using Blazor.Components
+@using Blazor.Models
 @using DomainModels
 @using DomainModels.DTOs
-@using Blazor.Models
-@using Blazor.Components
 @using Microsoft.AspNetCore.WebUtilities
-@using System.Globalization
 
 @inject APIService ApiService
 @inject NavigationManager Navigation
@@ -42,7 +42,20 @@ else if (_roomType != null)
                     <p><strong>Antal gæster:</strong> @_searchQuery.GuestCount</p>
                     <hr>
                     <p class="total-price"><strong>Totalpris: @CalculateTotalPrice().ToString("C0", _danishCulture)</strong></p>
-                    <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleConfirmBooking">Book Nu</ActionButton>
+
+                    <AuthorizeView>
+                        <Authorized>
+                            <ActionButton Type="ActionButton.ButtonType.Accent" OnClick="HandleConfirmBooking">Book Nu</ActionButton>
+                        </Authorized>
+                        <NotAuthorized>
+                            <div class="d-grid gap-2">
+                                <p class="text-center mb-2 text-muted">Du skal være logget ind for at booke.</p>
+                                <ActionButton Type="ActionButton.ButtonType.Primary" OnClick="GoToLogin">Log Ind</ActionButton>
+                                <ActionButton Type="ActionButton.ButtonType.Secondary" OnClick="GoToRegister">Opret Bruger</ActionButton>
+                            </div>
+                        </NotAuthorized>
+                    </AuthorizeView>
+
                 </div>
             }
             else
@@ -63,6 +76,14 @@ else
 }
 
 @code {
+    @* --- FORKLARING ---
+    - Fjernet `@attribute [Authorize]`, så siden nu er offentligt tilgængelig.
+    - I "Gennemfør din booking"-boksen er "Book Nu"-knappen nu pakket ind i en `<AuthorizeView>`.
+    - Hvis brugeren er logget ind (`<Authorized>`), vises "Book Nu"-knappen.
+    - Hvis brugeren ikke er logget ind (`<NotAuthorized>`), vises "Log Ind" og "Opret Bruger"-knapper i stedet.
+    - Tilføjet metoderne `GoToLogin` og `GoToRegister`, som sender brugeren videre med en `returnUrl`, så de kommer tilbage til denne side efter login/oprettelse.
+    --- *@
+
     [Parameter]
     public int Id { get; set; }
 
@@ -137,5 +158,17 @@ else
         var success = await ApiService.CreateBookingAsync(bookingDetails);
         if (success) Navigation.NavigateTo("/account");
         else _errorMessage = "Bookingen kunne ikke gennemføres. Værelset er muligvis blevet optaget i mellemtiden.";
+    }
+
+    private void GoToLogin()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+        Navigation.NavigateTo($"login?returnUrl={returnUrl}");
+    }
+
+    private void GoToRegister()
+    {
+        var returnUrl = Uri.EscapeDataString(Navigation.Uri);
+        Navigation.NavigateTo($"register?returnUrl={returnUrl}");
     }
 }

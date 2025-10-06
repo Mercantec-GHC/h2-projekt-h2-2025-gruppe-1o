@@ -22,13 +22,6 @@ namespace API.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Sender en e-mail asynkront ved hjælp af SendGrid.
-        /// </summary>
-        /// <param name="toEmail">Modtagerens e-mailadresse.</param>
-        /// <param name="subject">E-mailens emne.</param>
-        /// <param name="body">E-mailens indhold (skal være HTML).</param>
-        /// <returns>Returnerer true, hvis e-mailen blev accepteret af SendGrid API'et, ellers false.</returns>
         public async Task<bool> SendEmailAsync(string toEmail, string subject, string body)
         {
             try

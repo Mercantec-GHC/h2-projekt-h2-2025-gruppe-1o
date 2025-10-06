@@ -52,12 +52,12 @@
     font-family: 'Lato', sans-serif;
     font-size: 18px;
     color: #6C757D;
-    margin-top: -40px;
+    margin-top: 8px; /* RETTET: Fra -40px til 8px */
     margin-bottom: 48px;
 }
 
 .room-types-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 32px;
 }
