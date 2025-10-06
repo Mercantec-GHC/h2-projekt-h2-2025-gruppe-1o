@@ -9,8 +9,7 @@
 <PageTitle>Min Konto</PageTitle>
 
 <div class="page-section">
-    <h2 class="section-title">Min Konto</h2>
-    <p class="section-subtitle">Velkommen, @user?.Identity?.Name! Her kan du administrere dine oplysninger, bookinger og supportsager.</p>
+    <PageHeader Title="Min Konto" Subtitle="@($"Velkommen, {user?.Identity?.Name}! Her kan du administrere dine oplysninger, bookinger og supportsager.")" />
 
     <div class="account-grid">
         <div class="account-card">
@@ -102,15 +101,14 @@
                 <p>Henter sager...</p>
             }
             else if (OpenTickets.Any())
- @* --- RETTELSE: Tjekker nu den filtrerede liste --- *@
             {
                 <ul class="booking-list">
-                    @foreach (var ticket in OpenTickets) @* --- RETTELSE: Looper nu over den filtrerede liste --- *@
+                    @foreach (var ticket in OpenTickets)
                     {
                         <li @onclick="@(() => Navigation.NavigateTo($"/support/ticket/{ticket.Id}"))" style="cursor: pointer;">
                             <span class="booking-room">@ticket.Title</span>
                             <span class="booking-dates">@ticket.CreatedAt.ToString("dd-MM-yyyy HH:mm")</span>
-                            <span class="badge @GetTicketStatusClass(ticket.Status)">@ticket.Status</span>
+                            <StatusBadge Status="@ticket.Status" />
                         </li>
                     }
                 </ul>
@@ -135,7 +133,7 @@
                         <li>
                             <span class="booking-room">@booking.RoomTypeName</span>
                             <span class="booking-dates">@booking.CheckInDate.ToString("dd/MM/yyyy") - @booking.CheckOutDate.ToString("dd/MM/yyyy")</span>
-                            <span class="booking-status">@booking.Status</span>
+                            <StatusBadge Status="@booking.Status" />
                         </li>
                     }
                 </ul>
@@ -160,10 +158,8 @@
     private List<TicketSummaryDto> _myTickets = new();
     private bool _isLoadingTickets = true;
 
-    // --- START: NY FILTRERET LISTE ---
     private IEnumerable<TicketSummaryDto> OpenTickets =>
         _myTickets.Where(t => t.Status != TicketStatus.Closed).OrderByDescending(t => t.CreatedAt);
-    // --- SLUT: NY FILTRERET LISTE ---
 
     private bool _isEditingInfo = false;
     private UserDetailDto? _userDetailDto;
@@ -206,15 +202,6 @@
         _isLoadingBookings = false;
         _isLoadingTickets = false;
     }
-
-    private string GetTicketStatusClass(TicketStatus status) => status switch
-    {
-        TicketStatus.Open => "bg-success",
-        TicketStatus.PendingSupportReply => "bg-info",
-        TicketStatus.PendingCustomerReply => "bg-warning text-dark",
-        TicketStatus.Closed => "bg-secondary",
-        _ => "bg-dark"
-    };
 
     private void ToggleEditMode()
     {

@@ -18,7 +18,7 @@ else
     <div class="ticket-chat-container">
         <div class="chat-header">
             <h3>@_ticket.Title (#@_ticket.Id.Substring(0, 6).ToUpper())</h3>
-            <span class="badge @GetStatusClass(_ticket.Status)">@_ticket.Status.ToString()</span>
+            <StatusBadge Status="@_ticket.Status" />
         </div>
 
         @if (_ticket.Status == TicketStatus.PendingClosure && !IsStaff)
@@ -188,16 +188,6 @@ else
         var currentUserId = _user?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         return senderId == currentUserId;
     }
-
-    private string GetStatusClass(TicketStatus status) => status switch
-    {
-        TicketStatus.Open => "bg-primary",
-        TicketStatus.PendingSupportReply => "bg-info text-dark",
-        TicketStatus.PendingCustomerReply => "bg-warning text-dark",
-        TicketStatus.PendingClosure => "bg-danger",
-        TicketStatus.Closed => "bg-secondary",
-        _ => "bg-dark"
-    };
 
     public async ValueTask DisposeAsync()
     {

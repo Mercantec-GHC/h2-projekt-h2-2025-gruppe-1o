@@ -1,0 +1,57 @@
+﻿@using DomainModels.Enums
+<span class="badge @_cssClass">@_displayText</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public object? Status { get; set; }
+
+    private string _cssClass = "bg-dark";
+    private string _displayText = "Ukendt";
+
+    protected override void OnParametersSet()
+    {
+        switch (Status)
+        {
+            case string statusString:
+                SetFromString(statusString);
+                break;
+            case TicketStatus ticketStatus:
+                SetFromEnum(ticketStatus);
+                break;
+            default:
+                _cssClass = "bg-dark";
+                _displayText = "N/A";
+                break;
+        }
+    }
+
+    private void SetFromString(string status)
+    {
+        _displayText = status;
+        _cssClass = status.ToLowerInvariant() switch
+        {
+            "confirmed" => "bg-success",
+            "checkedin" => "bg-info text-dark",
+            "checkedout" => "bg-secondary",
+            "cancelled" => "bg-danger",
+            "clean" => "bg-success",
+            "needscleaning" => "bg-warning text-dark",
+            "occupied" => "bg-danger",
+            _ => "bg-dark"
+        };
+    }
+
+    private void SetFromEnum(TicketStatus status)
+    {
+        _displayText = status.ToString();
+        _cssClass = status switch
+        {
+            TicketStatus.Open => "bg-primary",
+            TicketStatus.PendingSupportReply => "bg-info text-dark",
+            TicketStatus.PendingCustomerReply => "bg-warning text-dark",
+            TicketStatus.PendingClosure => "bg-danger",
+            TicketStatus.Closed => "bg-secondary",
+            _ => "bg-dark"
+        };
+    }
+}

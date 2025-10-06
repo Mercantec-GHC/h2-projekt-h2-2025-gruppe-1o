@@ -8,10 +8,7 @@
 <PageTitle>Faciliteter - Flyhigh Hotel</PageTitle>
 
 <div class="container my-5">
-    <div class="text-center mb-5">
-        <h1 class="display-4">Vores Faciliteter</h1>
-        <p class="lead text-muted">Oplev de enestående omgivelser og services på Flyhigh Hotel.</p>
-    </div>
+    <PageHeader Title="Vores Faciliteter" Subtitle="Oplev de enestående omgivelser og services på Flyhigh Hotel." />
 
     <div class="row g-4 mb-5">
         <div class="col-lg-4 col-md-6">
@@ -85,7 +82,7 @@
             {
                 <div class="col-lg-4 col-md-6">
                     <div class="meeting-room-card @(IsRoomSelected(room) ? "selected" : "")" @onclick="() => SelectMeetingRoom(room)">
-                        <img src="@GetMeetingRoomImagePath(room.Name)" alt="@room.Name" />
+                        <img src="@ImageHelper.GetMeetingRoomImagePath(room.Name)" alt="@room.Name" />
                         <div class="meeting-room-card-body">
                             <h5>@room.Name</h5>
                             <span>Kapacitet: @room.Capacity personer</span>
@@ -181,6 +178,12 @@
 </div>
 
 @code {
+    @* --- FORKLARING ---
+    - Fjernet den lokale `GetMeetingRoomImagePath`-metode.
+    - Anvender nu den centraliserede `ImageHelper.GetMeetingRoomImagePath`.
+    - Anvender `<PageHeader>` til sidens titel.
+    --- *@
+
     private List<MeetingRoomGetDto>? _meetingRooms;
     private MeetingRoomGetDto? _selectedMeetingRoom;
     private List<TimeSlotDto>? _bookedSlots;
@@ -199,21 +202,6 @@
     {
         GenerateDayTimeSlots();
         _meetingRooms = await ApiService.GetMeetingRoomsAsync();
-    }
-
-    // Rettet: Nu henter den billeder direkte fra /images/ mappen
-    private string GetMeetingRoomImagePath(string roomName)
-    {
-        string imageName = roomName switch
-        {
-            "Bestyrelseslokalet" => "Bestyrelseslokalet.png",
-            "Konferencesalen" => "Konferencesalen.png",
-            "Grupperum Alfa" => "GrupperumAlfa.png", // Filnavnet uden mellemrum
-            "Grupperum Beta" => "GrupperumBeta.png", // Filnavnet uden mellemrum
-            "Auditoriet" => "Auditoriet.png",
-            _ => "default-image.png" // Et fallback-billede, hvis navnet ikke matcher
-        };
-        return $"images/{imageName}"; // Stien er nu direkte under /images/
     }
 
     private async Task SelectMeetingRoom(MeetingRoomGetDto room)

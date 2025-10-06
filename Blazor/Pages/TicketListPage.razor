@@ -10,7 +10,7 @@
 
 <div class="page-section">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="section-title">Oversigt over sager</h2>
+        <PageHeader Title="Oversigt over sager" />
         <ActionButton OnClick="@(() => Navigation.NavigateTo("/support/new"))">Opret Ny Sag</ActionButton>
     </div>
 
@@ -42,7 +42,7 @@
                         <td>#@ticket.Id.Substring(0, 6).ToUpper()</td>
                         <td>@ticket.Title</td>
                         <td>@ticket.Category</td>
-                        <td><span class="badge @GetStatusClass(ticket.Status)">@ticket.Status</span></td>
+                        <td><StatusBadge Status="@ticket.Status" /></td>
                         <td>@ticket.CreatedByName</td>
                         <td>@ticket.CreatedAt.ToString("dd-MM-yyyy HH:mm")</td>
                     </tr>
@@ -100,16 +100,6 @@
     {
         Navigation.NavigateTo($"/support/ticket/{ticketId}");
     }
-
-    private string GetStatusClass(DomainModels.Enums.TicketStatus status) => status switch
-    {
-        DomainModels.Enums.TicketStatus.Open => "bg-success",
-        DomainModels.Enums.TicketStatus.PendingSupportReply => "bg-info text-dark",
-        DomainModels.Enums.TicketStatus.PendingCustomerReply => "bg-warning text-dark",
-        DomainModels.Enums.TicketStatus.PendingClosure => "bg-danger",
-        DomainModels.Enums.TicketStatus.Closed => "bg-secondary",
-        _ => "bg-dark"
-    };
 
     public void Dispose()
     {

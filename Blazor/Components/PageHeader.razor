@@ -1,0 +1,22 @@
+﻿
+<div class="page-header-container mb-4">
+    <h1 class="page-title">@Title</h1>
+    @if (!string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <p class="page-subtitle">@Subtitle</p>
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Den primære overskrift.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// En valgfri undertekst, der vises under overskriften.
+    /// </summary>
+    [Parameter]
+    public string? Subtitle { get; set; }
+}

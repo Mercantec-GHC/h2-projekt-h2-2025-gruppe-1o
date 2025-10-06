@@ -22,7 +22,6 @@
             @foreach (var roomType in _availableRooms)
             {
                 <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
-                    @* RETTELSE: OnBookNowClicked er fjernet herfra *@
                     <RoomTypeCard RoomType="roomType"
                                   OnDetailsClicked="NavigateToRoomDetails" />
                 </div>

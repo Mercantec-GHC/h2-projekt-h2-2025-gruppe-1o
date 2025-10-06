@@ -20,13 +20,12 @@ else if (_roomType != null)
 {
     <div class="room-details-container">
         <div class="room-gallery">
-            <img src="@GetImageUrlForRoom(_roomType.Name)" alt="@_roomType.Name" />
+            <img src="@ImageHelper.GetRoomImagePath(_roomType.Name)" alt="@_roomType.Name" />
         </div>
         <div class="room-info">
             <h1>@_roomType.Name</h1>
             <p class="room-price">Fra <strong>@_roomType.BasePrice.ToString("C0", _danishCulture)</strong> / nat</p>
 
-            @* Bruger nu den lange, detaljerede beskrivelse *@
             <p class="room-description">@_roomType.LongDescription</p>
 
             <hr />
@@ -34,7 +33,6 @@ else if (_roomType != null)
             @if (_hasPreselectedDates)
             {
                 <div class="services-section">
-                    @* Overskrift er omdøbt *@
                     <h3 class="section-title">Ekstra Luksus</h3>
 
                     @foreach (var group in _roomType.Services.GroupBy(s => s.Category))
@@ -73,7 +71,6 @@ else if (_roomType != null)
             }
             else
             {
-                @* Bruger den opdaterede søgeform, der nu søger specifikt for dette rum *@
                 <BookingSearchForm SearchQueryModel="_searchQuery" RoomTypeId="Id" Title="Tjek ledighed for dette værelse" />
             }
 
@@ -93,9 +90,7 @@ else
     [Parameter]
     public int Id { get; set; }
 
-    // NYT: Definerer den danske kultur én gang for genbrug
-    private CultureInfo _danishCulture = new CultureInfo("da-DK");
-
+    private readonly CultureInfo _danishCulture = new("da-DK");
     private RoomTypeDetailDto? _roomType;
     private SearchQuery _searchQuery = new();
     private bool _isLoading = true;
@@ -173,21 +168,11 @@ else
             RoomTypeId = Id,
             CheckInDate = _searchQuery.CheckInDate.Value,
             CheckOutDate = _searchQuery.CheckOutDate.Value,
-            ServiceIds = _selectedServiceIds
+            ServiceIds = _selectedServiceIds,
+            GuestCount = _searchQuery.GuestCount
         };
         var success = await ApiService.CreateBookingAsync(bookingDetails);
         if (success) Navigation.NavigateTo("/account");
         else _errorMessage = "Bookingen kunne ikke gennemføres. Værelset er muligvis blevet optaget i mellemtiden.";
-    }
-
-    private string GetImageUrlForRoom(string roomName)
-    {
-        return roomName switch
-        {
-            "Standard Værelse" => "/images/room-standard.png",
-            "Deluxe Suite" => "/images/room-deluxe.png",
-            "Presidential Suite" => "/images/room-presidential.png",
-            _ => "/images/room-default.png"
-        };
     }
 }

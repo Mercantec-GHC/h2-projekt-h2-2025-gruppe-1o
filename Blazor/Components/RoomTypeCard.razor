@@ -2,7 +2,7 @@
 @using System.Globalization
 
 <div class="card h-100 shadow-sm">
-    <img src="@GetImageUrlForRoom(RoomType.Name)" class="card-img-top" alt="Billede af @RoomType.Name" style="height: 200px; object-fit: cover;">
+    <img src="@ImageHelper.GetRoomImagePath(RoomType.Name)" class="card-img-top" alt="Billede af @RoomType.Name" style="height: 200px; object-fit: cover;">
     <div class="card-body d-flex flex-column">
         <h5 class="card-title">@RoomType.Name</h5>
         <p class="card-text text-muted flex-grow-1">@RoomType.Description</p>
@@ -15,27 +15,21 @@
 </div>
 
 @code {
+    // --- FORKLARING ---
+    // Fjernet den lokale `GetImageUrlForRoom`-metode.
+    // Anvender nu den centraliserede `ImageHelper.GetRoomImagePath`.
+    // ---
+
     [Parameter, EditorRequired]
-    public RoomTypeGetDto RoomType { get; set; }
+    public RoomTypeGetDto RoomType { get; set; } = default!;
 
     [Parameter]
     public EventCallback<int> OnDetailsClicked { get; set; }
 
-    private CultureInfo _danishCulture = new CultureInfo("da-DK");
+    private readonly CultureInfo _danishCulture = new("da-DK");
 
     private async Task HandleDetailsClick()
     {
         await OnDetailsClicked.InvokeAsync(RoomType.Id);
-    }
-
-    private string GetImageUrlForRoom(string roomName)
-    {
-        return roomName switch
-        {
-            "Standard Værelse" => "/images/room-standard.png",
-            "Deluxe Suite" => "/images/room-deluxe.png",
-            "Presidential Suite" => "/images/room-presidential.png",
-            _ => "/images/room-default.png"
-        };
     }
 }

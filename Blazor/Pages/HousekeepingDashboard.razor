@@ -1,5 +1,6 @@
 @page "/housekeeping-dashboard"
 @attribute [Authorize(Roles = "Housekeeping, Manager")]
+@using DomainModels.Enums
 @inject APIService ApiService
 @inject TicketSignalRService SignalRService
 @implements IDisposable
@@ -7,10 +8,7 @@
 <PageTitle>Housekeeping Dashboard</PageTitle>
 
 <div class="housekeeping-dashboard">
-    <div class="dashboard-header">
-        <h1>Housekeeping Dashboard</h1>
-        <p>Velkommen til housekeeping dashboardet</p>
-    </div>
+    <PageHeader Title="Housekeeping Dashboard" Subtitle="Velkommen til housekeeping dashboardet" />
 
     <div class="dashboard-content">
         @if (_isLoading)
@@ -19,7 +17,6 @@
         }
         else if (_roomsToClean != null)
         {
-            @* --- ØVERSTE RÆKKE MED OPGAVER OG STATUS --- *@
             <div class="row">
                 <div class="col-md-8">
                     <div class="card">
@@ -38,9 +35,14 @@
                                     {
                                         <div class="task-item">
                                             <span class="task-room">Værelse @room.RoomNumber (@room.RoomTypeName)</span>
-                                            <button class="btn btn-sm btn-success" @onclick="() => MarkAsClean(room.Id)">
-                                                <i class="bi bi-check-lg"></i> Markér som Færdig
-                                            </button>
+                                            <div class="btn-group" role="group">
+                                                <button class="btn btn-sm btn-warning" @onclick="() => OpenProblemModal(room)">
+                                                    <i class="bi bi-exclamation-triangle-fill"></i> Rapportér Problem
+                                                </button>
+                                                <button class="btn btn-sm btn-success" @onclick="() => MarkAsClean(room.Id)">
+                                                    <i class="bi bi-check-lg"></i> Markér som Færdig
+                                                </button>
+                                            </div>
                                         </div>
                                     }
                                 </div>
@@ -64,8 +66,6 @@
                     </div>
                 </div>
             </div>
-
-            @* --- NEDERSTE RÆKKE MED ÅBNE SAGER ( fuld bredde ) --- *@
             <div class="row mt-4">
                 <div class="col-md-12">
                     <OpenTicketsList />
@@ -75,10 +75,70 @@
     </div>
 </div>
 
+@* --- MODAL FOR PROBLEM-RAPPORTERING --- *@
+@if (_showProblemModal)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal fade show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rapportér Problem for Værelse @_selectedRoomForProblem?.RoomNumber</h5>
+                    <button type="button" class="btn-close" @onclick="CloseProblemModal"></button>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="_ticketCreateModel" OnValidSubmit="HandleReportProblemSubmit">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger mb-3" />
+
+                        @if (!string.IsNullOrEmpty(_problemReportStatusMessage))
+                        {
+                            <div class="alert alert-danger">@_problemReportStatusMessage</div>
+                        }
+
+                        <div class="mb-3">
+                            <label class="form-label">Titel</label>
+                            <InputText class="form-control" @bind-Value="_ticketCreateModel.Title" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Beskrivelse af problemet</label>
+                            <InputTextArea class="form-control" @bind-Value="_ticketCreateModel.Description" rows="4" />
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="CloseProblemModal">Annuller</button>
+                            <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true" Disabled="_isSubmittingProblem">
+                                @if (_isSubmittingProblem)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1"></span>
+                                }
+                                Send Rapport
+                            </ActionButton>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
+    @* --- FORKLARING ---
+    - Tilføjet en "Rapportér Problem"-knap til hvert værelse på listen.
+    - Implementeret en modal-dialogboks, der vises, når knappen klikkes.
+    - Tilføjet metoder (OpenProblemModal, CloseProblemModal, HandleReportProblemSubmit) til at håndtere modalens tilstand og formularindsendelse.
+    - Ved indsendelse oprettes en ny `TicketCreateDto`, hvor kategorien automatisk sættes til `TicketCategory.Manager`.
+    - `APIService.CreateTicketAsync` genbruges til at oprette sagen.
+    --- *@
+
     private List<RoomGetDto>? _roomsToClean;
     private bool _isLoading = true;
+
+    // Tilstandsvariabler for problem-rapportering
+    private bool _showProblemModal = false;
+    private RoomGetDto? _selectedRoomForProblem;
+    private TicketCreateDto _ticketCreateModel = new();
+    private bool _isSubmittingProblem = false;
+    private string? _problemReportStatusMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -103,6 +163,50 @@
             _roomsToClean?.RemoveAll(r => r.Id == roomId);
             StateHasChanged();
         }
+    }
+
+    private void OpenProblemModal(RoomGetDto room)
+    {
+        _selectedRoomForProblem = room;
+        _ticketCreateModel = new TicketCreateDto
+        {
+            Title = $"Problem i Værelse {room.RoomNumber}",
+            Description = "",
+            Category = TicketCategory.Manager // Sættes automatisk til Manager
+        };
+        _problemReportStatusMessage = null;
+        _showProblemModal = true;
+        StateHasChanged();
+    }
+
+    private void CloseProblemModal()
+    {
+        _showProblemModal = false;
+        _selectedRoomForProblem = null;
+        _ticketCreateModel = new();
+        _isSubmittingProblem = false;
+    }
+
+    private async Task HandleReportProblemSubmit()
+    {
+        if (_selectedRoomForProblem is null) return;
+
+        _isSubmittingProblem = true;
+        _problemReportStatusMessage = null;
+
+        var createdTicket = await ApiService.CreateTicketAsync(_ticketCreateModel);
+
+        if (createdTicket != null)
+        {
+            CloseProblemModal();
+            // I en større applikation kunne man tilføje en "toast"-notifikation her for at bekræfte.
+        }
+        else
+        {
+            _problemReportStatusMessage = "Fejl: Kunne ikke oprette sag. Prøv venligst igen.";
+            _isSubmittingProblem = false;
+        }
+        StateHasChanged();
     }
 
     private async void HandleRoomStatusChanged(int roomId, string newStatus)

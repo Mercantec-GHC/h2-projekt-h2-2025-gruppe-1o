@@ -13,8 +13,7 @@
 <PageTitle>Management Dashboard</PageTitle>
 
 <div class="booking-management-page">
-    <h1 class="page-title">Booking Management</h1>
-    <p class="page-subtitle">Oversigt over bookinger, gæsteaktivitet og support.</p>
+    <PageHeader Title="Booking Management" Subtitle="Oversigt over bookinger, gæsteaktivitet og support." />
 
     @if (!string.IsNullOrEmpty(_statusMessage))
     {
@@ -94,7 +93,7 @@
                             <td>@booking.RoomTypeName</td>
                             <td>@booking.CheckInDate.ToString("dd/MM/yyyy")</td>
                             <td>@booking.CheckOutDate.ToString("dd/MM/yyyy")</td>
-                            <td><span class="badge @GetStatusClass(booking.Status)">@booking.Status</span></td>
+                            <td><StatusBadge Status="@booking.Status" /></td>
                             <td class="text-end">
                                 @if (booking.Status == "Confirmed" && booking.CheckInDate.Date == DateTime.UtcNow.Date)
                                 {
@@ -119,8 +118,8 @@
     <AuthorizeView Roles="Receptionist">
         <div class="receptionist-section">
             <hr class="my-5" />
-            <h2 class="section-title">Dagens Status & Walk-in Booking</h2>
-            <p class="section-subtitle">Få et hurtigt overblik over ledige værelser og opret bookinger for walk-in gæster.</p>
+            <PageHeader Title="Dagens Status & Walk-in Booking" Subtitle="Få et hurtigt overblik over ledige værelser og opret bookinger for walk-in gæster." />
+
             @if (_roomTypeAvailability == null)
             {
                 <p><em>Indlæser værelsesstatus...</em></p>
@@ -132,7 +131,7 @@
                     {
                         <div class="col-md-4">
                             <div class="card h-100 shadow-sm admin-room-card" @onclick="() => SelectRoomTypeForWalkIn(roomType)">
-                                <img src="@GetRoomImagePath(roomType.Name)" class="card-img-top" alt="@roomType.Name" />
+                                <img src="@ImageHelper.GetRoomImagePath(roomType.Name)" class="card-img-top" alt="@roomType.Name" />
                                 <div class="card-body">
                                     <h5 class="card-title">@roomType.Name</h5>
                                     <p class="card-text text-success fw-bold">@roomType.AvailableCount ledige værelser</p>
@@ -145,6 +144,7 @@
                     }
                 </div>
             }
+
             @if (_selectedRoomTypeForWalkIn is not null)
             {
                 <div class="card shadow-sm mt-4 walk-in-form">
@@ -219,8 +219,8 @@
                 </div>
             }
             <hr class="my-5" />
-            <h2 class="section-title">Værelsesstatus & Housekeeping</h2>
-            <p class="section-subtitle">Se status på alle hotellets værelser og anmod om rengøring.</p>
+            <PageHeader Title="Værelsesstatus & Housekeeping" Subtitle="Se status på alle hotellets værelser og anmod om rengøring." />
+
             @if (_allPhysicalRooms == null)
             {
                 <p><em>Indlæser værelsesliste...</em></p>
@@ -248,7 +248,7 @@
                                         <tr>
                                             <td>@room.RoomNumber</td>
                                             <td>@room.RoomTypeName</td>
-                                            <td><span class="badge @GetRoomStatusClass(room.Status)">@room.Status</span></td>
+                                            <td><StatusBadge Status="@room.Status" /></td>
                                             <td class="text-end">
                                                 <button class="btn btn-sm btn-outline-primary"
                                                         disabled="@(room.Status == "NeedsCleaning")"
@@ -331,6 +331,13 @@
 </style>
 
 @code {
+    @* --- FORKLARING ---
+    - Fjernet metoderne `GetStatusClass`, `GetRoomStatusClass` og `GetRoomImagePath`.
+    - Anvender nu den genbrugelige `<StatusBadge>` component til at vise status for bookinger og værelser.
+    - Anvender den statiske `ImageHelper.GetRoomImagePath` til at hente stier til værelsesbilleder.
+    - Anvender den nye `<PageHeader>` component til sektionstitler for at sikre et ensartet design.
+    --- *@
+
     private bool _isLoading = true;
     private string _activeTab = "arrivals";
     private List<BookingSummaryDto> _allBookings = new();
@@ -567,31 +574,6 @@
         _statusFilter = "";
         await ApplyFilters();
     }
-
-    private string GetStatusClass(string status) => status.ToLower() switch
-    {
-        "confirmed" => "bg-success",
-        "checkedin" => "bg-info text-dark",
-        "checkedout" => "bg-secondary",
-        "cancelled" => "bg-danger",
-        _ => "bg-dark"
-    };
-
-    private string GetRoomStatusClass(string status) => status switch
-    {
-        "Clean" => "bg-success",
-        "NeedsCleaning" => "bg-warning text-dark",
-        "Occupied" => "bg-danger",
-        _ => "bg-secondary"
-    };
-
-    private string GetRoomImagePath(string roomTypeName) => roomTypeName switch
-    {
-        "Standard Værelse" => "images/room-standard.png",
-        "Deluxe Suite" => "images/room-deluxe.png",
-        "Presidential Suite" => "images/room-presidential.png",
-        _ => ""
-    };
 
     public void Dispose()
     {
