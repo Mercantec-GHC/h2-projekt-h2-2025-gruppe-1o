@@ -32,31 +32,7 @@ else if (_roomType != null)
 
             @if (_hasPreselectedDates)
             {
-                <div class="services-section">
-                    <h3 class="section-title">Ekstra Luksus</h3>
-
-                    @foreach (var group in _roomType.Services.GroupBy(s => s.Category))
-                    {
-                        <details class="service-category-dropdown">
-                            <summary>@group.Key</summary>
-                            <div class="services-checklist">
-                                @foreach (var service in group)
-                                {
-                                    <div class="service-check-item">
-                                        <input type="checkbox" class="form-check-input" id="service-@service.Id" @onchange="(e) => ToggleServiceSelection(service.Id, (bool)e.Value)" />
-                                        <label class="form-check-label" for="service-@service.Id">
-                                            <div class="service-details">
-                                                <span class="service-name">@service.Name</span>
-                                                <span class="service-price">@service.Price.ToString("C0", _danishCulture)</span>
-                                            </div>
-                                            <small class="service-description">@service.Description</small>
-                                        </label>
-                                    </div>
-                                }
-                            </div>
-                        </details>
-                    }
-                </div>
+                <ServiceSelector Services="_roomType.Services" @bind-SelectedServiceIds="_selectedServiceIds" />
 
                 <hr />
 
@@ -121,19 +97,6 @@ else
         }
 
         _isLoading = false;
-    }
-
-    private void ToggleServiceSelection(int serviceId, bool isChecked)
-    {
-        if (isChecked)
-        {
-            if (!_selectedServiceIds.Contains(serviceId)) _selectedServiceIds.Add(serviceId);
-        }
-        else
-        {
-            _selectedServiceIds.Remove(serviceId);
-        }
-        StateHasChanged();
     }
 
     private decimal CalculateTotalPrice()

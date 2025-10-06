@@ -1,6 +1,80 @@
-﻿namespace Blazor.Components
-{
-    public class ServiceSelector
+﻿@using System.Globalization
+@using DomainModels.DTOs
+
+<div class="services-section">
+    <h3 class="section-title">Ekstra Luksus</h3>
+
+    @if (Services == null || !Services.Any())
     {
+        <p>Der er ingen tilgængelige services for denne værelsestype.</p>
+    }
+    else
+    {
+        @foreach (var group in Services.GroupBy(s => s.Category))
+        {
+            <details class="service-category-dropdown" open>
+                <summary>@group.Key</summary>
+                <div class="services-checklist">
+                    @foreach (var service in group)
+                    {
+                        <div class="service-check-item">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="service-@service.Id"
+                                   checked="@IsServiceSelected(service.Id)"
+                                   @onchange="(e) => ToggleServiceSelection(service.Id, (bool)e.Value!)" />
+                            <label class="form-check-label" for="service-@service.Id">
+                                <div class="service-details">
+                                    <span class="service-name">@service.Name</span>
+                                    <span class="service-price">@service.Price.ToString("C0", _danishCulture)</span>
+                                </div>
+                                <small class="service-description">@service.Description</small>
+                            </label>
+                        </div>
+                    }
+                </div>
+            </details>
+        }
+    }
+</div>
+
+
+@code {
+    private readonly CultureInfo _danishCulture = new("da-DK");
+
+    [Parameter]
+    public List<ServiceGetDto>? Services { get; set; }
+
+    [Parameter]
+    public List<int> SelectedServiceIds { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<List<int>> SelectedServiceIdsChanged { get; set; }
+
+    private bool IsServiceSelected(int serviceId)
+    {
+        return SelectedServiceIds?.Contains(serviceId) ?? false;
+    }
+
+    private async Task ToggleServiceSelection(int serviceId, bool isChecked)
+    {
+        if (SelectedServiceIds is null)
+        {
+            SelectedServiceIds = new List<int>();
+        }
+
+        if (isChecked)
+        {
+            if (!SelectedServiceIds.Contains(serviceId))
+            {
+                SelectedServiceIds.Add(serviceId);
+            }
+        }
+        else
+        {
+            SelectedServiceIds.Remove(serviceId);
+        }
+
+        await SelectedServiceIdsChanged.InvokeAsync(SelectedServiceIds);
     }
 }

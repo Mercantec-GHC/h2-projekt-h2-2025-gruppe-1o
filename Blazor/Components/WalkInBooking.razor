@@ -69,32 +69,13 @@ else
                         <div class="col-md-4"><div class="form-group"><label>Check-ud</label><InputDate class="form-control" @bind-Value="_walkInBooking.CheckOutDate" /></div></div>
                         <div class="col-md-4"><div class="form-group"><label>Antal Gæster</label><InputNumber class="form-control" @bind-Value="_walkInBooking.GuestCount" min="1" /></div></div>
                     </div>
-                    @if (_selectedRoomTypeDetails?.Services?.Any() == true)
+
+                    @if (_selectedRoomTypeDetails is not null)
                     {
                         <hr class="my-4" />
-                        <h3 class="h5">Tilføj Ekstra Luksus</h3>
-                        @foreach (var group in _selectedRoomTypeDetails.Services.GroupBy(s => s.Category))
-                        {
-                            <details class="service-category-dropdown" open>
-                                <summary>@group.Key</summary>
-                                <div class="services-checklist">
-                                    @foreach (var service in group)
-                                    {
-                                        <div class="service-check-item">
-                                            <input type="checkbox" class="form-check-input" id="service-@service.Id" @onchange="(e) => ToggleServiceSelection(service.Id, (bool)e.Value)" />
-                                            <label class="form-check-label" for="service-@service.Id">
-                                                <div class="service-details">
-                                                    <span class="service-name">@service.Name</span>
-                                                    <span class="service-price">@service.Price.ToString("C0", _danishCulture)</span>
-                                                </div>
-                                                <small class="service-description">@service.Description</small>
-                                            </label>
-                                        </div>
-                                    }
-                                </div>
-                            </details>
-                        }
+                        <ServiceSelector Services="_selectedRoomTypeDetails.Services" @bind-SelectedServiceIds="_walkInBooking.ServiceIds" />
                     }
+
                     <div class="d-flex justify-content-between align-items-center mt-4">
                         <h4 class="mb-0">Totalpris: <strong>@CalculateTotalPrice().ToString("C0", _danishCulture)</strong></h4>
                         <ActionButton Type="ActionButton.ButtonType.Primary" IsSubmit="true">Opret Booking</ActionButton>
@@ -106,6 +87,12 @@ else
 }
 
 @code {
+    @* --- FORKLARING ---
+    - Fjernet al markup og logik for visning og valg af services.
+    - Anvender nu den nye `<ServiceSelector>` component, som får services ind og to-vejs-binder de valgte IDs direkte til `_walkInBooking.ServiceIds`.
+    - Metoden `ToggleServiceSelection` er fjernet, da den logik nu bor i `ServiceSelector`.
+    --- *@
+
     [Parameter]
     public List<RoomTypeCardDto>? AvailableRoomTypes { get; set; }
 
@@ -149,13 +136,6 @@ else
         _walkInBooking = new();
         _walkInStatusMessage = null;
         _lastCreatedBooking = null;
-    }
-
-    private void ToggleServiceSelection(int serviceId, bool isChecked)
-    {
-        if (isChecked) { if (!_walkInBooking.ServiceIds.Contains(serviceId)) { _walkInBooking.ServiceIds.Add(serviceId); } }
-        else { _walkInBooking.ServiceIds.Remove(serviceId); }
-        StateHasChanged();
     }
 
     private async Task HandleWalkInSubmit()

@@ -1,6 +1,89 @@
-﻿namespace Blazor.Components
-{
-    public class ServiceSelector
-    {
+﻿.services-section {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    margin-bottom: 1.5rem;
+    font-weight: 300;
+    color: #333;
+}
+
+.service-category-dropdown {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+    .service-category-dropdown summary {
+        padding: 1rem 1.5rem;
+        font-size: 1.1rem;
+        font-weight: 500;
+        background-color: #f8f9fa;
+        color: #212529;
+        cursor: pointer;
+        list-style: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background-color 0.2s ease-in-out;
     }
+
+        .service-category-dropdown summary:hover {
+            background-color: #e9ecef;
+        }
+
+        .service-category-dropdown summary::after {
+            content: '+';
+            font-size: 1.5rem;
+            font-weight: 300;
+            transition: transform 0.3s ease-in-out;
+        }
+
+    .service-category-dropdown[open] > summary::after {
+        transform: rotate(45deg);
+    }
+
+.services-checklist {
+    padding: 1rem 1.5rem;
+    background-color: #fff;
+}
+
+.service-check-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f1f1f1;
+}
+
+    .service-check-item:last-child {
+        border-bottom: none;
+    }
+
+    .service-check-item .form-check-input {
+        margin-top: 0.4rem;
+        margin-right: 1rem;
+        width: 1.25em;
+        height: 1.25em;
+    }
+
+    .service-check-item .form-check-label {
+        width: 100%;
+    }
+
+.service-details {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 500;
+}
+
+.service-price {
+    font-weight: 600;
+    color: #0d6efd;
+}
+
+.service-description {
+    font-size: 0.9rem;
+    color: #6c757d;
 }
